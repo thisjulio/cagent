@@ -41,6 +41,14 @@ async function main(): Promise<void> {
     state.interrupted = true;
   });
 
+  bus.on("tools/pre", (p: unknown) => {
+    const { tool, args } = p as { tool: string; args: ToolArgs };
+    const cmd = typeof args.command === "string" ? args.command : JSON.stringify(args);
+    process.stdout.write(`\n[executando ${tool} $ ${cmd}]\n`);
+  });
+  bus.on("tools/stdout", (p: unknown) => process.stdout.write((p as { chunk: string }).chunk));
+  bus.on("tools/stderr", (p: unknown) => process.stdout.write(`[stderr] ${(p as { chunk: string }).chunk}`));
+
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 
   const ask: ToolAsk =
@@ -130,7 +138,7 @@ async function main(): Promise<void> {
         });
       } else {
         session.append({ ts: Date.now(), type: "tool", payload: { tool_call_id: r.tool_call_id, content: r.content, isError: r.isError } });
-        process.stdout.write(`[tool] ${r.content.slice(0, 200)}\n`);
+        process.stdout.write(`[tool ${r.toolName ?? "?"}] ${r.content.slice(0, 200)}\n`);
       }
     }
     if (turn.interrupted) process.stdout.write("[interrompido — Ctrl+C de novo para continuar; digite para steer]\n");

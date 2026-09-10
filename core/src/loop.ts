@@ -49,6 +49,8 @@ export interface TurnRecord {
   content: string;
   tool_calls?: Message["tool_calls"];
   tool_call_id?: string;
+  toolName?: string;
+  args?: ToolArgs;
   isError?: boolean;
 }
 
@@ -84,7 +86,14 @@ export async function runTurn(opts: TurnOpts): Promise<{ records: TurnRecord[]; 
         : { output: `tool não encontrada: ${tc.name}`, isError: true };
       const msg: Message = { role: "tool", tool_call_id: tc.id, content: result.output };
       messages.push(msg);
-      records.push({ role: "tool", tool_call_id: tc.id, content: result.output, isError: result.isError });
+      records.push({
+        role: "tool",
+        tool_call_id: tc.id,
+        content: result.output,
+        toolName: tool?.name ?? tc.name,
+        args,
+        isError: result.isError,
+      });
       if (opts.interrupted?.()) break;
     }
   }
