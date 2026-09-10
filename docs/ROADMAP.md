@@ -44,9 +44,10 @@ Stack: Bun/TypeScript (ADR-0004). UI: ink. Cada fase termina num estado demoáve
 
 ## Fase 6 — Terminal UI (ink)
 
-- Multi-pane: chat (principal) + tool log (lateral) + status bar (modelo, provedor, tokens)
-- Render em streaming; `/model` (picker fuzzy), `/sessions`, `/compact`
-- Esc para interrupt/steer; prompt de aprovação inline no chat
+- Multi-pane: chat (principal) + tool log (lateral) + status bar (modelo, provedor, tokens, % do contexto)
+- Render em streaming; `/model` (picker fuzzy), `/sessions`, `/compact`, `/help`
+- Esc para interrupt/steer; `ctrl+o` expande/colapsa o último tool; `y/n/a` na aprovação (a = sempre este comando, allowlist da sessão)
+- Tool items vivos no chat (aparecem enquanto a tool executa); markdown com syntax highlighting nas respostas
 - Remoção do modo por linhas
 - **Critério de saída:** sessão interativa completa, usável de ponta a ponta.
 

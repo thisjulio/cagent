@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Box, Static, Text, render, useInput } from "ink";
+import ReactMarkdown from "react-markdown";
+import hljs from "highlight.js";
 import type { Message, ProviderAdapter, ToolArgs, ToolDefinition } from "@cagent/sdk";
 import { loadConfig, type AppConfig } from "./config";
 import SelectInput from "ink-select-input";
@@ -17,7 +19,11 @@ export type ChatItem = {
   kind: "user" | "assistant" | "tool" | "meta";
   content: string;
   toolName?: string;
+  cmd?: string;
   isError?: boolean;
+  denied?: boolean;
+  running?: boolean;
+  expanded?: boolean;
 };
 
 export type ToolLogEntry = {
@@ -35,13 +41,14 @@ export type UIState = {
   model: string;
   provider: string;
   tokens: number;
+  threshold: number;
   busy: boolean;
   input: string;
   notice: string;
   pendingAsk: { tool: string; cmd: string } | null;
   modelPicker: { models: string[]; query: string } | null;
   sessionList: { id: string; updated: string; preview: string }[] | null;
-  selectedSession: number;
+  helpOpen: boolean;
 };
 
 export type InputKey = {
@@ -96,7 +103,7 @@ export class Controller {
       const p = r.payload as Record<string, unknown>;
       if (r.type === "user") return { kind: "user", content: String(p.content ?? "") };
       if (r.type === "assistant") return { kind: "assistant", content: String(p.content ?? "") };
-      if (r.type === "tool") return { kind: "tool", content: String(p.content ?? ""), toolName: r.payload.tool_call_id ? String(r.payload.tool_call_id) : undefined };
+      if (r.type === "tool") return { kind: "tool", content: String(p.content ?? ""), toolName: p.toolName ? String(p.toolName) : String(p.tool_call_id ?? "") };
       return { kind: "meta", content: "meta" };
     });
     if (loaded.records.length) chat.push({ kind: "meta", content: `resumindo sessão ${this.session.id} (${loaded.messages.length} mensagens)` });
@@ -106,18 +113,21 @@ export class Controller {
       model: deps.model,
       provider: "",
       tokens: estimateTokens(this.messages),
+      threshold: deps.config.compact_threshold_tokens ?? 60_000,
       busy: false,
       input: "",
       notice: "",
       pendingAsk: null,
       modelPicker: null,
       sessionList: null,
+      helpOpen: false,
     };
   }
 
-  private lastRunning(): ToolLogEntry | undefined {
-    for (let i = this.state.toolLog.length - 1; i >= 0; i--) {
-      if (this.state.toolLog[i].running) return this.state.toolLog[i];
+  private lastRunningChat(tool: string): ChatItem | undefined {
+    const chat = this.state.chat;
+    for (let i = chat.length - 1; i >= 0; i--) {
+      if (chat[i].kind === "tool" && chat[i].toolName === tool && chat[i].running) return chat[i];
     }
     return undefined;
   }
@@ -125,17 +135,24 @@ export class Controller {
   onToolPre(p: unknown): void {
     const { tool, args } = p as { tool: string; args: ToolArgs };
     const cmd = typeof args.command === "string" ? args.command : JSON.stringify(args);
+    this.state.chat.push({ kind: "tool", toolName: tool, cmd, running: true, content: "" });
     this.state.toolLog.push({ tool, cmd, running: true });
     this.bump();
   }
 
   onToolPost(p: unknown): void {
     const { tool, result, error } = p as { tool: string; result?: { output: string }; error?: string };
-    const e = [...this.state.toolLog].reverse().find((t) => t.tool === tool && t.running);
+    const e = this.lastRunningChat(tool);
     if (e) {
       e.running = false;
-      e.output = error ?? result?.output ?? "";
       e.isError = !!error;
+      if (!e.content) e.content = error ?? result?.output ?? "";
+    }
+    const side = [...this.state.toolLog].reverse().find((t) => t.tool === tool && t.running);
+    if (side) {
+      side.running = false;
+      side.output = error ?? result?.output ?? "";
+      side.isError = !!error;
     }
     this.bump();
   }
@@ -143,17 +160,31 @@ export class Controller {
   onToolDenied(p: unknown): void {
     const { tool, args } = p as { tool: string; args: ToolArgs };
     const cmd = typeof args.command === "string" ? args.command : JSON.stringify(args);
+    this.state.chat.push({ kind: "tool", toolName: tool, cmd, denied: true, isError: true, running: false, content: "usuário negou" });
     this.state.toolLog.push({ tool, cmd, denied: true });
     this.bump();
   }
 
   onToolStream(p: unknown, prefix = ""): void {
     const { tool, chunk } = p as { tool: string; chunk: string };
-    const e = this.lastRunning();
-    if (e && e.tool === tool) {
-      e.output = (e.output ?? "") + prefix + chunk;
+    const e = this.lastRunningChat(tool);
+    if (e) {
+      e.content = (e.content ?? "") + prefix + chunk;
       this.bump();
     }
+    const side = this.lastRunningToolLog(tool);
+    if (side) {
+      side.output = (side.output ?? "") + prefix + chunk;
+      this.bump();
+    }
+  }
+
+  private lastRunningToolLog(tool: string): ToolLogEntry | undefined {
+    const log = this.state.toolLog;
+    for (let i = log.length - 1; i >= 0; i--) {
+      if (log[i].tool === tool && log[i].running) return log[i];
+    }
+    return undefined;
   }
 
   private interrupt(): void {
@@ -167,6 +198,11 @@ export class Controller {
       if (text === "/compact") return this.compact();
       if (text === "/sessions") return this.openSessions();
       if (text.startsWith("/model")) return this.openModelPicker();
+      if (text === "/help") {
+        this.state.helpOpen = true;
+        this.bump();
+        return;
+      }
       this.state.notice = `comando desconhecido: ${text}`;
       this.bump();
       return;
@@ -200,13 +236,13 @@ export class Controller {
           this.session.append({
             ts: Date.now(),
             type: "assistant",
-            payload: { content: r.content, ...(r.tool_calls ? { tool_calls: r.tool_calls } : {}) },
+            payload: { content: r.content, ...(r.tool_calls ? { tool_calls: r.tool_calls} : {}) },
           });
         } else {
-          this.session.append({ ts: Date.now(), type: "tool", payload: { tool_call_id: r.tool_call_id, content: r.content, isError: r.isError } });
-          s.chat.push({ kind: "tool", content: r.content, toolName: r.toolName, isError: r.isError });
+          this.session.append({ ts: Date.now(), type: "tool", payload: { tool_call_id: r.tool_call_id, content: r.content, isError: r.isError, toolName: r.toolName } });
         }
       }
+      for (const it of s.chat) if (it.kind === "tool" && it.running) it.running = false;
       if (turn.interrupted) s.notice = "[interrompido — digite para steer]";
       else s.notice = "";
     } catch (e) {
@@ -234,6 +270,26 @@ export class Controller {
     this.askResolver = null;
     this.bump();
     r(ok);
+  }
+
+  private allowAlways(): void {
+    const s = this.state;
+    if (!s.pendingAsk) return;
+    const cmd = s.pendingAsk.cmd;
+    if (!this.deps.config.allowlist.includes(cmd)) this.deps.config.allowlist.push(cmd);
+    // ponytail: allowlist em memória (sessão); persistência na config é Fase 7
+    this.answerAsk(true);
+  }
+
+  toggleToolExpand(): void {
+    const chat = this.state.chat;
+    for (let i = chat.length - 1; i >= 0; i--) {
+      if (chat[i].kind === "tool") {
+        chat[i] = { ...chat[i], expanded: !chat[i].expanded };
+        this.bump();
+        return;
+      }
+    }
   }
 
   private async openModelPicker(): Promise<void> {
@@ -266,7 +322,7 @@ export class Controller {
       const p = r.payload as Record<string, unknown>;
       if (r.type === "user") return { kind: "user", content: String(p.content ?? "") };
       if (r.type === "assistant") return { kind: "assistant", content: String(p.content ?? "") };
-      if (r.type === "tool") return { kind: "tool", content: String(p.content ?? "") };
+      if (r.type === "tool") return { kind: "tool", content: String(p.content ?? ""), toolName: p.toolName ? String(p.toolName) : String(p.tool_call_id ?? "") };
       return { kind: "meta", content: "meta" };
     });
     this.state.chat.push({ kind: "meta", content: `restaurado ${s.id}` });
@@ -277,7 +333,7 @@ export class Controller {
 
   private async compact(): Promise<void> {
     const s = this.state;
-    const threshold = this.deps.config.compact_threshold_tokens ?? 60_000;
+    const threshold = s.threshold;
     const est = estimateTokens(this.messages);
     if (est < threshold) {
       s.notice = `sem compactação (${est} < ${threshold} tokens)`;
@@ -325,13 +381,21 @@ export class Controller {
       if (key.escape) this.answerAsk(false);
       else if (input === "y") this.answerAsk(true);
       else if (input === "n") this.answerAsk(false);
+      else if (input === "a") this.allowAlways();
       return;
     }
     if (s.sessionList) {
       if (key.escape) s.sessionList = null;
+      this.bump();
       return;
     }
-    if (key.escape) this.interrupt();
+    if (s.helpOpen) {
+      if (key.escape || key.return) s.helpOpen = false;
+      this.bump();
+      return;
+    }
+    if (key.ctrl && input === "o") this.toggleToolExpand();
+    else if (key.escape) this.interrupt();
   }
 
   setInput(v: string): void {
@@ -340,9 +404,97 @@ export class Controller {
   }
 }
 
+const HL_COLORS: Record<string, string> = {
+  "hljs-comment": "gray",
+  "hljs-quote": "gray",
+  "hljs-keyword": "blue",
+  "hljs-string": "green",
+  "hljs-number": "yellow",
+  "hljs-function": "cyan",
+  "hljs-title": "cyan",
+  "hljs-attr": "yellow",
+  "hljs-params": "cyan",
+  "hljs-built_in": "cyan",
+  "hljs-type": "cyan",
+  "hljs-literal": "yellow",
+  "hljs-meta": "gray",
+  "hljs-symbol": "yellow",
+  "hljs-regex": "red",
+  "hljs-link": "cyan",
+  "hljs-section": "cyan",
+  "hljs-variable": "magenta",
+  "hljs-deletion": "red",
+  "hljs-addition": "green",
+};
 
+function decodeHtml(s: string): string {
+  return s
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, "&");
+}
 
-function ChatItemRow({ it }: { it: ChatItem }) {
+function HighlightedCode({ code, language }: { code: string; language?: string }) {
+  if (!code) return <Text>{""}</Text>;
+  let html: string;
+  try {
+    html =
+      language && hljs.getLanguage(language)
+        ? hljs.highlight(decodeHtml(code), { language, ignoreIllegals: true }).value
+        : hljs.highlightAuto(decodeHtml(code), { ignoreIllegals: true }).value;
+  } catch {
+    return <Text>{code}</Text>;
+  }
+  const out: React.ReactNode[] = [];
+  const re = /<span class="([^"]+)">([\s\S]*?)<\/span>/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(html))) {
+    if (m.index > last) out.push(<Text key={`t${last}`}>{decodeHtml(html.slice(last, m.index))}</Text>);
+    out.push(<Text key={`s${m.index}`} color={HL_COLORS[m[1].split(" ")[0]]}>{decodeHtml(m[2])}</Text>);
+    last = m.index + m[0].length;
+  }
+  if (last < html.length) out.push(<Text key="tail">{decodeHtml(html.slice(last))}</Text>);
+  return <Text>{out}</Text>;
+}
+
+function Markdown({ content }: { content: string }) {
+  return (
+    <Text>
+      <ReactMarkdown
+        components={{
+          code: ({ inline, className, children }) => {
+            const code = decodeHtml(String(children ?? "")).replace(/\n$/, "");
+            if (inline) return <Text color="yellow">{code}</Text>;
+            const language = (className ?? "").replace("language-", "").trim();
+            return <HighlightedCode code={code} language={language || undefined} />;
+          },
+          a: ({ children }) => <Text color="cyan" underline>{children}</Text>,
+          strong: ({ children }) => <Text bold>{children}</Text>,
+          em: ({ children }) => <Text italic>{children}</Text>,
+          del: ({ children }) => <Text dimColor>{children}</Text>,
+          h1: ({ children }) => <Text bold>{children}</Text>,
+          h2: ({ children }) => <Text bold>{children}</Text>,
+          h3: ({ children }) => <Text bold>{children}</Text>,
+          ul: ({ children }) => <Text>{children}</Text>,
+          ol: ({ children }) => <Text>{children}</Text>,
+          li: ({ children }) => <Text>{"  • "}{children}</Text>,
+          blockquote: ({ children }) => <Text dimColor>{"  "}{children}</Text>,
+          p: ({ children }) => <Text>{children}</Text>,
+          pre: ({ children }) => <Text>{children}</Text>,
+          br: () => <Text>{"\n"}</Text>,
+          img: ({ alt }) => <Text dimColor>{`[imagem: ${alt ?? ""}]`}</Text>,
+        }}
+      >
+        {content}
+      </ReactMarkdown>
+    </Text>
+  );
+}
+
+function ChatItemRow({ it, streaming }: { it: ChatItem; streaming: boolean }) {
   if (it.kind === "user")
     return (
       <Text>
@@ -350,15 +502,54 @@ function ChatItemRow({ it }: { it: ChatItem }) {
         {it.content}
       </Text>
     );
-  if (it.kind === "assistant") return <Text>{it.content || "…"}</Text>;
-  if (it.kind === "tool")
+  if (it.kind === "assistant") {
+    if (!streaming && it.content) return <Markdown content={it.content} />;
+    return <Text>{it.content || "…"}</Text>;
+  }
+  if (it.kind === "tool") {
+    const status = it.running ? "⋯" : it.isError ? "✗" : "⏺";
+    const color = it.isError ? "red" : it.running ? "yellow" : "green";
+    const lines = it.content ? it.content.split("\n").length : 0;
+    if (!it.expanded)
+      return (
+        <Text>
+          <Text color={color}>{status} </Text>
+          <Text bold>{it.toolName ?? "?"}</Text>
+          {it.cmd ? (
+            <Text dimColor> {it.cmd.length > 40 ? it.cmd.slice(0, 40) + "…" : it.cmd}</Text>
+          ) : null}
+          {it.running ? <Text color="yellow"> (executando…)</Text> : null}
+          {it.denied ? <Text color="yellow"> (negado)</Text> : null}
+          {!it.running && !it.denied && lines > 0 && (
+            <Text dimColor> +{lines} linha{lines === 1 ? "" : "s"} (ctrl+o)</Text>
+          )}
+        </Text>
+      );
     return (
-      <Text color={it.isError ? "red" : undefined} dimColor={!it.isError}>
-        <Text color={it.isError ? "red" : undefined}>{it.toolName ?? "?"}</Text>
-        {it.content.slice(0, 200)}
-      </Text>
+      <Box flexDirection="column">
+        <Text>
+          <Text color={color}>{status} </Text>
+          <Text bold>{it.toolName ?? "?"}</Text>
+          {it.cmd ? <Text dimColor> {it.cmd}</Text> : null}
+        </Text>
+        <Text color={it.isError ? "red" : undefined}>{it.content}</Text>
+      </Box>
     );
+  }
   return <Text dimColor>{it.content}</Text>;
+}
+
+function HelpBox() {
+  return (
+    <Box borderStyle="round" borderColor="gray" paddingX={1} flexDirection="column">
+      <Text>
+        comandos: <Text bold>/model</Text> · <Text bold>/sessions</Text> · <Text bold>/compact</Text> · <Text bold>/help</Text>
+      </Text>
+      <Text>
+        teclas: <Text bold>Esc</Text> interrompe/fecha · <Text bold>ctrl+o</Text> expande o último tool · <Text bold>y/n/a</Text> permite/nega/sempre
+      </Text>
+    </Box>
+  );
 }
 
 function ModelPicker({ c, p }: { c: Controller; p: { models: string[]; query: string } }) {
@@ -400,34 +591,36 @@ export function App({ c }: { c: Controller }) {
 
   const s = c.state;
   const last = s.chat.length - 1;
+  const pct = s.threshold ? Math.round((s.tokens / s.threshold) * 100) : 0;
+  const running = s.toolLog[s.toolLog.length - 1]?.running ? s.toolLog[s.toolLog.length - 1].tool : undefined;
   return (
     <Box flexDirection="column">
       <Box flexDirection="row">
         <Box flexDirection="column" flexGrow={1}>
           <Static items={s.chat.slice(0, last)}>
-            {(it) => <ChatItemRow it={it} />}
+            {(it, i) => <ChatItemRow it={it} streaming={false} key={`c${i}`} />}
           </Static>
-          {s.chat.length > 0 ? <ChatItemRow it={s.chat[last]} /> : null}
-          <Box>
-            {s.modelPicker ? (
-              <ModelPicker c={c} p={s.modelPicker} />
-            ) : s.sessionList ? (
-              <SessionList c={c} list={s.sessionList} />
-            ) : s.pendingAsk ? (
-              <Text color="yellow">
-                → {s.pendingAsk.tool} {s.pendingAsk.cmd}  permitir? (y/n, esc nega)
-              </Text>
-            ) : (
-              <Box flexDirection="row">
-                <Text color="cyan">❯ </Text>
-                <TextInput
-                  value={s.input}
-                  onChange={(v: string) => c.setInput(v)}
-                  onSubmit={(v: string) => c.submit(v)}
-                />
-              </Box>
-            )}
-          </Box>
+          {s.chat.length > 0 ? <ChatItemRow it={s.chat[last]} streaming={s.busy} /> : null}
+          {s.helpOpen ? <HelpBox /> : null}
+          {s.modelPicker ? (
+            <ModelPicker c={c} p={s.modelPicker} />
+          ) : s.sessionList ? (
+            <SessionList c={c} list={s.sessionList} />
+          ) : s.pendingAsk ? (
+            <Box flexDirection="column">
+              <Text color="yellow">⚠ {s.pendingAsk.tool}: {s.pendingAsk.cmd}</Text>
+              <Text color="yellow">permitir?  y = agora · n = negar · a = sempre este comando</Text>
+            </Box>
+          ) : (
+            <Box flexDirection="row">
+              <Text color="cyan">❯ </Text>
+              <TextInput
+                value={s.input}
+                onChange={(v: string) => c.setInput(v)}
+                onSubmit={(v: string) => c.submit(v)}
+              />
+            </Box>
+          )}
           {s.notice ? <Text dimColor>{s.notice}</Text> : null}
         </Box>
         <Box width={40} flexDirection="column" borderStyle="round" borderColor="gray">
@@ -435,9 +628,9 @@ export function App({ c }: { c: Controller }) {
           {s.toolLog.length === 0 ? <Text dimColor>(vazio)</Text> : null}
           {s.toolLog.map((t, i) => (
             <Text key={i} color={t.isError ? "red" : undefined} dimColor={!t.isError}>
-              {t.tool} {t.cmd.slice(0, 24)}
+              {t.tool}
               {t.running ? " …" : t.denied ? " (negado)" : ""}
-              {t.output ? ` ${t.output.slice(0, 80).replace(/\n/g, " ")}` : ""}
+              {t.output ? ` ${t.output.slice(0, 60).replace(/\n/g, " ")}` : ""}
             </Text>
           ))}
         </Box>
@@ -445,11 +638,11 @@ export function App({ c }: { c: Controller }) {
       <Box borderTop borderColor="gray">
         {s.busy ? (
           <Text dimColor>
-            <Spinner type="dots" /> pensando…
+            <Spinner type="dots" /> {running ? `usando ${running}…` : "pensando…"}
           </Text>
         ) : (
           <Text dimColor>
-            {s.provider} | {s.model} | {s.tokens} tokens
+            {s.provider} | {s.model} | {s.tokens} tok · {pct}% do contexto · Esc interrompe · /help
           </Text>
         )}
       </Box>
@@ -491,3 +684,4 @@ export async function bootstrap(): Promise<void> {
 }
 
 // ponytail: model picker com fuzzy por subseqüência; search-and-select completo entra quando os modelos superarem 50
+// ponytail: markdown via react-markdown; renderização plain durante o stream evita flicker com fences incompletos

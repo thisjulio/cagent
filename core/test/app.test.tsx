@@ -8,9 +8,9 @@ import { App, Controller, fuzzy, type ControllerDeps } from "../src/app";
 import { EventBus } from "../src/events";
 import { Registry } from "../src/registry";
 
-function deps(permissions = false): ControllerDeps {
+function deps(permissions = false, configOverrides: Record<string, unknown> = {}): ControllerDeps {
   return {
-    config: { plugins: [], allowlist: [], model: "m1", permissions },
+    config: { plugins: [], allowlist: [], model: "m1", permissions, ...configOverrides } as ControllerDeps["config"],
     registry: new Registry(),
     bus: new EventBus(),
     adapter: {
@@ -41,8 +41,27 @@ describe("renderToString", () => {
     const out = renderToString(React.createElement(App, { c }));
     expect(out).toContain("m1");
     expect(out).toContain("openai");
-    expect(out).toContain("tokens");
+    expect(out).toContain("tok");
+    expect(out).toContain("%");
     expect(out).toContain("tools");
+  });
+
+  it("markdown em mensagem de assistant concluída", () => {
+    const c = new Controller(deps());
+    c.state.chat.push({ kind: "assistant", content: "# título\n\n- item 1\n- item 2\n" });
+    const out = renderToString(React.createElement(App, { c }));
+    expect(out).toContain("título");
+    expect(out).toContain("•");
+  });
+
+  it("tool item renderiza com cmd e dica de expandir", () => {
+    const c = new Controller(deps());
+    c.onToolPre({ tool: "bash", args: { command: "git status" } });
+    c.onToolPost({ tool: "bash", result: { output: "linhas\na\nb" } });
+    const out = renderToString(React.createElement(App, { c }));
+    expect(out).toContain("bash");
+    expect(out).toContain("git status");
+    expect(out).toContain("ctrl+o");
   });
 });
 
@@ -61,15 +80,59 @@ describe("controller", () => {
     expect(c.messages.some((m) => m.role === "user" && m.content === "oi")).toBe(true);
   });
 
-  it("pendingAsk: esc nega; answerAsk(true) aprova", async () => {
+  it("pendingAsk: esc nega; y aprova", async () => {
     const c = new Controller(deps(true));
     const p = c.ask({ name: "bash" }, { command: "ls" });
     expect(c.state.pendingAsk).not.toBeNull();
     c.handleKey({ escape: true }, "");
     await expect(p).resolves.toBe(false);
     const p2 = c.ask({ name: "bash" }, { command: "ls" });
-    c.answerAsk(true);
+    c.handleKey({}, "y");
     await expect(p2).resolves.toBe(true);
+  });
+
+  it("'a' adiciona o comando ao allowlist da sessão", async () => {
+    const d = deps(true);
+    const c = new Controller(d);
+    const p = c.ask({ name: "bash" }, { command: "rm -rf node_modules" });
+    c.handleKey({}, "a");
+    await expect(p).resolves.toBe(true);
+    expect(d.config.allowlist).toContain("rm -rf node_modules");
+  });
+
+  it("tool items vivos no chat via eventos do bus", () => {
+    const c = new Controller(deps());
+    c.onToolPre({ tool: "bash", args: { command: "ls -la" } });
+    const last = c.state.chat[c.state.chat.length - 1];
+    expect(last.kind).toBe("tool");
+    expect(last.toolName).toBe("bash");
+    expect(last.cmd).toBe("ls -la");
+    expect(last.running).toBe(true);
+    c.onToolStream({ tool: "bash", chunk: "a\n" });
+    expect(c.state.chat[c.state.chat.length - 1].content).toBe("a\n");
+    c.onToolPost({ tool: "bash", result: { output: "a\nb" } });
+    const done = c.state.chat[c.state.chat.length - 1];
+    expect(done.running).toBe(false);
+    expect(done.content).toBe("a\n");
+  });
+
+  it("onToolDenied marca item negado", () => {
+    const c = new Controller(deps());
+    c.onToolDenied({ tool: "bash", args: { command: "rm -rf /" } });
+    const last = c.state.chat[c.state.chat.length - 1];
+    expect(last.kind).toBe("tool");
+    expect(last.denied).toBe(true);
+    expect(last.isError).toBe(true);
+  });
+
+  it("ctrl+o expande o último tool item", () => {
+    const c = new Controller(deps());
+    c.onToolPre({ tool: "bash", args: { command: "ls" } });
+    c.onToolPost({ tool: "bash", result: { output: "ok" } });
+    c.handleKey({ ctrl: true }, "o");
+    expect(c.state.chat[c.state.chat.length - 1].expanded).toBe(true);
+    c.handleKey({ ctrl: true }, "o");
+    expect(c.state.chat[c.state.chat.length - 1].expanded).toBe(false);
   });
 
   it("model picker: filtra e seleciona", async () => {
@@ -87,6 +150,14 @@ describe("controller", () => {
     c.setInput("/model");
     await c.submit("/model");
     expect(c.state.modelPicker).not.toBeNull();
+  });
+
+  it("comando /help abre o painel de ajuda", async () => {
+    const c = new Controller(deps());
+    await c.submit("/help");
+    expect(c.state.helpOpen).toBe(true);
+    c.handleKey({ return: true }, "");
+    expect(c.state.helpOpen).toBe(false);
   });
 
   it("esc interrompe turno em andamento", async () => {

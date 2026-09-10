@@ -20,7 +20,7 @@ Code agent com arquitetura de plugins: o núcleo (loop de agente + contexto + se
 - Retry de LLM com política por provedor
 - Event bus: `session/*` durável, `agent/*` live, `tools/*` pipeline
 - Registry de serviços por chaves (`llm`, `tools`, …)
-- Terminal UI (ink): multi-pane chat + tool log + status bar; Esc = interrupt/steer; `/model`, `/sessions`, `/compact`
+- Terminal UI (ink): multi-pane chat + tool log + status bar; Esc = interrupt/steer; `ctrl+o` expande o último tool; `/model`, `/sessions`, `/compact`, `/help`; `y/n/a` na aprovação; markdown com syntax highlighting
 
 ## Workspace
 
