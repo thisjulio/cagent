@@ -1,3 +1,4 @@
+model: gpt-5.6-luna
 plugins:
   - name: stub
     path: ./plugins/stub
@@ -5,3 +6,5 @@ plugins:
     path: ./plugins/bash
     config:
       timeout_ms: 30000
+  - name: openai
+    path: ./plugins/openai
