@@ -379,7 +379,14 @@ export function createAdapter(opts: AdapterOptions): ProviderAdapter {
           input: request.messages,
           stream: true,
           store: false,
-          ...(request.tools.length ? { tools: request.tools } : {}),
+          ...(request.tools.length
+            ? {
+                tools: request.tools.map((t) => ({
+                  type: "function",
+                  function: { name: t.name, description: t.description, parameters: t.parameters },
+                })),
+              }
+            : {}),
         }),
       });
       if (!res.ok || !res.body) {
