@@ -595,9 +595,8 @@ export function App({ c }: { c: Controller }) {
   const running = s.toolLog[s.toolLog.length - 1]?.running ? s.toolLog[s.toolLog.length - 1].tool : undefined;
   return (
     <Box flexDirection="column">
-      <Box flexDirection="row">
-        <Box flexDirection="column" flexGrow={1}>
-          <Static items={s.chat.slice(0, last)}>
+      <Box flexDirection="column">
+        <Static items={s.chat.slice(0, last)}>
             {(it, i) => <ChatItemRow it={it} streaming={false} key={`c${i}`} />}
           </Static>
           {s.chat.length > 0 ? <ChatItemRow it={s.chat[last]} streaming={s.busy} /> : null}
@@ -612,7 +611,7 @@ export function App({ c }: { c: Controller }) {
               <Text color="yellow">permitir?  y = agora · n = negar · a = sempre este comando</Text>
             </Box>
           ) : (
-            <Box flexDirection="row">
+            <Box borderStyle="round" borderColor="gray" paddingX={1} flexDirection="row">
               <Text color="cyan">❯ </Text>
               <TextInput
                 value={s.input}
@@ -623,18 +622,6 @@ export function App({ c }: { c: Controller }) {
           )}
           {s.notice ? <Text dimColor>{s.notice}</Text> : null}
         </Box>
-        <Box width={40} flexDirection="column" borderStyle="round" borderColor="gray">
-          <Text bold>tools</Text>
-          {s.toolLog.length === 0 ? <Text dimColor>(vazio)</Text> : null}
-          {s.toolLog.map((t, i) => (
-            <Text key={i} color={t.isError ? "red" : undefined} dimColor={!t.isError}>
-              {t.tool}
-              {t.running ? " …" : t.denied ? " (negado)" : ""}
-              {t.output ? ` ${t.output.slice(0, 60).replace(/\n/g, " ")}` : ""}
-            </Text>
-          ))}
-        </Box>
-      </Box>
       <Box borderTop borderColor="gray">
         {s.busy ? (
           <Text dimColor>

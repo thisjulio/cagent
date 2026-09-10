@@ -43,7 +43,6 @@ describe("renderToString", () => {
     expect(out).toContain("openai");
     expect(out).toContain("tok");
     expect(out).toContain("%");
-    expect(out).toContain("tools");
   });
 
   it("markdown em mensagem de assistant concluída", () => {

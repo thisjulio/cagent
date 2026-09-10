@@ -20,13 +20,14 @@ Code agent com arquitetura de plugins: o núcleo (loop de agente + contexto + se
 - Retry de LLM com política por provedor
 - Event bus: `session/*` durável, `agent/*` live, `tools/*` pipeline
 - Registry de serviços por chaves (`llm`, `tools`, …)
-- Terminal UI (ink): multi-pane chat + tool log + status bar; Esc = interrupt/steer; `ctrl+o` expande o último tool; `/model`, `/sessions`, `/compact`, `/help`; `y/n/a` na aprovação; markdown com syntax highlighting
+- Terminal UI (ink): chat + status bar (tool calls aparecem no chat; `ctrl+o` expande o último); Esc = interrupt/steer; `/model`, `/sessions`, `/compact`, `/help`; `y/n/a` na aprovação; markdown com syntax highlighting
 
 ## Workspace
 
 ```
 package.json          # Bun workspaces: core, sdk, plugins/*
 core/                 # binário, loop, registry, eventos, UI
+core/scripts/         # snap.tsx — snapshot de UI (obrigatório após mudança de UI)
 sdk/                # SDK de plugins (interfaces, registry, eventos, config)
 plugins/openai/       # provedor (package TS)
 plugins/bash/         # ferramenta (package TS)
@@ -41,11 +42,19 @@ plugins/code-tools/   # ferramenta (package TS)
 - Provedor = `list_models()`, `prepare_call()`, `stream()` (chunks de token); auth e credenciais via config
 - Config: `~/.cagent/config.yml` (global) + `cagent.yml` (override por projeto) + fallback em env vars; plugins habilitáveis por config
 
+## UI (ink) — obrigatório
+
+- Antes de qualquer trabalho de UI, use a skill `ink-ui` (`.opencode/skills/ink-ui/SKILL.md`): desfaz o modelo mental "React web" (célula ≠ pixel, Yoga ≠ CSS, `<Box>`/`<Text>` não se misturam, `string-width` ≠ `.length`, `<Static>` para logs).
+- Antes de implementar qualquer tela: desenhar wireframe ASCII de 80 colunas no plano e **esperar aprovação** do usuário.
+- Após qualquer mudança de UI: rodar `bun core/scripts/snap.tsx` e comparar o snapshot (60/80/120 cols) com o wireframe aprovado — critério objetivo de pronto/não pronto.
+- Para capturar estados de foco/navegação (não só o estado inicial), usar `stdin.write` do ink-testing-library (ver skill).
+
 ## Comandos
 
 - `bun install` — instala dependências do workspace
 - `bun test` — testa core e plugins
 - `bun start` — roda o agente (UI quando disponível; modo por linhas antes da Fase 6)
+- `bun core/scripts/snap.tsx` — snapshot de UI em 3 larguras (obrigatório após mudança de UI)
 
 `plugins/stub` é o exemplo mínimo de plugin (ver `plugins/stub/src/index.ts` para o padrão de registro).
 
