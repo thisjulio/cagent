@@ -273,7 +273,7 @@ function toInputItems(messages: LlmCallOptions["messages"]): unknown[] {
   const items: unknown[] = [];
   for (const m of messages) {
     if (m.role === "assistant") {
-      if (m.content) items.push({ type: "message", role: m.role, content: [{ type: "input_text", text: m.content }] });
+      if (m.content) items.push({ type: "message", role: m.role, content: [{ type: "output_text", text: m.content }] });
       for (const tc of m.tool_calls ?? []) {
         items.push({ type: "function_call", name: tc.name, arguments: tc.arguments, call_id: tc.id });
       }

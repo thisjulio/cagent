@@ -43,11 +43,14 @@ async function main(): Promise<void> {
 
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 
-  const ask: ToolAsk = async (tool: ToolDefinition, args: ToolArgs) => {
-    const cmd = typeof args.command === "string" ? args.command : JSON.stringify(args);
-    const answer = (await rl.question(`→ ${tool.name} ${cmd}\n   permitir? (y/n) `)).trim().toLowerCase();
-    return answer === "y";
-  };
+  const ask: ToolAsk =
+    config.permissions === false
+      ? async () => true
+      : async (tool: ToolDefinition, args: ToolArgs) => {
+          const cmd = typeof args.command === "string" ? args.command : JSON.stringify(args);
+          const answer = (await rl.question(`→ ${tool.name} ${cmd}\n   permitir? (y/n) `)).trim().toLowerCase();
+          return answer === "y";
+        };
 
   const compact = async (): Promise<void> => {
     const threshold = config.compact_threshold_tokens ?? 60_000;
