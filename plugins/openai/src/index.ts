@@ -269,6 +269,27 @@ function extractResidency(token: string): string | undefined {
   return r && r !== "no_constraint" ? r : undefined;
 }
 
+function toInputItems(messages: LlmCallOptions["messages"]): unknown[] {
+  const items: unknown[] = [];
+  for (const m of messages) {
+    if (m.role === "assistant") {
+      if (m.content) items.push({ type: "message", role: m.role, content: [{ type: "input_text", text: m.content }] });
+      for (const tc of m.tool_calls ?? []) {
+        items.push({ type: "function_call", name: tc.name, arguments: tc.arguments, call_id: tc.id });
+      }
+    } else if (m.role === "tool") {
+      items.push({
+        type: "function_call_output",
+        call_id: m.tool_call_id ?? "",
+        output: m.content ?? "",
+      });
+    } else {
+      items.push({ type: "message", role: m.role, content: [{ type: "input_text", text: m.content ?? "" }] });
+    }
+  }
+  return items;
+}
+
 export function createAdapter(opts: AdapterOptions): ProviderAdapter {
   const { config } = opts;
   let authPromise: Promise<AuthState> | undefined;
@@ -371,19 +392,25 @@ export function createAdapter(opts: AdapterOptions): ProviderAdapter {
       const residency = extractResidency(auth.access);
       if (residency) headers["x-openai-internal-codex-residency"] = residency;
 
+      const systemMsg = request.messages.find((m) => m.role === "system");
       const res = await fetch(CODEX_RESPONSES_URL, {
         method: "POST",
         headers,
         body: JSON.stringify({
           model: request.model,
-          input: request.messages,
+          instructions: systemMsg?.content ?? "",
+          input: toInputItems(request.messages.filter((m) => m.role !== "system")),
+          tool_choice: "auto",
           stream: true,
           store: false,
           ...(request.tools.length
             ? {
                 tools: request.tools.map((t) => ({
                   type: "function",
-                  function: { name: t.name, description: t.description, parameters: t.parameters },
+                  name: t.name,
+                  description: t.description,
+                  parameters: t.parameters,
+                  strict: false,
                 })),
               }
             : {}),
@@ -418,13 +445,13 @@ export function createAdapter(opts: AdapterOptions): ProviderAdapter {
             }
             if (event === "response.output_text.delta") {
               yield { type: "text", text: String(data.delta ?? "") };
-            } else if (event === "response.output_item.added" || event === "response.output_item.done") {
+            } else if (event === "response.output_item.done") {
               const item = data.item as Record<string, unknown> | undefined;
               if (item && item.type === "function_call") {
                 yield {
                   type: "tool-call",
                   tool_call: {
-                    id: String(item.id ?? ""),
+                    id: String(item.call_id ?? item.id ?? ""),
                     name: String(item.name ?? ""),
                     arguments: String(item.arguments ?? ""),
                   },
