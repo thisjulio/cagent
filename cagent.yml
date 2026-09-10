@@ -9,3 +9,5 @@ plugins:
       timeout_ms: 30000
   - name: openai
     path: ./plugins/openai
+  - name: code-tools
+    path: ./plugins/code-tools

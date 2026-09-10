@@ -1,0 +1,10 @@
+{
+  "name": "@cagent/plugin-code-tools",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "dependencies": {
+    "@cagent/sdk": "workspace:*",
+    "fast-glob": "^3.3.3"
+  }
+}
