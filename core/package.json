@@ -1,0 +1,10 @@
+{
+  "name": "@cagent/core",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/main.ts",
+  "dependencies": {
+    "@cagent/sdk": "workspace:*",
+    "js-yaml": "^4.1.0"
+  }
+}

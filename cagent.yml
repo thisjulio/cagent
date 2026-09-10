@@ -1,0 +1,7 @@
+plugins:
+  - name: stub
+    path: ./plugins/stub
+  - name: bash
+    path: ./plugins/bash
+    config:
+      timeout_ms: 30000

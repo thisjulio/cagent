@@ -1,0 +1,10 @@
+{
+  "name": "cagent",
+  "private": true,
+  "type": "module",
+  "workspaces": ["core", "sdk", "plugins/*"],
+  "scripts": {
+    "start": "bun core/src/main.ts",
+    "test": "bun test"
+  }
+}

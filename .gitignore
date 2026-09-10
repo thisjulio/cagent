@@ -1,1 +1,12 @@
-/target
+node_modules/
+dist/
+coverage/
+graphify-out/
+*.tsbuildinfo
+.DS_Store
+.env
+.env.local
+.env.*.local
+*.log
+npm-debug.log*
+.npm

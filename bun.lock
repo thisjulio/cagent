@@ -1,0 +1,48 @@
+{
+  "lockfileVersion": 2,
+  "configVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "cagent",
+    },
+    "core": {
+      "name": "@cagent/core",
+      "version": "0.1.0",
+      "dependencies": {
+        "@cagent/sdk": "workspace:*",
+        "js-yaml": "^4.1.0",
+      },
+    },
+    "plugins/bash": {
+      "name": "@cagent/plugin-bash",
+      "version": "0.1.0",
+      "dependencies": {
+        "@cagent/sdk": "workspace:*",
+      },
+    },
+    "plugins/stub": {
+      "name": "@cagent/plugin-stub",
+      "version": "0.1.0",
+      "dependencies": {
+        "@cagent/sdk": "workspace:*",
+      },
+    },
+    "sdk": {
+      "name": "@cagent/sdk",
+      "version": "0.1.0",
+    },
+  },
+  "packages": {
+    "@cagent/core": ["@cagent/core@workspace:core"],
+
+    "@cagent/plugin-bash": ["@cagent/plugin-bash@workspace:plugins/bash"],
+
+    "@cagent/plugin-stub": ["@cagent/plugin-stub@workspace:plugins/stub"],
+
+    "@cagent/sdk": ["@cagent/sdk@workspace:sdk"],
+
+    "argparse": ["argparse@2.0.1", "", {}, "sha512-8+9WqebbFzpX9OR+Wa6O29asIogeRMzcGtAINdpMHHyAg10f05aSFVBbcEqGf/PXw1EjAZ+q2/bEBg3DvurK3Q=="],
+
+    "js-yaml": ["js-yaml@4.3.2", "", { "dependencies": { "argparse": "^2.0.1" }, "bin": { "js-yaml": "bin/js-yaml.js" } }, "sha512-SFNOvSJ+Dgf/9An904Yx+CgSlIPCkIpao4qo51lpee25TIRejdH3rhR4EZMGoNx3/TP3O+wzWuiTFl4sqbltzA=="],
+  }
+}
