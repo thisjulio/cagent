@@ -14,6 +14,8 @@ export interface AppConfig {
   plugins: PluginConfig[];
   allowlist: string[];
   model?: string;
+  compact_threshold_tokens?: number;
+  retry_attempts?: number;
 }
 
 function readYaml(file: string): Record<string, unknown> {
@@ -33,5 +35,7 @@ export function loadConfig(cwd: string): AppConfig {
       ...((local.allowlist as string[] | undefined) ?? []),
     ],
     model: (local.model as string | undefined) ?? (global.model as string | undefined) ?? process.env.CAGENT_MODEL,
+    compact_threshold_tokens: (local.compact_threshold_tokens as number | undefined) ?? (global.compact_threshold_tokens as number | undefined),
+    retry_attempts: (local.retry_attempts as number | undefined) ?? (global.retry_attempts as number | undefined),
   };
 }

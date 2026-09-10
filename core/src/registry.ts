@@ -28,6 +28,10 @@ export class Registry {
     return [...this.toolList.values()];
   }
 
+  llmRoute(): string | undefined {
+    return this.providerList.keys().next().value;
+  }
+
   provider(route: string): ProviderAdapter | undefined {
     return this.providerList.get(route);
   }

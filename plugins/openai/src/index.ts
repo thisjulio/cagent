@@ -336,11 +336,25 @@ export function createAdapter(opts: AdapterOptions): ProviderAdapter {
         });
         let finish = "stop";
         let usage: { input_tokens: number; output_tokens: number } | undefined;
+        const toolCalls = new Map<number, { id: string; name: string; arguments: string }>();
         for await (const chunk of res) {
           const choice = chunk.choices[0];
-          const text = choice?.delta?.content;
-          if (text) yield { type: "text", text };
-          if (choice?.finish_reason) finish = choice.finish_reason;
+          const delta = choice?.delta;
+          if (delta?.content) yield { type: "text", text: delta.content };
+          if (delta?.tool_calls) {
+            for (const tc of delta.tool_calls) {
+              const cur = toolCalls.get(tc.index) ?? { id: "", name: "", arguments: "" };
+              if (tc.id) cur.id = tc.id;
+              if (tc.function?.name) cur.name += tc.function.name;
+              if (tc.function?.arguments) cur.arguments += tc.function.arguments;
+              toolCalls.set(tc.index, cur);
+            }
+          }
+          if (choice?.finish_reason) {
+            finish = choice.finish_reason;
+            for (const tc of toolCalls.values()) yield { type: "tool-call", tool_call: tc };
+            toolCalls.clear();
+          }
           if (chunk.usage) {
             usage = { input_tokens: chunk.usage.prompt_tokens, output_tokens: chunk.usage.completion_tokens };
           }
@@ -402,8 +416,11 @@ export function createAdapter(opts: AdapterOptions): ProviderAdapter {
               if (item && item.type === "function_call") {
                 yield {
                   type: "tool-call",
-                  name: String(item.name ?? ""),
-                  args: item.arguments ? JSON.parse(String(item.arguments)) : {},
+                  tool_call: {
+                    id: String(item.id ?? ""),
+                    name: String(item.name ?? ""),
+                    arguments: String(item.arguments ?? ""),
+                  },
                 };
               }
             } else if (event === "response.completed") {
