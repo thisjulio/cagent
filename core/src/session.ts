@@ -22,8 +22,7 @@ export class Session {
       this.file = path.join(base, `${id}.jsonl`);
       return;
     }
-    const files = fs.readdirSync(base).filter((f) => f.endsWith(".jsonl")).sort();
-    this.id = files.length ? files[files.length - 1].slice(0, -6) : crypto.randomUUID();
+    this.id = crypto.randomUUID();
     this.file = path.join(base, `${this.id}.jsonl`);
   }
 
@@ -56,7 +55,7 @@ export class Session {
     return { records, messages };
   }
 
-  static list(dir?: string): { id: string; updated: string; preview: string }[] {
+  static list(dir?: string): { id: string; updated: string; title: string }[] {
     const base = dir ?? path.join(os.homedir(), ".cagent", "sessions");
     if (!fs.existsSync(base)) return [];
     return fs
@@ -66,17 +65,18 @@ export class Session {
         const file = path.join(base, f);
         const stats = fs.statSync(file);
         const lines = fs.readFileSync(file, "utf8").split("\n").filter(Boolean).slice(0, 100);
-        const first = lines
-          .map((l) => {
-            try {
-              const r = JSON.parse(l) as SessionRecord;
-              return r.type === "user" ? String(r.payload.content ?? "") : "";
-            } catch {
-              return "";
-            }
-          })
-          .find(Boolean);
-        return { id: f.slice(0, -6), updated: stats.mtime.toISOString(), preview: (first ?? "(vazio)").slice(0, 60) };
+        let firstUser = "";
+        let title = "";
+        for (const l of lines) {
+          try {
+            const r = JSON.parse(l) as SessionRecord;
+            if (r.type === "meta" && r.payload.kind === "title" && !title) title = String(r.payload.title ?? "");
+            else if (r.type === "user" && !firstUser) firstUser = String(r.payload.content ?? "");
+          } catch {
+            // linha inválida — ignora
+          }
+        }
+        return { id: f.slice(0, -6), updated: stats.mtime.toISOString(), title: (title || firstUser || "(vazio)").slice(0, 60) };
       })
       .sort((a, b) => a.updated.localeCompare(b.updated));
   }

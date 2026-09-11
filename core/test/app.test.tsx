@@ -7,6 +7,7 @@ import { renderToString } from "ink";
 import { App, Controller, fuzzy, type ControllerDeps } from "../src/app";
 import { EventBus } from "../src/events";
 import { Registry } from "../src/registry";
+import { Session } from "../src/session";
 
 function deps(permissions = false, configOverrides: Record<string, unknown> = {}): ControllerDeps {
   return {
@@ -162,6 +163,50 @@ describe("controller", () => {
     c.setInput("/model");
     await c.submit("/model");
     expect(c.state.modelPicker).not.toBeNull();
+  });
+
+  it("/session abre a lista de sessões", async () => {
+    const c = new Controller(deps());
+    await c.submit("/session");
+    expect(c.state.sessionList).not.toBeNull();
+  });
+
+  it("gera título da sessão na 1ª mensagem", async () => {
+    const c = new Controller(deps());
+    await c.submit("oi");
+    expect(c.state.title).toBe("oi");
+  });
+
+  it("falha no LLM → título é a própria mensagem", async () => {
+    const d = deps();
+    d.adapter = {
+      list_models: async () => ["m1"],
+      prepare_call: async (o) => o,
+      stream: async function* () {
+        throw new Error("boom");
+      },
+    } as ControllerDeps["adapter"];
+    const c = new Controller(d);
+    await c.submit("mensagem de teste");
+    expect(c.state.title).toBe("mensagem de teste");
+  });
+
+  it("/new cria sessão nova e limpa estado", async () => {
+    const c = new Controller(deps());
+    await c.submit("oi");
+    await c.submit("/new");
+    expect(c.state.chat).toEqual([]);
+    expect(c.state.title).toBe("");
+    expect(c.messages).toHaveLength(1);
+  });
+
+  it("/rename define o título da sessão", async () => {
+    const d = deps();
+    const c = new Controller(d);
+    await c.submit("/rename fixar o build");
+    expect(c.state.title).toBe("fixar o build");
+    const list = Session.list(d.sessionDir);
+    expect(list[0]?.title).toBe("fixar o build");
   });
 
   it("comando /help abre o painel de ajuda", async () => {

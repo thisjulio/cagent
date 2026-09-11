@@ -47,8 +47,9 @@ export type UIState = {
   notice: string;
   pendingAsk: { tool: string; cmd: string } | null;
   modelPicker: { models: string[]; query: string } | null;
-  sessionList: { id: string; updated: string; preview: string }[] | null;
+  sessionList: { id: string; updated: string; title: string }[] | null;
   helpOpen: boolean;
+  title: string;
 };
 
 export type InputKey = {
@@ -107,9 +108,11 @@ export class Controller {
       return { kind: "meta", content: "meta" };
     });
     if (loaded.records.length) chat.push({ kind: "meta", content: `resumindo sessão ${this.session.id} (${loaded.messages.length} mensagens)` });
+    const titleRec = loaded.records.find((r) => r.type === "meta" && (r.payload as Record<string, unknown>).kind === "title");
     this.state = {
       chat,
       toolLog: [],
+      title: titleRec ? String((titleRec.payload as Record<string, unknown>).title ?? "") : "",
       model: deps.model,
       provider: "",
       tokens: estimateTokens(this.messages),
@@ -196,7 +199,9 @@ export class Controller {
     this.state.input = "";
     if (text.startsWith("/")) {
       if (text === "/compact") return this.compact();
-      if (text === "/sessions") return this.openSessions();
+      if (text === "/sessions" || text === "/session") return this.openSessions();
+      if (text === "/new") return this.newSession();
+      if (text.startsWith("/rename")) return this.renameSession(text.slice("/rename".length).trim());
       if (text.startsWith("/model")) return this.openModelPicker();
       if (text === "/help") {
         this.state.helpOpen = true;
@@ -213,6 +218,11 @@ export class Controller {
     this.interrupted = false;
     this.session.append({ ts: Date.now(), type: "user", payload: { content: text } });
     this.messages.push({ role: "user", content: text });
+    if (!s.title) {
+      const t = await this.generateTitle(text);
+      s.title = t;
+      this.session.append({ ts: Date.now(), type: "meta", payload: { kind: "title", title: t } });
+    }
     this.bump();
     try {
       const turn = await runTurn({
@@ -310,6 +320,62 @@ export class Controller {
     this.bump();
   }
 
+  private newSession(): void {
+    this.session = new Session(undefined, this.deps.sessionDir);
+    this.messages = [{ role: "system" as const, content: this.deps.systemPrompt }];
+    this.interrupted = false;
+    const s = this.state;
+    s.chat = [];
+    s.toolLog = [];
+    s.title = "";
+    s.busy = false;
+    s.input = "";
+    s.notice = "";
+    s.pendingAsk = null;
+    s.modelPicker = null;
+    s.sessionList = null;
+    s.tokens = estimateTokens(this.messages);
+    this.bump();
+  }
+
+  private renameSession(name: string): void {
+    const s = this.state;
+    if (!name) {
+      s.notice = "uso: /rename <título>";
+      this.bump();
+      return;
+    }
+    s.title = name.slice(0, 60);
+    this.session.append({ ts: Date.now(), type: "meta", payload: { kind: "title", title: s.title } });
+    s.notice = "";
+    this.bump();
+  }
+
+  private async generateTitle(msg: string): Promise<string> {
+    try {
+      const { text } = await streamOnce({
+        adapter: this.deps.adapter,
+        model: this.state.model,
+        messages: [
+          {
+            role: "system",
+            content:
+              "Gere um título curto (máx. 6 palavras) para a conversa que começa com a mensagem do usuário. Responda apenas com o título, sem aspas.",
+          },
+          { role: "user", content: msg },
+        ],
+        tools: [],
+        attempts: 1,
+        interrupted: () => this.interrupted,
+      });
+      const t = text.trim().replace(/^["'“”]+|["'“”]+$/g, "").trim();
+      if (t) return t.slice(0, 60);
+    } catch {
+      // fallback: LLM falhou ou o usuário interrompeu
+    }
+    return msg.length > 40 ? msg.slice(0, 40) + "…" : msg;
+  }
+
   resumeSession(id: string): void {
     if (!this.state.sessionList) return;
     const s = this.state.sessionList.find((x) => x.id === id);
@@ -325,6 +391,8 @@ export class Controller {
       if (r.type === "tool") return { kind: "tool", content: String(p.content ?? ""), toolName: p.toolName ? String(p.toolName) : String(p.tool_call_id ?? "") };
       return { kind: "meta", content: "meta" };
     });
+    const titleRec = loaded.records.find((r) => r.type === "meta" && (r.payload as Record<string, unknown>).kind === "title");
+    this.state.title = titleRec ? String((titleRec.payload as Record<string, unknown>).title ?? "") : "";
     this.state.chat.push({ kind: "meta", content: `restaurado ${s.id}` });
     this.state.sessionList = null;
     this.state.tokens = estimateTokens(this.messages);
@@ -562,7 +630,7 @@ function HelpBox() {
   return (
     <Box borderStyle="round" borderColor="gray" paddingX={1} flexDirection="column">
       <Text>
-        comandos: <Text bold>/model</Text> · <Text bold>/sessions</Text> · <Text bold>/compact</Text> · <Text bold>/help</Text>
+        comandos: <Text bold>/model</Text> · <Text bold>/sessions</Text> · <Text bold>/compact</Text> · <Text bold>/new</Text> · <Text bold>/rename</Text> · <Text bold>/help</Text>
       </Text>
       <Text>
         teclas: <Text bold>Esc</Text> interrompe/fecha · <Text bold>ctrl+o</Text> expande o último tool · <Text bold>y/n/a</Text> permite/nega/sempre
@@ -585,14 +653,14 @@ function ModelPicker({ c, p }: { c: Controller; p: { models: string[]; query: st
   );
 }
 
-function SessionList({ c, list }: { c: Controller; list: { id: string; updated: string; preview: string }[] }) {
+function SessionList({ c, list }: { c: Controller; list: { id: string; updated: string; title: string }[] }) {
   return (
     <Box flexDirection="column">
       <Text dimColor>sessões  (↑↓ · enter · esc)</Text>
       <SelectInput
         items={list.map((s) => ({
           key: s.id,
-          label: `${s.id.slice(0, 8)}  ${s.updated.slice(0, 19)}  ${s.preview.slice(0, 30)}`,
+          label: `${s.id.slice(0, 8)}  ${s.updated.slice(0, 19)}  ${s.title.slice(0, 30)}`,
           value: s.id,
         }))}
         onSelect={(item) => c.resumeSession(item.value)}
@@ -654,7 +722,7 @@ export function App({ c }: { c: Controller }) {
         </Box>
       <Box borderTop borderColor="gray">
         <Text dimColor>
-          {s.provider} | {s.model} | {s.tokens} tok · {pct}% do contexto · Esc interrompe · /help
+          {(s.title || "nova").slice(0, 30)} | {s.provider} | {s.model} | {s.tokens} tok · {pct}% do contexto · Esc interrompe · /help
         </Text>
       </Box>
     </Box>

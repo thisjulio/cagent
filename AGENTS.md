@@ -3,24 +3,8 @@
 Code agent com arquitetura de plugins: o núcleo (loop de agente + contexto + sessões + terminal UI) é a caixa; tudo o resto — provedores, ferramentas, integrações — é plugin. Stack: Bun/TypeScript (ADR-0004). Leia `CONTEXT.md` (glossário) e `docs/adr/` (decisões) antes de trabalhar.
 
 ## Regras de arquitetura (imutáveis)
+- Conferir demais regras em `docs/adr/` e `CONTEXT.md`; decisões de arquitetura são imutáveis, mas podem ser revistas em ADRs futuras.
 
-- Nenhuma funcionalidade entra no núcleo: provedores, ferramentas e integrações são sempre plugins (ADR-0001)
-- Core e plugins são TypeScript sobre Bun; UI em ink; nenhum Rust/FFI/cdylib (ADR-0004)
-- Crash de plugin: tool calls são envoltas em try/catch; crash não tratado derruba o processo (ADR-0003); valide plugins com testes
-- Sem dependências entre plugins na v1; plugins usam apenas serviços do núcleo
-- Sem modo headless na v1; sem ferramenta de "rodar testes" (workflow do usuário via bash)
-
-## Responsabilidades do núcleo
-
-- Loop de agente (mensagem → LLM → tool call → resultado)
-- Montagem do system prompt (schemas de tools + seções de plugins)
-- Janela de contexto, compactação (threshold + `/compact`), sessões JSONL (auto-resume, listagem)
-- Pipeline de tools: pre-execute (allow/deny/ask) → execute → post-execute
-- Permissões: allowlist por prefixo + aprovação inline no chat
-- Retry de LLM com política por provedor
-- Event bus: `session/*` durável, `agent/*` live, `tools/*` pipeline
-- Registry de serviços por chaves (`llm`, `tools`, …)
-- Terminal UI (ink): chat + status bar (tool calls aparecem no chat; `ctrl+o` expande o último); Esc = interrupt/steer; `/model`, `/sessions`, `/compact`, `/help`; `y/n/a` na aprovação; markdown com syntax highlighting
 
 ## Workspace
 
@@ -28,7 +12,8 @@ Code agent com arquitetura de plugins: o núcleo (loop de agente + contexto + se
 package.json          # Bun workspaces: core, sdk, plugins/*
 core/                 # binário, loop, registry, eventos, UI
 core/scripts/         # snap.tsx — snapshot de UI (obrigatório após mudança de UI)
-sdk/                # SDK de plugins (interfaces, registry, eventos, config)
+sdk/                  # SDK de plugins (interfaces, registry, eventos, config)
+plugins/stub/         # exemplo mínimo de plugin
 plugins/openai/       # provedor (package TS)
 plugins/bash/         # ferramenta (package TS)
 plugins/code-tools/   # ferramenta (package TS)
@@ -52,8 +37,8 @@ plugins/code-tools/   # ferramenta (package TS)
 ## Comandos
 
 - `bun install` — instala dependências do workspace
-- `bun test` — testa core e plugins
-- `bun start` — roda o agente (UI quando disponível; modo por linhas antes da Fase 6)
+- `bun test` — testa core e plugins; `bun test core/test/loop.test.ts` para um arquivo específico
+- `bun start` — roda o agente (UI ink)
 - `bun core/scripts/snap.tsx` — snapshot de UI em 3 larguras (obrigatório após mudança de UI)
 
 `plugins/stub` é o exemplo mínimo de plugin (ver `plugins/stub/src/index.ts` para o padrão de registro).

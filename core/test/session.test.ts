@@ -23,20 +23,27 @@ describe("sessões JSONL", () => {
     ]);
   });
 
-  it("auto-resume pega a sessão mais recente", () => {
+  it("nova sessão sempre tem id novo (sem auto-resume)", () => {
     const a = new Session("aaa", dir);
     a.append({ ts: 1, type: "user", payload: { content: "x" } });
     const b = new Session("bbb", dir);
     b.append({ ts: 2, type: "user", payload: { content: "y" } });
-    expect(new Session(undefined, dir).id).toBe("bbb");
+    const c = new Session(undefined, dir);
+    expect(c.id).not.toBe("aaa");
+    expect(c.id).not.toBe("bbb");
   });
 
-  it("listagem mostra preview da primeira mensagem", () => {
+  it("listagem mostra o título (meta) com fallback da 1ª mensagem", () => {
     const s = new Session("abc", dir);
     s.append({ ts: 1, type: "user", payload: { content: "hello world" } });
+    s.append({ ts: 2, type: "meta", payload: { kind: "title", title: "Meu título" } });
+    const s2 = new Session("xyz", dir);
+    s2.append({ ts: 3, type: "user", payload: { content: "oi oi" } });
     const list = Session.list(dir);
-    expect(list[0].id).toBe("abc");
-    expect(list[0].preview).toContain("hello");
+    const abc = list.find((x) => x.id === "abc")!;
+    const xyz = list.find((x) => x.id === "xyz")!;
+    expect(abc.title).toBe("Meu título");
+    expect(xyz.title).toBe("oi oi");
   });
 
   it("sessão inexistente tem mensagens vazias", () => {

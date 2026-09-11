@@ -29,7 +29,7 @@ Stack: Bun/TypeScript (ADR-0004). UI: ink. Cada fase termina num estado demoáve
 
 - Montagem do prompt: system prompt + schemas de tools + seções injetadas por plugins
 - Loop: request via registry `llm` → tool calls → pipeline `tools` (pre-execute allow/deny/ask → execute → post-execute) → resultado de volta ao LLM
-- Sessões: JSONL append-only por sessão, auto-resume, listagem
+- Sessões: JSONL append-only por sessão, nova por padrão, listagem/restauração via `/sessions`
 - Retry no núcleo com política por provedor (tentativas, backoff)
 - Compactação automática por threshold + `/compact` manual
 - Esc interrompe a geração + steer no meio do stream

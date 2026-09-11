@@ -22,7 +22,7 @@ const controller = new Controller({
   model: "stub-model",
   systemPrompt: "snapshot",
 });
-controller.state.chat = []; // estado vazio e determinístico (a ctor carrega a última sessão)
+controller.state.chat = []; // estado vazio e determinístico (a ctor cria uma sessão nova)
 controller.state.toolLog = [];
 controller.state.tokens = 0;
 
@@ -46,4 +46,5 @@ controller.state.chat = [
   { kind: "tool", toolName: "bash", cmd: "rm -rf /", content: "permission denied", running: false, isError: true, expanded: true },
 ];
 controller.state.tokens = 1200;
+controller.state.title = "snapshot";
 frame(80);
