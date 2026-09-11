@@ -6,6 +6,7 @@ import { spawn } from "node:child_process";
 import yaml from "js-yaml";
 import OpenAI from "openai";
 import { toChatMessages } from "@cagent/sdk";
+import { CODE_TOOLS_OVERRIDES } from "./overrides";
 import type { LlmCallOptions, LlmChunk, Plugin, ProviderAdapter } from "@cagent/sdk";
 
 const ISSUER = "https://auth.openai.com";
@@ -477,7 +478,9 @@ export function createAdapter(opts: AdapterOptions): ProviderAdapter {
 }
 
 const register: Plugin = (ctx) => {
-  ctx.registerProvider("openai", createAdapter({ config: ctx.config }));
+  const adapter = createAdapter({ config: ctx.config });
+  adapter.tool_overrides = () => CODE_TOOLS_OVERRIDES;
+  ctx.registerProvider("openai", adapter);
 };
 
 export default register;

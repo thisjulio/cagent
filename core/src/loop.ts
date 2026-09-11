@@ -1,4 +1,4 @@
-import type { LlmCallOptions, Message, ProviderAdapter, ToolArgs, ToolDefinition } from "@cagent/sdk";
+import { applyToolOverrides, overrideNameMap, type LlmCallOptions, type Message, type ProviderAdapter, type ToolArgs, type ToolDefinition } from "@cagent/sdk";
 import type { EventBus } from "./events";
 import { runToolPipeline, type ToolAsk } from "./tools";
 
@@ -65,9 +65,13 @@ export interface TurnOpts extends StreamOpts {
 
 export async function runTurn(opts: TurnOpts): Promise<{ records: TurnRecord[]; interrupted: boolean }> {
   const { messages, tools, allowlist, ask, bus } = opts;
+  // ponytail: o override é da superfície do provedor; o registry mantém o nome canônico
+  const overrides = opts.adapter.tool_overrides?.() ?? {};
+  const nameToCanonical = overrideNameMap(overrides);
+  const streamOpts: StreamOpts = { ...opts, tools: applyToolOverrides(opts.tools, overrides) };
   const records: TurnRecord[] = [];
   for (;;) {
-    const { text, toolCalls } = await streamOnce(opts);
+    const { text, toolCalls } = await streamOnce(streamOpts);
     const assistant: Message = {
       role: "assistant",
       content: text,
@@ -77,7 +81,7 @@ export async function runTurn(opts: TurnOpts): Promise<{ records: TurnRecord[]; 
     records.push({ role: "assistant", content: text, tool_calls: toolCalls.length ? toolCalls : undefined });
     if (!toolCalls.length || opts.interrupted?.()) break;
     for (const tc of toolCalls) {
-      const tool = tools.find((t) => t.name === tc.name);
+      const tool = tools.find((t) => t.name === (nameToCanonical[tc.name] ?? tc.name));
       let args: ToolArgs = {};
       try {
         args = JSON.parse(tc.arguments) as ToolArgs;

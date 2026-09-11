@@ -93,6 +93,38 @@ describe("loop de agente", () => {
     expect(toolMsg?.content).toContain("inexistente");
   });
 
+  it("override de schema do provedor: nome do modelo volta ao canônico no registry", async () => {
+    const edit = defineTool("edit_file", "edit", { type: "object", properties: {} }, async () => ({ output: "editado" }));
+    let sentTools: string[] = [];
+    let calls = 0;
+    const script: LlmChunk[][] = [
+      [{ type: "tool-call", tool_call: { id: "t1", name: "apply_patch", arguments: '{"patch":"x"}' } }, { type: "finish", finish_reason: "stop" }],
+      [{ type: "text", text: "ok" }, { type: "finish", finish_reason: "stop" }],
+    ];
+    const adapter: ProviderAdapter = {
+      async list_models() {
+        return ["m"];
+      },
+      tool_overrides: () => ({
+        edit_file: { name: "apply_patch", parameters: { type: "object", properties: { patch: { type: "string" } } } },
+      }),
+      async prepare_call(o: LlmCallOptions) {
+        sentTools = o.tools.map((t) => t.name);
+        return o;
+      },
+      async *stream() {
+        calls++;
+        for (const c of script[calls - 1] ?? []) yield c;
+      },
+    };
+    const messages: Message[] = [{ role: "user", content: "x" }];
+    const r = await runTurn({ adapter, model: "m", messages, tools: [edit], allowlist: [], ask: async () => true, bus });
+    expect(sentTools).toEqual(["apply_patch"]);
+    const toolMsg = r.records.find((x) => x.role === "tool");
+    expect(toolMsg?.toolName).toBe("edit_file");
+    expect(toolMsg?.content).toBe("editado");
+  });
+
   it("interrupto para o stream sem executar tools", async () => {
     const messages: Message[] = [{ role: "user", content: "x" }];
     const r = await runTurn({

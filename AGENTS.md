@@ -1,58 +1,100 @@
 # AGENTS.md — cagent
 
-Code agent com arquitetura de plugins: o núcleo (loop de agente + contexto + sessões + terminal UI) é a caixa; tudo o resto — provedores, ferramentas, integrações — é plugin. Stack: Bun/TypeScript (ADR-0004). Leia `CONTEXT.md` (glossário) e `docs/adr/` (decisões) antes de trabalhar.
+Code agent com arquitetura de plugins: o núcleo (loop de agente · contexto · sessões · UI de terminal) é a caixa; provedores, ferramentas e integrações são plugins. Stack: Bun/TypeScript (ADR-0004).
 
-## Regras de arquitetura (imutáveis)
-- Conferir demais regras em `docs/adr/` e `CONTEXT.md`; decisões de arquitetura são imutáveis, mas podem ser revistas em ADRs futuras.
+Leia antes de trabalhar: `CONTEXT.md` (glossário) e `docs/adr/` (decisões). ADRs valem como lei enquanto estiverem vigentes — para mudar uma decisão, escreva uma ADR nova; nunca escreva código contra uma ADR em vigor.
 
+## Comandos
+
+- `bun install` — dependências do workspace
+- `bun test` — core + plugins (`bun test core/test/loop.test.ts` para um arquivo só)
+- `bun start` — roda o agente
+- `bun core/scripts/snap.tsx` — snapshot da UI em 60/80/120 colunas
+- `graphify update .` — atualiza o grafo de conhecimento (AST, sem custo de API)
 
 ## Workspace
 
 ```
 package.json          # Bun workspaces: core, sdk, plugins/*
 core/                 # binário, loop, registry, eventos, UI
-core/scripts/         # snap.tsx — snapshot de UI (obrigatório após mudança de UI)
-sdk/                  # SDK de plugins (interfaces, registry, eventos, config)
-plugins/stub/         # exemplo mínimo de plugin
-plugins/openai/       # provedor (package TS)
-plugins/bash/         # ferramenta (package TS)
-plugins/code-tools/   # ferramenta (package TS)
+core/scripts/         # snap.tsx — snapshot de UI
+sdk/                  # interfaces de plugin, registry, eventos, config
+plugins/stub/         # exemplo mínimo de plugin (padrão de registro)
+plugins/openai/       # provedor
+plugins/bash/         # ferramenta
+plugins/code-tools/   # ferramenta
 ```
 
-## Desenvolvimento de plugins
+## Como se orientar no código
 
-- Todos os plugins (incluindo os base) são construídos sobre o package `sdk`
-- Um plugin é um package TS carregado via dynamic import que se registra no registry (chave `llm` para provedores, `tools` para ferramentas) e assina eventos
-- Tool = JSON schema + `execute(args)`; a pipeline de permissão é do núcleo, não da tool
-- Provedor = `list_models()`, `prepare_call()`, `stream()` (chunks de token); auth e credenciais via config
-- Config: `~/.cagent/config.yml` (global) + `cagent.yml` (override por projeto) + fallback em env vars; plugins habilitáveis por config
+- Pergunta sobre o código: rode `graphify query "<pergunta>"` antes de grep ou leitura ampla — devolve um subgrafo pequeno em vez do repositório inteiro. `graphify path "<A>" "<B>"` para relações entre dois pontos, `graphify explain "<conceito>"` para um conceito isolado.
+- `graphify-out/wiki/index.md` para navegação ampla. `graphify-out/GRAPH_REPORT.md` só para revisão de arquitetura, quando query/path/explain não trouxerem contexto suficiente.
+- Arquivos sujos em `graphify-out/` são esperados (hooks e updates incrementais) e não são motivo para pular o graphify. Pule apenas se a tarefa for sobre grafo desatualizado/incorreto ou se o usuário pedir.
+- Se o usuário digitar `/graphify`, use a skill graphify antes de qualquer outra coisa.
 
-## UI (ink) — obrigatório
+## Limites de módulo (verificáveis)
 
-- Antes de qualquer trabalho de UI, use a skill `ink-ui` (`.opencode/skills/ink-ui/SKILL.md`): desfaz o modelo mental "React web" (célula ≠ pixel, Yoga ≠ CSS, `<Box>`/`<Text>` não se misturam, `string-width` ≠ `.length`, `<Static>` para logs).
+- Um arquivo = uma responsabilidade que cabe em uma frase sem "e".
+- Máx. 250 linhas por arquivo, 40 por função, 4 parâmetros (acima disso, objeto de options).
+- Estourou o limite? Extrair **antes** de continuar a tarefa. Não existe "refatoro depois".
+- Componente React: só layout e formatação. Zero I/O, zero regra de negócio, zero mutação de estado.
+- Módulo de lógica (controller, loop, session, registry): não importa `ink`, `react` nem nada de UI.
+- Função pura (parsing, fuzzy, split, formatação) mora em arquivo próprio e é testada sem render.
+- Proibido `utils.ts`, `helpers.ts`, `misc.ts`, `common.ts` — o nome do arquivo nomeia o domínio.
+
+## Direção de dependências
+
+```
+ui → controller → domínio (loop · session · registry) → sdk
+```
+
+- Setas só apontam para a direita. Import contra a seta quebra `core/test/arch.test.ts`.
+- O núcleo nunca importa de `plugins/*`; conhece apenas as interfaces do `sdk`.
+- Dependência entra por construtor ou parâmetro (ver `ControllerDeps`), nunca por import de singleton.
+
+## Extensão sem edição
+
+- Funcionalidade nova = módulo novo registrado, não `if` novo em função existente.
+- Slash-commands, ferramentas e provedores vivem em registry. Se você precisou de um branch novo em `submit()` para adicionar um comando, o registry é que está faltando — crie-o.
+- Mapa de despacho substitui cadeia de if/else a partir de 3 casos.
+
+## Onde criar código novo (default = arquivo novo)
+
+| O que você está escrevendo   | Onde vai                            |
+|------------------------------|-------------------------------------|
+| componente ink               | `core/src/ui/components/<Nome>.tsx`  |
+| formatação/realce de texto   | `core/src/ui/render/`                |
+| comando de barra             | `core/src/commands/<nome>.ts`        |
+| regra de estado/orquestração | `core/src/controller/`               |
+| persistência de sessão       | `core/src/session/`                  |
+
+Só acrescente a um arquivo existente se a mudança for do mesmo conceito já nomeado nele.
+
+## UI (ink)
+
+- Antes de qualquer trabalho de UI, use a skill `ink-ui` (`.opencode/skills/ink-ui/SKILL.md`): ela desfaz o modelo mental "React web" — célula ≠ pixel, Yoga ≠ CSS, `<Box>`/`<Text>` não se misturam, `string-width` ≠ `.length`, `<Static>` para logs.
 - Antes de implementar qualquer tela: desenhar wireframe ASCII de 80 colunas no plano e **esperar aprovação** do usuário.
-- Após qualquer mudança de UI: rodar `bun core/scripts/snap.tsx` e comparar o snapshot (60/80/120 cols) com o wireframe aprovado — critério objetivo de pronto/não pronto.
-- Para capturar estados de foco/navegação (não só o estado inicial), usar `stdin.write` do ink-testing-library (ver skill).
-- `<Static>` nunca remove itens do scrollback: para esvaziar a tela (ex.: `/new`, `/sessions`), limpar via `\x1b[3J\x1b[2J\x1b[H` em `process.stdout` (ver `clearScrollback` em `app.tsx`).
+- Depois de qualquer mudança de UI: rodar `bun core/scripts/snap.tsx` e comparar os três snapshots com o wireframe aprovado. Esse é o critério objetivo de pronto/não pronto.
+- Para capturar estados de foco e navegação (não só o estado inicial), use `stdin.write` do ink-testing-library (ver skill).
+- `<Static>` nunca remove itens do scrollback: para esvaziar a tela (`/new`, `/sessions`), limpe via `\x1b[3J\x1b[2J\x1b[H` em `process.stdout` (ver `clearScrollback`).
 
-## Comandos
+## Plugins
 
-- `bun install` — instala dependências do workspace
-- `bun test` — testa core e plugins; `bun test core/test/loop.test.ts` para um arquivo específico
-- `bun start` — roda o agente (UI ink)
-- `bun core/scripts/snap.tsx` — snapshot de UI em 3 larguras (obrigatório após mudança de UI)
+- Todo plugin — inclusive os base — é construído sobre o package `sdk`.
+- Plugin = package TS carregado por dynamic import que se registra no registry (chave `llm` para provedores, `tools` para ferramentas) e assina eventos.
+- Tool = JSON schema + `execute(args)`. A pipeline de permissão é do núcleo, não da tool.
+- Provedor = `list_models()`, `prepare_call()`, `stream()` (chunks de token). Auth e credenciais vêm da config.
+- Config: `~/.cagent/config.yml` (global) + `cagent.yml` (override por projeto) + fallback em env vars. Plugins são habilitáveis por config.
+- Padrão de registro: `plugins/stub/src/index.ts`.
 
-`plugins/stub` é o exemplo mínimo de plugin (ver `plugins/stub/src/index.ts` para o padrão de registro).
+## Convenções
 
-## graphify
+- Comentário `// ponytail:` marca decisão não óbvia ou armadilha conhecida — explica o *porquê*, nunca o *o quê*. Se a linha só reformula o código, apague.
 
-This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
+## Definition of done
 
-When the user types `/graphify`, use the installed graphify skill or instructions before doing anything else.
-
-Rules:
-- For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
-- Dirty graphify-out/ files are expected after hooks or incremental updates; dirty graph files are not a reason to skip graphify. Only skip graphify if the task is about stale or incorrect graph output, or the user explicitly says not to use it.
-- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
-- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
-- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
+- [ ] `bun test` verde, incluindo `core/test/arch.test.ts`
+- [ ] nenhum arquivo tocado passou de 250 linhas
+- [ ] código novo no lugar previsto pela tabela acima — nada acrescentado a `app.tsx`
+- [ ] mexeu em UI: snapshot rodado e comparado ao wireframe aprovado
+- [ ] `graphify update .` rodado ao final

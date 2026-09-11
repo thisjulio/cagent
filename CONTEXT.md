@@ -31,8 +31,38 @@ Operação invocada pelo agente que atua no sistema (executar bash, buscar códi
 _Avoid_: comando, função
 
 **Ferramenta de codificação**:
-Conjunto de ferramentas de manipulação de código (busca, edição, templates de código, templates de prompt). Gerar código em si é capacidade do LLM, não ferramenta; rodar testes é workflow do usuário (via bash), não ferramenta.
+Conjunto de ferramentas de manipulação de código (busca, edição, escrita), genéricas por padrão. Cada provedor pode sobrescrever as que o formato de seus modelos exige. Gerar código em si é capacidade do LLM, não ferramenta; rodar testes é workflow do usuário (via bash), não ferramenta.
 _Avoid_: geração de código (capacidade do LLM), rodar testes (workflow do usuário), IDE
+
+## Edição
+
+**Superfície de edição**:
+Ferramenta de edição no formato nativo do provedor: apply_patch (openai), SEARCH/REPLACE (llama.cpp). Uma superfície por provedor, via override do plugin do provedor sobre a ferramenta genérica. O formato exact-match old_string/new_string é ponto de extensão, não superfície ativa.
+_Avoid_: perfil, formato de edição
+
+**Override de tool**:
+Mecanismo pelo qual um plugin de provedor substitui uma ferramenta genérica do plugin de tools por uma versão no formato nativo de sua família de modelos; a versão ativa resolve-se pela rota ativa.
+_Avoid_: re-registro dinâmico, troca de tool
+
+**IR de edição**:
+Representação normalizada a que toda superfície normaliza antes do matching: caminho absoluto, busca, substituição e dica opcional de linha.
+_Avoid_: patch, diff, bloco SEARCH/REPLACE
+
+**Escada de matching**:
+Ordem fixa de estratégias de casamento, do exato ao fuzzy, parada no primeiro sucesso; níveis fuzzy exigem limiar de confiança. Ambiguidade nunca é resolvida por heurística.
+_Avoid_: fallback, fuzzy match
+
+**Anti-loop**:
+Contador de falhas idênticas dentro da tool que escala a mensagem e corta a 3ª repetição; existe porque o loop do núcleo é ilimitado e o erro volta ao modelo no mesmo turno.
+_Avoid_: retry, timeout de tool
+
+**Git sombra**:
+Repo git paralelo que checkpointa os arquivos escritos antes de cada batch de escrita, para undo.
+_Avoid_: backup, snapshot
+
+**Convenção de erro**:
+Prefixo de texto estável (ERRO <CODE> — <caminho>) que renderiza falhas para o modelo e para métricas, em vez de schema estruturado, porque o resultado de tool só carrega string.
+_Avoid_: catálogo JSON, erro tipado
 
 ## Permissões
 

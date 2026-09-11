@@ -4,6 +4,7 @@
   "type": "module",
   "main": "src/index.ts",
   "dependencies": {
+    "@ast-grep/cli": "^0.45.3",
     "@cagent/sdk": "workspace:*",
     "fast-glob": "^3.3.3"
   }

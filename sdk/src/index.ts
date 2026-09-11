@@ -21,6 +21,32 @@ export function defineTool(
   return { name, description, parameters, execute };
 }
 
+// override de schema declarado por um provedor: mesmo nome canônico, schema trocado
+// para o formato nativo da família de modelos. O nome canônico (chave do map)
+// segue valendo para UI, logs e métricas.
+export type ToolSchemaOverride = {
+  name: string;
+  description?: string;
+  parameters?: Record<string, unknown>;
+};
+
+export type ToolOverrides = Record<string, ToolSchemaOverride>;
+
+export function applyToolOverrides(tools: ToolDefinition[], overrides: ToolOverrides): ToolDefinition[] {
+  return tools.map((t) => {
+    const ov = overrides[t.name];
+    return ov
+      ? { ...t, name: ov.name, description: ov.description ?? t.description, parameters: ov.parameters ?? t.parameters }
+      : t;
+  });
+}
+
+export function overrideNameMap(overrides: ToolOverrides): Record<string, string> {
+  const map: Record<string, string> = {};
+  for (const [canonical, ov] of Object.entries(overrides)) map[ov.name] = canonical;
+  return map;
+}
+
 export type Message = {
   role: "system" | "user" | "assistant" | "tool";
   content: string;
@@ -65,6 +91,7 @@ export interface LlmCallOptions {
 
 export interface ProviderAdapter {
   list_models(): Promise<string[]>;
+  tool_overrides?(): ToolOverrides;
   prepare_call(options: LlmCallOptions): Promise<LlmCallOptions>;
   stream(request: LlmCallOptions): AsyncGenerator<LlmChunk>;
 }
