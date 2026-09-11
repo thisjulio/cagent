@@ -2,7 +2,8 @@ import React from "react";
 import { renderToString } from "ink";
 import stripAnsi from "strip-ansi";
 import type { ProviderAdapter } from "@cagent/sdk";
-import { App, Controller } from "../src/app.js";
+import { App } from "../src/ui/components/App.js";
+import { Controller } from "../src/controller/controller.js";
 import { EventBus } from "../src/events.js";
 import { Registry } from "../src/registry.js";
 import { loadConfig } from "../src/config.js";
@@ -43,7 +44,7 @@ controller.state.chat = [
   { kind: "assistant", content: "O diretório contém:\n\n- AGENTS.md\n- core/\n" },
   { kind: "tool", toolName: "bash", cmd: "git status", content: "3 linhas", running: false },
   { kind: "tool", toolName: "bash", cmd: "ls", content: "total 24\nAGENTS.md\nbun.lock", running: false, expanded: true },
-  { kind: "tool", toolName: "bash", cmd: "rm -rf /", content: "permission denied", running: false, isError: true, expanded: true },
+  { kind: "tool", toolName: "bash", cmd: "rm -rf /", content: "permission denied", isError: true, expanded: true },
 ];
 controller.state.tokens = 1200;
 controller.state.title = "snapshot";

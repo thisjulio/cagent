@@ -1,4 +1,4 @@
-import { bootstrap } from "./app";
+import { bootstrap } from "./bootstrap";
 
 bootstrap().catch((e) => {
   console.error(e);

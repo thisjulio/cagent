@@ -63,13 +63,42 @@ export interface TurnOpts extends StreamOpts {
   bus: EventBus;
 }
 
+interface ToolLoopCtx {
+  opts: TurnOpts;
+  nameToCanonical: Record<string, string>;
+  records: TurnRecord[];
+}
+
+async function runToolCall(ctx: ToolLoopCtx, tc: { id: string; name: string; arguments: string }): Promise<void> {
+  const { opts } = ctx;
+  const tool = opts.tools.find((t) => t.name === (ctx.nameToCanonical[tc.name] ?? tc.name));
+  let args: ToolArgs = {};
+  try {
+    args = JSON.parse(tc.arguments) as ToolArgs;
+  } catch {
+    // args inválidos → vazio
+  }
+  const result = tool
+    ? await runToolPipeline(tool, args, opts.allowlist, opts.ask, opts.bus)
+    : { output: `tool não encontrada: ${tc.name}`, isError: true };
+  opts.messages.push({ role: "tool", tool_call_id: tc.id, content: result.output });
+  ctx.records.push({
+    role: "tool",
+    tool_call_id: tc.id,
+    content: result.output,
+    toolName: tool?.name ?? tc.name,
+    args,
+    isError: result.isError,
+  });
+}
+
 export async function runTurn(opts: TurnOpts): Promise<{ records: TurnRecord[]; interrupted: boolean }> {
-  const { messages, tools, allowlist, ask, bus } = opts;
   // ponytail: o override é da superfície do provedor; o registry mantém o nome canônico
   const overrides = opts.adapter.tool_overrides?.() ?? {};
   const nameToCanonical = overrideNameMap(overrides);
   const streamOpts: StreamOpts = { ...opts, tools: applyToolOverrides(opts.tools, overrides) };
   const records: TurnRecord[] = [];
+  const ctx: ToolLoopCtx = { opts, nameToCanonical, records };
   for (;;) {
     const { text, toolCalls } = await streamOnce(streamOpts);
     const assistant: Message = {
@@ -77,30 +106,11 @@ export async function runTurn(opts: TurnOpts): Promise<{ records: TurnRecord[]; 
       content: text,
       ...(toolCalls.length ? { tool_calls: toolCalls } : {}),
     };
-    messages.push(assistant);
+    opts.messages.push(assistant);
     records.push({ role: "assistant", content: text, tool_calls: toolCalls.length ? toolCalls : undefined });
     if (!toolCalls.length || opts.interrupted?.()) break;
     for (const tc of toolCalls) {
-      const tool = tools.find((t) => t.name === (nameToCanonical[tc.name] ?? tc.name));
-      let args: ToolArgs = {};
-      try {
-        args = JSON.parse(tc.arguments) as ToolArgs;
-      } catch {
-        // args inválidos → vazio
-      }
-      const result = tool
-        ? await runToolPipeline(tool, args, allowlist, ask, bus)
-        : { output: `tool não encontrada: ${tc.name}`, isError: true };
-      const msg: Message = { role: "tool", tool_call_id: tc.id, content: result.output };
-      messages.push(msg);
-      records.push({
-        role: "tool",
-        tool_call_id: tc.id,
-        content: result.output,
-        toolName: tool?.name ?? tc.name,
-        args,
-        isError: result.isError,
-      });
+      await runToolCall(ctx, tc);
       if (opts.interrupted?.()) break;
     }
   }
