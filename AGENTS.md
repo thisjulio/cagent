@@ -33,6 +33,7 @@ plugins/code-tools/   # ferramenta (package TS)
 - Antes de implementar qualquer tela: desenhar wireframe ASCII de 80 colunas no plano e **esperar aprovação** do usuário.
 - Após qualquer mudança de UI: rodar `bun core/scripts/snap.tsx` e comparar o snapshot (60/80/120 cols) com o wireframe aprovado — critério objetivo de pronto/não pronto.
 - Para capturar estados de foco/navegação (não só o estado inicial), usar `stdin.write` do ink-testing-library (ver skill).
+- `<Static>` nunca remove itens do scrollback: para esvaziar a tela (ex.: `/new`, `/sessions`), limpar via `\x1b[3J\x1b[2J\x1b[H` em `process.stdout` (ver `clearScrollback` em `app.tsx`).
 
 ## Comandos
 

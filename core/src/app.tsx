@@ -320,7 +320,13 @@ export class Controller {
     this.bump();
   }
 
+  // ponytail: <Static> só acumula itens; limpar o scrollback via escape codes é a única forma de esvaziar a tela
+  private clearScrollback(): void {
+    if (process.stdout.isTTY) process.stdout.write("\x1b[3J\x1b[2J\x1b[H");
+  }
+
   private newSession(): void {
+    this.clearScrollback();
     this.session = new Session(undefined, this.deps.sessionDir);
     this.messages = [{ role: "system" as const, content: this.deps.systemPrompt }];
     this.interrupted = false;
@@ -380,6 +386,7 @@ export class Controller {
     if (!this.state.sessionList) return;
     const s = this.state.sessionList.find((x) => x.id === id);
     if (!s) return;
+    this.clearScrollback();
     const session = new Session(s.id);
     const loaded = session.load();
     this.session = session;
