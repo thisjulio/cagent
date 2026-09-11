@@ -54,7 +54,7 @@ jobs:
           pattern: cagent-*
           path: dist
           merge-multiple: true
-      - run: sha256sum dist/cagent-* > dist/SHA256SUMS
+      - run: (cd dist && sha256sum cagent-* > SHA256SUMS)
       - run: gh release create "$GITHUB_REF_NAME" dist/cagent-* dist/SHA256SUMS --verify-tag --generate-notes
         env:
           GH_TOKEN: ${{ github.token }}
