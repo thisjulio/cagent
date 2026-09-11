@@ -205,6 +205,16 @@ describe("controller", () => {
     expect(c.state.input).toBe("/session");
   });
 
+  it("tab remonta o input (inputKey) para levar o cursor ao fim; digitação não remonta", () => {
+    const c = new Controller(deps());
+    c.setInput("/se");
+    const base = c.state.inputKey;
+    c.setInput("/se"); // digitar não remonta
+    expect(c.state.inputKey).toBe(base);
+    c.handleKey({ tab: true }, "");
+    expect(c.state.inputKey).toBe(base + 1);
+  });
+
   it("tab sem sugestão não muda o input", () => {
     const c = new Controller(deps());
     c.setInput("oi");

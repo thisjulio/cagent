@@ -4,6 +4,7 @@ import TextInput from "ink-text-input";
 
 export function InputArea(props: {
   input: string;
+  inputKey: number;
   busy: boolean;
   running?: string;
   suggest?: string[];
@@ -20,7 +21,7 @@ export function InputArea(props: {
       ) : null}
       <Box borderStyle="round" borderColor="cyan" paddingX={1} flexDirection="row">
         <Text color="cyan">❯ </Text>
-        <TextInput value={props.input} onChange={props.onChange} onSubmit={props.onSubmit} />
+        <TextInput key={props.inputKey} value={props.input} onChange={props.onChange} onSubmit={props.onSubmit} />
       </Box>
       {props.suggest && props.suggest.length > 0 ? (
         <Text dimColor>{"  tab: " + props.suggest.join("  ")}</Text>

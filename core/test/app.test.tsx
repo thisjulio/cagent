@@ -4,6 +4,7 @@ import path from "node:path";
 import React from "react";
 import { describe, expect, it } from "bun:test";
 import { renderToString } from "ink";
+import { render } from "ink-testing-library";
 import { App } from "../src/ui/components/App";
 import { EventBus } from "../src/events";
 import { Registry } from "../src/registry";
@@ -66,5 +67,22 @@ describe("renderToString", () => {
     expect(out).toContain("bash");
     expect(out).toContain("git status");
     expect(out).toContain("ctrl+o");
+  });
+
+  it("tab completa e enter confirma o comando /... completo (sem envio incompleto)", async () => {
+    const c = new Controller(deps());
+    const { stdin } = render(React.createElement(App, { c }));
+    stdin.write("/he");
+    await new Promise((r) => setTimeout(r, 30));
+    expect(c.state.input).toBe("/he");
+    expect(c.state.suggest).toContain("/help");
+    stdin.write("\t"); // tab completa /he -> /help
+    await new Promise((r) => setTimeout(r, 30));
+    expect(c.state.input).toBe("/help");
+    expect(c.state.inputKey).toBe(1); // remontou o TextInput (cursor ao fim)
+    stdin.write("\r"); // enter confirma o comando completo
+    await new Promise((r) => setTimeout(r, 30));
+    expect(c.state.helpOpen).toBe(true);
+    expect(c.state.input).toBe("");
   });
 });

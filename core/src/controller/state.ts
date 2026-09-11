@@ -39,7 +39,8 @@ export type UIState = {
   title: string;
   suggest: string[];
   suggestIdx: number;
-};
+  inputKey: number;
+}
 
 export type InputKey = {
   upArrow?: boolean;

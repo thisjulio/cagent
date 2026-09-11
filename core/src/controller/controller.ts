@@ -8,6 +8,7 @@ import type { ToolAsk } from "../tools";
 import { generateTitle, openSessions, renameSession, startNewSession, restoreSession, toChatItems, toTitle, compact } from "./sessions";
 import { openModelPicker, pickModel } from "./models";
 import { toolDenied, toolPost, toolPre, toolStream } from "./tool-events";
+import { onKey } from "./keys";
 import type { ControllerDeps, InputKey, UIState } from "./state";
 
 export class Controller {
@@ -44,6 +45,7 @@ export class Controller {
       helpOpen: false,
       suggest: [],
       suggestIdx: -1,
+      inputKey: 0,
     };
     if (loaded.records.length) s.chat.push({ kind: "meta", content: `resumindo sessão ${this.session.id} (${loaded.messages.length} mensagens)` });
     this.state = s;
@@ -79,7 +81,7 @@ export class Controller {
     this.envStamp = Date.now();
   }
 
-  private interrupt(): void {
+  interrupt(): void {
     if (this.state.busy) this.interrupted = true;
   }
 
@@ -163,7 +165,7 @@ export class Controller {
     });
   };
 
-  private answerAsk(ok: boolean): void {
+  answerAsk(ok: boolean): void {
     if (!this.askResolver) return;
     this.state.pendingAsk = null;
     const r = this.askResolver;
@@ -172,7 +174,7 @@ export class Controller {
     r(ok);
   }
 
-  private allowAlways(): void {
+  allowAlways(): void {
     const s = this.state;
     if (!s.pendingAsk) return;
     const cmd = s.pendingAsk.cmd;
@@ -221,41 +223,7 @@ export class Controller {
   }
 
   handleKey(key: InputKey, input: string): void {
-    const s = this.state;
-    if (key.tab) {
-      // ponytail: suggestIdx inicia em -1; o 1o tab cai na 1a sugestao (0)
-      if (s.suggest.length) {
-        s.suggestIdx = (s.suggestIdx + 1) % s.suggest.length;
-        s.input = s.suggest[s.suggestIdx];
-      }
-      this.bump();
-      return;
-    }
-    if (s.modelPicker) {
-      if (key.escape) s.modelPicker = null;
-      else if (input && !/^[1-9]$/.test(input)) s.modelPicker.query += input;
-      this.bump();
-      return;
-    }
-    if (s.pendingAsk) {
-      if (key.escape) this.answerAsk(false);
-      else if (input === "y") this.answerAsk(true);
-      else if (input === "n") this.answerAsk(false);
-      else if (input === "a") this.allowAlways();
-      return;
-    }
-    if (s.sessionList) {
-      if (key.escape) s.sessionList = null;
-      this.bump();
-      return;
-    }
-    if (s.helpOpen) {
-      if (key.escape || key.return) s.helpOpen = false;
-      this.bump();
-      return;
-    }
-    if (key.ctrl && input === "o") this.toggleToolExpand();
-    else if (key.escape) this.interrupt();
+    onKey(this, key, input);
   }
 
   setInput(v: string): void {
