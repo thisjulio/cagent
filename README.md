@@ -23,7 +23,7 @@ cagent
 Para instalar uma versão específica:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/thisjulio/cagent/main/install.sh | bash -s -- --version 0.1.0
+  curl -fsSL https://raw.githubusercontent.com/thisjulio/cagent/main/install.sh | bash -s -- --version 0.1.1
 ```
 
 ## Configuração
