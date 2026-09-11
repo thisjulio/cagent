@@ -160,7 +160,7 @@ a7.ts
     expect(r.output).toContain("a9.ts:1:");
   });
 
-  it("search_ast encontra via @ast-grep/cli", async () => {
+  it("search_ast encontra via @ast-grep/napi", async () => {
     const { registry } = await freshRegistry();
     await registry.tool("write_file")!.execute({ path: "a10.ts", content: "console.log(42);\n" });
     const r = await registry.tool("search_ast")!.execute({ pattern: "console.log($X)", target: "a10.ts" });

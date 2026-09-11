@@ -12,6 +12,7 @@
     "ink-text-input": "^6.0.0",
     "js-yaml": "^4.1.0",
     "react": "^19.3.0",
+    "react-devtools-core": "^8.0.0",
     "react-markdown": "^10.1.0"
   },
   "devDependencies": {

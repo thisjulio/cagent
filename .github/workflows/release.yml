@@ -1,0 +1,59 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.asset }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            target: bun-linux-x64
+            asset: cagent-linux-x64
+          - runner: ubuntu-24.04-arm
+            target: bun-linux-arm64
+            asset: cagent-linux-arm64
+          - runner: macos-13
+            target: bun-darwin-x64
+            asset: cagent-darwin-x64
+          - runner: macos-14
+            target: bun-darwin-arm64
+            asset: cagent-darwin-arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: |
+          mkdir -p dist
+          bun build release.ts --compile --target=${{ matrix.target }} --outfile=dist/${{ matrix.asset }}
+          chmod +x dist/${{ matrix.asset }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: dist/${{ matrix.asset }}
+
+  publish:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: cagent-*
+          path: dist
+          merge-multiple: true
+      - run: sha256sum dist/cagent-* > dist/SHA256SUMS
+      - run: gh release create "$GITHUB_REF_NAME" dist/cagent-* dist/SHA256SUMS --verify-tag --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}

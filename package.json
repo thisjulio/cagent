@@ -1,10 +1,12 @@
 {
   "name": "cagent",
+  "description": "Agente de código extensível em Bun/TypeScript com plugins e UI de terminal",
   "private": true,
   "type": "module",
   "workspaces": ["core", "sdk", "plugins/*"],
   "scripts": {
     "start": "bun core/src/main.ts",
-    "test": "bun test"
+    "test": "bun test",
+    "build:release": "bun build release.ts --compile --outfile dist/cagent"
   }
 }

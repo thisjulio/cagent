@@ -1,5 +1,6 @@
 import React from "react";
 import { render } from "ink";
+import type { Plugin } from "@cagent/sdk";
 import { loadConfig, type AppConfig } from "./config";
 import { loadPlugins } from "./loader";
 import { EventBus } from "./events";
@@ -25,11 +26,17 @@ export async function resolveRoute(config: AppConfig, registry: Registry): Promi
   return `${first}/${models[0]}`;
 }
 
-export async function bootstrap(): Promise<void> {
-  const config = loadConfig(process.cwd());
+export interface BootstrapOptions {
+  defaultPlugins?: AppConfig["plugins"];
+  pluginLoaders?: Record<string, Plugin>;
+}
+
+export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
+  const loaded = loadConfig(process.cwd());
+  const config = loaded.plugins.length || !options.defaultPlugins ? loaded : { ...loaded, plugins: options.defaultPlugins };
   const registry = new Registry();
   const bus = new EventBus();
-  const { promptSections } = await loadPlugins(config, registry, bus);
+  const { promptSections } = await loadPlugins(config, registry, bus, { loaders: options.pluginLoaders });
   let route: string;
   try {
     route = await resolveRoute(config, registry);

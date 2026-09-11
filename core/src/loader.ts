@@ -10,10 +10,15 @@ export interface LoadResult {
   promptSections: Map<string, string>;
 }
 
+export interface LoadOptions {
+  loaders?: Record<string, Plugin>;
+}
+
 export async function loadPlugins(
   config: AppConfig,
   registry: Registry,
   bus: EventBus,
+  options: LoadOptions = {},
 ): Promise<LoadResult> {
   const contexts: PluginContext[] = [];
   const promptSections = new Map<string, string>();
@@ -21,9 +26,10 @@ export async function loadPlugins(
   for (const p of config.plugins) {
     if (p.enabled === false) continue;
     const source = p.path ?? p.name;
+    const builtin = options.loaders?.[p.name];
     const spec = source.startsWith(".") ? pathToFileURL(path.resolve(source)).href : source;
-    const mod = (await import(spec)) as Record<string, unknown>;
-    const plugin = (mod.default ?? mod.register) as Plugin | undefined;
+    const mod = builtin ? undefined : ((await import(spec)) as Record<string, unknown>);
+    const plugin = builtin ?? (mod?.default ?? mod?.register) as Plugin | undefined;
     if (typeof plugin !== "function") throw new Error(`plugin sem função de registro: ${p.name}`);
 
     const ctx: PluginContext = {
