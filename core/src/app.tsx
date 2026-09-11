@@ -16,7 +16,7 @@ import { Session, estimateTokens, serializeMessages } from "./session";
 import type { ToolAsk } from "./tools";
 
 export type ChatItem = {
-  kind: "user" | "assistant" | "tool" | "meta";
+  kind: "user" | "assistant" | "tool" | "meta" | "thinking";
   content: string;
   toolName?: string;
   cmd?: string;
@@ -46,7 +46,7 @@ export type UIState = {
   input: string;
   notice: string;
   pendingAsk: { tool: string; cmd: string } | null;
-  modelPicker: { models: string[]; query: string } | null;
+  modelPicker: { entries: { route: string; models: string[] }[]; query: string } | null;
   sessionList: { id: string; updated: string; title: string }[] | null;
   helpOpen: boolean;
   title: string;
@@ -95,8 +95,11 @@ export class Controller {
   private askResolver: ((ok: boolean) => void) | null = null;
   bump: () => void = () => {};
 
+  private adapter: ProviderAdapter;
+
   constructor(deps: ControllerDeps) {
     this.deps = deps;
+    this.adapter = deps.adapter;
     this.session = new Session(undefined, deps.sessionDir);
     const loaded = this.session.load();
     this.messages = [{ role: "system" as const, content: deps.systemPrompt }, ...loaded.messages];
@@ -226,7 +229,7 @@ export class Controller {
     this.bump();
     try {
       const turn = await runTurn({
-        adapter: this.deps.adapter,
+        adapter: this.adapter,
         model: s.model,
         messages: this.messages,
         tools: this.deps.registry.tools(),
@@ -237,6 +240,12 @@ export class Controller {
           const last = s.chat[s.chat.length - 1];
           if (last.kind === "assistant") last.content += t;
           else s.chat.push({ kind: "assistant", content: t });
+          this.bump();
+        },
+        onReasoning: (t) => {
+          const last = s.chat[s.chat.length - 1];
+          if (last.kind === "thinking") last.content += t;
+          else s.chat.push({ kind: "thinking", content: t });
           this.bump();
         },
         interrupted: () => this.interrupted,
@@ -303,14 +312,30 @@ export class Controller {
   }
 
   private async openModelPicker(): Promise<void> {
-    const models = await this.deps.adapter.list_models();
-    this.state.modelPicker = { models, query: "" };
+    // ponytail: provedor que falha em list_models é ignorado; nome duplicado entre provedores → primeiro registro vence
+    const entries = await Promise.all(
+      [...this.deps.registry.providers()].map(async ([route, a]) => {
+        try {
+          return { route, models: await a.list_models() };
+        } catch {
+          return null;
+        }
+      }),
+    );
+    this.state.modelPicker = { entries: entries.filter((e) => e !== null), query: "" };
     this.bump();
   }
 
   pickModel(model: string): void {
-    if (!this.state.modelPicker) return;
+    const p = this.state.modelPicker;
+    if (!p) return;
+    const entry = p.entries.find((e) => e.models.includes(model));
+    if (!entry) return;
+    const a = this.deps.registry.provider(entry.route);
+    if (!a) return;
+    this.adapter = a;
     this.state.model = model;
+    this.state.provider = entry.route;
     this.state.modelPicker = null;
     this.bump();
   }
@@ -360,7 +385,7 @@ export class Controller {
   private async generateTitle(msg: string): Promise<string> {
     try {
       const { text } = await streamOnce({
-        adapter: this.deps.adapter,
+        adapter: this.adapter,
         model: this.state.model,
         messages: [
           {
@@ -423,7 +448,7 @@ export class Controller {
     }
     const old = this.messages.slice(1, this.messages.length - keep);
     const { text: summary } = await streamOnce({
-      adapter: this.deps.adapter,
+      adapter: this.adapter,
       model: s.model,
       messages: [
         {
@@ -604,6 +629,16 @@ function ChatItemRow({ it, streaming }: { it: ChatItem; streaming: boolean }) {
         {!streaming && it.content ? <Markdown content={it.content} /> : <Text>{it.content || "…"}</Text>}
       </Box>
     );
+  if (it.kind === "thinking")
+    return (
+      <Box borderStyle="round" borderColor="gray" paddingX={1} width="100%" flexDirection="column">
+        <Text dimColor>
+          <Text color="cyan">⌁ </Text>
+          {streaming ? <Text color="yellow">thinking ⋯</Text> : <Text>thinking</Text>}
+        </Text>
+        {it.content ? <Text dimColor>{it.content}</Text> : null}
+      </Box>
+    );
   if (it.kind === "tool") {
     const status = it.running ? "⋯" : it.isError ? "✗" : "⏺";
     const color = it.isError ? "red" : it.running ? "yellow" : "green";
@@ -646,14 +681,16 @@ function HelpBox() {
   );
 }
 
-function ModelPicker({ c, p }: { c: Controller; p: { models: string[]; query: string } }) {
-  const filtered = fuzzy(p.models, p.query);
+function ModelPicker({ c, p }: { c: Controller; p: { entries: { route: string; models: string[] }[]; query: string } }) {
+  const flat: { m: string; route: string }[] = [];
+  for (const e of p.entries) for (const m of e.models) flat.push({ m, route: e.route });
+  const filtered = flat.filter((x) => !p.query || fuzzy([x.m], p.query).length > 0);
   return (
     <Box flexDirection="column">
       <Text dimColor>modelo&gt; {p.query}  (↑↓ · 1-9 · enter · esc)</Text>
       {filtered.length === 0 ? <Text dimColor>(nenhum)</Text> : null}
       <SelectInput
-        items={filtered.map((m) => ({ label: m, value: m }))}
+        items={filtered.map((x) => ({ label: `${x.m}  [${x.route}]`, value: x.m }))}
         onSelect={(item) => c.pickModel(item.value)}
       />
     </Box>

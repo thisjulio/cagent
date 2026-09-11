@@ -149,13 +149,36 @@ describe("controller", () => {
   });
 
   it("model picker: filtra e seleciona", async () => {
-    const c = new Controller(deps());
-    c.state.modelPicker = { models: ["a", "b", "ab"], query: "" };
+    const d = deps();
+    d.registry.registerProvider("r1", d.adapter);
+    const c = new Controller(d);
+    c.state.modelPicker = { entries: [{ route: "r1", models: ["a", "b", "ab"] }], query: "" };
     c.handleKey({}, "a");
     expect(c.state.modelPicker?.query).toBe("a");
     c.pickModel("a");
     expect(c.state.model).toBe("a");
+    expect(c.state.provider).toBe("r1");
     expect(c.state.modelPicker).toBeNull();
+  });
+
+  it("selecionar modelo de outro provedor troca o adapter", async () => {
+    const d = deps();
+    d.registry.registerProvider("openai", d.adapter);
+    d.registry.registerProvider("llama", {
+      list_models: async () => ["llama-1"],
+      prepare_call: async (o) => o,
+      stream: async function* () {
+        yield { type: "text", text: "do-llama" };
+      },
+    });
+    const c = new Controller(d);
+    await c.submit("/model");
+    expect(c.state.modelPicker?.entries).toHaveLength(2);
+    c.pickModel("llama-1");
+    expect(c.state.provider).toBe("llama");
+    expect(c.state.model).toBe("llama-1");
+    await c.submit("oi");
+    expect(c.state.chat[c.state.chat.length - 1].content).toBe("do-llama");
   });
 
   it("comando /model abre o picker", async () => {
@@ -175,6 +198,23 @@ describe("controller", () => {
     const c = new Controller(deps());
     await c.submit("oi");
     expect(c.state.title).toBe("oi");
+  });
+
+  it("stream de thinking vira item de chat", async () => {
+    const d = deps();
+    d.adapter = {
+      list_models: async () => ["m1"],
+      prepare_call: async (o) => o,
+      stream: async function* () {
+        yield { type: "reasoning", text: "pensando…" };
+        yield { type: "text", text: "oi" };
+        yield { type: "finish", finish_reason: "stop" };
+      },
+    } as ControllerDeps["adapter"];
+    const c = new Controller(d);
+    await c.submit("oi");
+    const t = c.state.chat.find((i) => i.kind === "thinking");
+    expect(t?.content).toBe("pensando…");
   });
 
   it("falha no LLM → título é a própria mensagem", async () => {

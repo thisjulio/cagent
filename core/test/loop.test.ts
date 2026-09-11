@@ -50,6 +50,19 @@ describe("loop de agente", () => {
     expect(messages[messages.length - 1].role).toBe("assistant");
   });
 
+  it("streamOnce passa reasoning ao callback", async () => {
+    const seen: string[] = [];
+    const r = await streamOnce({
+      adapter: fakeAdapter([[{ type: "reasoning", text: "r1" }, { type: "text", text: "ok" }, { type: "finish", finish_reason: "stop" }]]),
+      model: "m",
+      messages: [],
+      tools: [],
+      onReasoning: (t) => seen.push(t),
+    });
+    expect(r.text).toBe("ok");
+    expect(seen).toEqual(["r1"]);
+  });
+
   it("retry com backoff até sucesso", async () => {
     const r = await streamOnce({
       adapter: fakeAdapter([[{ type: "text", text: "ok" }, { type: "finish", finish_reason: "stop" }]], 1),

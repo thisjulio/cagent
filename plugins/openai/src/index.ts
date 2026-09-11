@@ -5,6 +5,7 @@ import path from "node:path";
 import { spawn } from "node:child_process";
 import yaml from "js-yaml";
 import OpenAI from "openai";
+import { toChatMessages } from "@cagent/sdk";
 import type { LlmCallOptions, LlmChunk, Plugin, ProviderAdapter } from "@cagent/sdk";
 
 const ISSUER = "https://auth.openai.com";
@@ -345,7 +346,7 @@ export function createAdapter(opts: AdapterOptions): ProviderAdapter {
         const client = await getClient();
         const res = await client.chat.completions.create({
           model: request.model,
-          messages: request.messages,
+          messages: toChatMessages(request.messages),
           tools: request.tools.length
             ? request.tools.map((t) => ({
                 type: "function",
@@ -403,6 +404,7 @@ export function createAdapter(opts: AdapterOptions): ProviderAdapter {
           tool_choice: "auto",
           stream: true,
           store: false,
+          reasoning: { effort: "low", summary: "detailed" },
           ...(request.tools.length
             ? {
                 tools: request.tools.map((t) => ({
@@ -443,8 +445,10 @@ export function createAdapter(opts: AdapterOptions): ProviderAdapter {
             } catch {
               continue;
             }
-            if (event === "response.output_text.delta") {
-              yield { type: "text", text: String(data.delta ?? "") };
+              if (event === "response.output_text.delta") {
+                yield { type: "text", text: String(data.delta ?? "") };
+              } else if (event === "response.reasoning_summary_part" || event === "response.reasoning_summary_text.delta" || event === "response.reasoning_summary.delta") {
+                yield { type: "reasoning", text: String(data.delta ?? "") };
             } else if (event === "response.output_item.done") {
               const item = data.item as Record<string, unknown> | undefined;
               if (item && item.type === "function_call") {

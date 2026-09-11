@@ -8,6 +8,7 @@ export interface StreamOpts {
   messages: Message[];
   tools: ToolDefinition[];
   onText?: (text: string) => void;
+  onReasoning?: (text: string) => void;
   interrupted?: () => boolean;
   attempts?: number;
 }
@@ -31,6 +32,8 @@ export async function streamOnce(
         if (chunk.type === "text") {
           text += chunk.text;
           opts.onText?.(chunk.text);
+        } else if (chunk.type === "reasoning") {
+          opts.onReasoning?.(chunk.text);
         } else if (chunk.type === "tool-call") {
           toolCalls.push(chunk.tool_call);
         }

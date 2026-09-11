@@ -28,6 +28,29 @@ export type Message = {
   tool_call_id?: string;
 };
 
+export type WireMessage = {
+  role: "system" | "user" | "assistant" | "tool";
+  content: string;
+  tool_calls?: { id: string; type: "function"; function: { name: string; arguments: string } }[];
+  tool_call_id?: string;
+};
+
+// formato wire de chat completions (assistant: tool_calls com type/function; tool: tool_call_id)
+export function toChatMessages(messages: Message[]): WireMessage[] {
+  return messages.map((m) => {
+    const out: WireMessage = { role: m.role, content: m.content };
+    if (m.tool_call_id) out.tool_call_id = m.tool_call_id;
+    if (m.tool_calls?.length) {
+      out.tool_calls = m.tool_calls.map((tc) => ({
+        id: tc.id,
+        type: "function",
+        function: { name: tc.name, arguments: tc.arguments },
+      }));
+    }
+    return out;
+  });
+}
+
 export type LlmChunk =
   | { type: "text"; text: string }
   | { type: "reasoning"; text: string }

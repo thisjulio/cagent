@@ -39,6 +39,13 @@
         "fast-glob": "^3.3.3",
       },
     },
+    "plugins/llama.cpp": {
+      "name": "@cagent/plugin-llama.cpp",
+      "version": "0.1.0",
+      "dependencies": {
+        "@cagent/sdk": "workspace:*",
+      },
+    },
     "plugins/openai": {
       "name": "@cagent/plugin-openai",
       "version": "0.1.0",
@@ -68,6 +75,8 @@
     "@cagent/plugin-bash": ["@cagent/plugin-bash@workspace:plugins/bash"],
 
     "@cagent/plugin-code-tools": ["@cagent/plugin-code-tools@workspace:plugins/code-tools"],
+
+    "@cagent/plugin-llama.cpp": ["@cagent/plugin-llama.cpp@workspace:plugins/llama.cpp"],
 
     "@cagent/plugin-openai": ["@cagent/plugin-openai@workspace:plugins/openai"],
 

@@ -7,6 +7,10 @@ plugins:
     path: ./plugins/bash
     config:
       timeout_ms: 30000
+  - name: llama.cpp
+    path: ./plugins/llama.cpp
+    config:
+      url: http://localhost:8080
   - name: openai
     path: ./plugins/openai
   - name: code-tools
