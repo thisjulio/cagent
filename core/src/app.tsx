@@ -497,42 +497,42 @@ function Markdown({ content }: { content: string }) {
 function ChatItemRow({ it, streaming }: { it: ChatItem; streaming: boolean }) {
   if (it.kind === "user")
     return (
-      <Text>
-        <Text color="cyan">❯ </Text>
-        {it.content}
-      </Text>
+      <Box borderStyle="round" borderColor="cyan" paddingX={1} width="100%">
+        <Text>
+          <Text color="cyan">❯ </Text>
+          {it.content}
+        </Text>
+      </Box>
     );
-  if (it.kind === "assistant") {
-    if (!streaming && it.content) return <Markdown content={it.content} />;
-    return <Text>{it.content || "…"}</Text>;
-  }
+  if (it.kind === "assistant")
+    return (
+      <Box borderStyle="round" borderColor="gray" paddingX={1} width="100%">
+        {!streaming && it.content ? <Markdown content={it.content} /> : <Text>{it.content || "…"}</Text>}
+      </Box>
+    );
   if (it.kind === "tool") {
     const status = it.running ? "⋯" : it.isError ? "✗" : "⏺";
     const color = it.isError ? "red" : it.running ? "yellow" : "green";
     const lines = it.content ? it.content.split("\n").length : 0;
-    if (!it.expanded)
-      return (
+    return (
+      <Box borderStyle="round" borderColor={it.isError ? "red" : "gray"} paddingX={1} width="100%" flexDirection="column">
         <Text>
           <Text color={color}>{status} </Text>
           <Text bold>{it.toolName ?? "?"}</Text>
           {it.cmd ? (
-            <Text dimColor> {it.cmd.length > 40 ? it.cmd.slice(0, 40) + "…" : it.cmd}</Text>
+            <Text dimColor> · {it.expanded ? it.cmd : it.cmd.length > 40 ? it.cmd.slice(0, 40) + "…" : it.cmd}</Text>
           ) : null}
           {it.running ? <Text color="yellow"> (executando…)</Text> : null}
           {it.denied ? <Text color="yellow"> (negado)</Text> : null}
-          {!it.running && !it.denied && lines > 0 && (
+          {!it.running && !it.denied && !it.expanded && lines > 0 && (
             <Text dimColor> +{lines} linha{lines === 1 ? "" : "s"} (ctrl+o)</Text>
           )}
         </Text>
-      );
-    return (
-      <Box flexDirection="column">
-        <Text>
-          <Text color={color}>{status} </Text>
-          <Text bold>{it.toolName ?? "?"}</Text>
-          {it.cmd ? <Text dimColor> {it.cmd}</Text> : null}
-        </Text>
-        <Text color={it.isError ? "red" : undefined}>{it.content}</Text>
+        {it.expanded && it.content ? (
+          <Text color={it.isError ? "red" : undefined} dimColor={!it.isError}>
+            {"  " + it.content.replace(/\n/g, "\n  ")}
+          </Text>
+        ) : null}
       </Box>
     );
   }
@@ -586,6 +586,9 @@ export function App({ c }: { c: Controller }) {
   const [, setV] = useState(0);
   useEffect(() => {
     c.bump = () => setV((v) => v + 1);
+    const onResize = () => c.bump();
+    process.stdout.on("resize", onResize);
+    return () => process.stdout.off("resize", onResize);
   }, [c]);
   useInput((input, key) => c.handleKey(key as InputKey, input));
 
@@ -596,7 +599,7 @@ export function App({ c }: { c: Controller }) {
   return (
     <Box flexDirection="column">
       <Box flexDirection="column">
-        <Static items={s.chat.slice(0, last)}>
+        <Static items={s.chat.slice(0, last)} style={{ width: process.stdout.columns }}>
             {(it, i) => <ChatItemRow it={it} streaming={false} key={`c${i}`} />}
           </Static>
           {s.chat.length > 0 ? <ChatItemRow it={s.chat[last]} streaming={s.busy} /> : null}
@@ -611,27 +614,29 @@ export function App({ c }: { c: Controller }) {
               <Text color="yellow">permitir?  y = agora · n = negar · a = sempre este comando</Text>
             </Box>
           ) : (
-            <Box borderStyle="round" borderColor="gray" paddingX={1} flexDirection="row">
-              <Text color="cyan">❯ </Text>
-              <TextInput
-                value={s.input}
-                onChange={(v: string) => c.setInput(v)}
-                onSubmit={(v: string) => c.submit(v)}
-              />
-            </Box>
+            <>
+              <Text dimColor>{"─".repeat(Math.max(1, process.stdout.columns - 2))}</Text>
+              {s.busy ? (
+                <Text dimColor>
+                  <Spinner type="dots" /> {running ? `usando ${running}…` : "pensando…"}
+                </Text>
+              ) : null}
+              <Box borderStyle="round" borderColor="cyan" paddingX={1} flexDirection="row">
+                <Text color="cyan">❯ </Text>
+                <TextInput
+                  value={s.input}
+                  onChange={(v: string) => c.setInput(v)}
+                  onSubmit={(v: string) => c.submit(v)}
+                />
+              </Box>
+            </>
           )}
           {s.notice ? <Text dimColor>{s.notice}</Text> : null}
         </Box>
       <Box borderTop borderColor="gray">
-        {s.busy ? (
-          <Text dimColor>
-            <Spinner type="dots" /> {running ? `usando ${running}…` : "pensando…"}
-          </Text>
-        ) : (
-          <Text dimColor>
-            {s.provider} | {s.model} | {s.tokens} tok · {pct}% do contexto · Esc interrompe · /help
-          </Text>
-        )}
+        <Text dimColor>
+          {s.provider} | {s.model} | {s.tokens} tok · {pct}% do contexto · Esc interrompe · /help
+        </Text>
       </Box>
     </Box>
   );

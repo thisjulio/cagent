@@ -1,5 +1,5 @@
 import React from "react";
-import { render } from "ink-testing-library";
+import { renderToString } from "ink";
 import stripAnsi from "strip-ansi";
 import type { ProviderAdapter } from "@cagent/sdk";
 import { App, Controller } from "../src/app.js";
@@ -26,12 +26,24 @@ controller.state.chat = []; // estado vazio e determinístico (a ctor carrega a 
 controller.state.toolLog = [];
 controller.state.tokens = 0;
 
-const widths = [60, 80, 120];
-for (const w of widths) {
-  process.stdout.columns = w;
-  const { lastFrame } = render(<App c={controller} />);
+function frame(w: number): void {
+  process.stdout.columns = w; // App lê process.stdout.columns para a largura do Static
+  const lines = stripAnsi(renderToString(<App c={controller} />, { columns: w })).split("\n");
   console.log(`\n=== ${w} cols ===`);
   console.log("┌" + "─".repeat(w) + "┐");
-  console.log(stripAnsi(lastFrame()!).split("\n").map((l) => "│" + l.padEnd(w)).join("\n"));
+  console.log(lines.map((l) => "│" + l.padEnd(w)).join("\n"));
   console.log("└" + "─".repeat(w) + "┘");
 }
+
+for (const w of [60, 80, 120]) frame(w);
+
+// estado semeado: os 3 blocos (usuário / agente / tool)
+controller.state.chat = [
+  { kind: "user", content: "rode ls" },
+  { kind: "assistant", content: "O diretório contém:\n\n- AGENTS.md\n- core/\n" },
+  { kind: "tool", toolName: "bash", cmd: "git status", content: "3 linhas", running: false },
+  { kind: "tool", toolName: "bash", cmd: "ls", content: "total 24\nAGENTS.md\nbun.lock", running: false, expanded: true },
+  { kind: "tool", toolName: "bash", cmd: "rm -rf /", content: "permission denied", running: false, isError: true, expanded: true },
+];
+controller.state.tokens = 1200;
+frame(80);
