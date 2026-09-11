@@ -18,6 +18,7 @@ export class Controller {
 
   private deps: ControllerDeps;
   private interrupted = false;
+  envStamp: number = Date.now();
   private askResolver: ((ok: boolean) => void) | null = null;
 
   constructor(deps: ControllerDeps) {
@@ -65,6 +66,16 @@ export class Controller {
     this.bump();
   }
 
+  private maybeEnvContext(): void {
+    if (Date.now() - this.envStamp < 30 * 60_000) return;
+    // ponytail: 30min entre re-injeções; se sessões de horas mostrarem staleness, baixar o intervalo
+    this.messages.push({
+      role: "user" as const,
+      content: `[contexto] Data/hora: ${new Date().toISOString()} (UTC); fuso: ${Intl.DateTimeFormat().resolvedOptions().timeZone}`,
+    });
+    this.envStamp = Date.now();
+  }
+
   private interrupt(): void {
     if (this.state.busy) this.interrupted = true;
   }
@@ -82,6 +93,7 @@ export class Controller {
     this.interrupted = false;
     this.session.append({ ts: Date.now(), type: "user", payload: { content: text } });
     this.messages.push({ role: "user", content: text });
+    this.maybeEnvContext();
     this.bump();
     const titlePromise = s.title
       ? Promise.resolve<void>()

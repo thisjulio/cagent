@@ -13,6 +13,7 @@ export interface PluginConfig {
 export interface AppConfig {
   plugins: PluginConfig[];
   allowlist: string[];
+  instructions?: string[];
   model?: string;
   compact_threshold_tokens?: number;
   retry_attempts?: number;
@@ -34,6 +35,10 @@ export function loadConfig(cwd: string): AppConfig {
     allowlist: [
       ...((global.allowlist as string[] | undefined) ?? []),
       ...((local.allowlist as string[] | undefined) ?? []),
+    ],
+    instructions: [
+      ...((global.instructions as string[] | undefined) ?? []),
+      ...((local.instructions as string[] | undefined) ?? []),
     ],
     model: (local.model as string | undefined) ?? (global.model as string | undefined) ?? process.env.CAGENT_MODEL,
     compact_threshold_tokens: (local.compact_threshold_tokens as number | undefined) ?? (global.compact_threshold_tokens as number | undefined),

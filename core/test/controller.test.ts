@@ -40,6 +40,23 @@ describe("controller", () => {
     expect(c.messages.some((m) => m.role === "user" && m.content === "oi")).toBe(true);
   });
 
+  it("re-injeta data atual quando o contexto envelheceu", async () => {
+    const c = new Controller(deps());
+    c.envStamp = 0;
+    const p = c.submit("oi");
+    await new Promise((r) => setTimeout(r, 50));
+    await p;
+    expect(c.messages.some((m) => m.role === "user" && m.content.startsWith("[contexto] Data/hora:"))).toBe(true);
+  });
+
+  it("não re-injeta com contexto fresco", async () => {
+    const c = new Controller(deps());
+    const p = c.submit("oi");
+    await new Promise((r) => setTimeout(r, 50));
+    await p;
+    expect(c.messages.some((m) => m.content.startsWith("[contexto] Data/hora:"))).toBe(false);
+  });
+
   it("pendingAsk: esc nega; y aprova", async () => {
     const c = new Controller(deps(true));
     const p = c.ask({ name: "bash" }, { command: "ls" });

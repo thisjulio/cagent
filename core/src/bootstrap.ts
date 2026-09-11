@@ -44,7 +44,7 @@ export async function bootstrap(): Promise<void> {
     bus,
     adapter,
     model: route,
-    systemPrompt: buildSystemPrompt(promptSections),
+    systemPrompt: buildSystemPrompt(process.cwd(), promptSections, config.instructions),
   });
   bus.on("tools/pre", (p) => c.onToolPre(p));
   bus.on("tools/post", (p) => c.onToolPost(p));
