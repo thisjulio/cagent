@@ -5,6 +5,7 @@ import React from "react";
 import { describe, expect, it } from "bun:test";
 import { renderToString } from "ink";
 import { render } from "ink-testing-library";
+import stripAnsi from "strip-ansi";
 import { App } from "../src/ui/components/App";
 import { EventBus } from "../src/events";
 import { Registry } from "../src/registry";
@@ -36,6 +37,62 @@ describe("renderToString", () => {
     expect(out).toContain("openai");
     expect(out).toContain("tok");
     expect(out).toContain("%");
+  });
+
+  it("mantém o indicador do input na mesma linha do texto", () => {
+    const c = new Controller(deps());
+    c.state.input = "escreva um texto longo sem quebrar o indicador";
+    const previousColumns = process.stdout.columns;
+    process.stdout.columns = 40;
+    try {
+      const lines = stripAnsi(renderToString(React.createElement(App, { c }), { columns: 40 })).split("\n");
+      expect(lines.some((line) => line.includes("❯ escreva"))).toBe(true);
+    } finally {
+      process.stdout.columns = previousColumns;
+    }
+  });
+
+  it("rola o histórico longo com a roda do mouse", async () => {
+    const c = new Controller(deps());
+    c.state.chat.push({
+      kind: "assistant",
+      content: Array.from({ length: 30 }, (_, i) => `parágrafo ${i}`).join("\n\n"),
+    });
+    const previousColumns = process.stdout.columns;
+    const previousRows = process.stdout.rows;
+    process.stdout.columns = 40;
+    process.stdout.rows = 24;
+    try {
+      const { stdin, lastFrame } = render(React.createElement(App, { c }));
+      await new Promise((r) => setTimeout(r, 30));
+      const before = lastFrame();
+      stdin.write("\x1b[<64;1;1M");
+      await new Promise((r) => setTimeout(r, 30));
+      expect(lastFrame()).not.toBe(before);
+    } finally {
+      process.stdout.columns = previousColumns;
+      process.stdout.rows = previousRows;
+    }
+  });
+
+  it("rola o input longo com a roda sobre a caixa", async () => {
+    const c = new Controller(deps());
+    c.state.input = Array.from({ length: 30 }, (_, i) => `palavra ${i}`).join(" ");
+    const previousColumns = process.stdout.columns;
+    const previousRows = process.stdout.rows;
+    process.stdout.columns = 40;
+    process.stdout.rows = 24;
+    try {
+      const { stdin, lastFrame } = render(React.createElement(App, { c }));
+      await new Promise((r) => setTimeout(r, 30));
+      const before = lastFrame();
+      stdin.write("\x1b[<64;1;16M");
+      await new Promise((r) => setTimeout(r, 30));
+      expect(lastFrame()).not.toBe(before);
+    } finally {
+      process.stdout.columns = previousColumns;
+      process.stdout.rows = previousRows;
+    }
   });
 
   it("markdown em mensagem de assistant concluída", () => {

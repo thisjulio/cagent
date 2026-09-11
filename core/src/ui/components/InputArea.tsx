@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Box, Text, useInput } from "ink";
 import Spinner from "ink-spinner";
 import { wrap } from "../wrap";
-import { H_INPUT_BOX, H_INPUT_BLOCK } from "../mouse";
+import { H_INPUT_BOX, H_INPUT_BLOCK, isMouseInput } from "../mouse";
 
 // ponytail: input multi-linha com viewport. O cursor é estado local (como no
 // TextInput, só que com wrap em várias linhas). `offset` controla a janela
@@ -38,8 +38,10 @@ export function InputArea({
     if (cursor > input.length) setCursor(input.length);
   }, [input, cursor]);
 
-  const innerW = Math.max(1, process.stdout.columns - 2);
-  const lines = wrap(input || "", innerW);
+  const contentW = Math.max(1, process.stdout.columns - 4);
+  const innerW = Math.max(1, contentW - 2);
+  const wrapped = wrap(input, innerW);
+  const lines = wrapped.length ? wrapped : [{ text: "", start: 0, end: 0 }];
   const vis = Math.max(1, H_INPUT_BOX - 2);
   const maxOff = Math.max(0, lines.length - vis);
   const start = Math.min(Math.max(0, offset), maxOff);
@@ -48,6 +50,7 @@ export function InputArea({
   // linha visual (após wrap) do cursor em um dado texto/cursor
   function cursorLine(text: string, cur: number): number {
     const ls = wrap(text, innerW);
+    if (!ls.length) return 0;
     for (let i = 0; i < ls.length; i++) if (cur >= ls[i].start && cur < ls[i].end) return i;
     return ls.length - 1;
   }
@@ -62,11 +65,9 @@ export function InputArea({
 
   useInput(
     (inp, key) => {
+      if (isMouseInput(inp)) return;
       if (key.tab || key.upArrow || key.downArrow || (key.ctrl && inp === "c")) return;
-      if (key.return) {
-        if (onSubmit) onSubmit(input);
-        return;
-      }
+      if (key.return) return;
       if (key.leftArrow) edit(input, Math.max(0, cursor - 1));
       else if (key.rightArrow) edit(input, Math.min(input.length, cursor + 1));
       else if (key.backspace || key.delete) {
@@ -80,7 +81,7 @@ export function InputArea({
   );
 
   function renderLine(line: { text: string; start: number; end: number }): string {
-    if (cursor >= line.start && cursor < line.end) {
+    if (cursor >= line.start && (cursor < line.end || (cursor === line.end && line.end === input.length))) {
       const pre = input.slice(line.start, cursor);
       const mid = input[cursor] ?? " ";
       const post = input.slice(cursor + 1, line.end);
@@ -97,10 +98,12 @@ export function InputArea({
           <Spinner type="dots" /> {running ? `usando ${running}…` : "pensando…"}
         </Text>
       ) : null}
-      <Box borderStyle="round" borderColor="cyan" paddingX={1} height={H_INPUT_BOX} flexDirection="column">
-        <Text color="cyan">❯ </Text>
+      <Box borderStyle="round" borderColor="cyan" paddingX={1} width="100%" height={H_INPUT_BOX} flexDirection="column">
         {shown.map((l, i) => (
-          <Text key={i}>{renderLine(l)}</Text>
+          <Text key={i}>
+            <Text color="cyan">{i === 0 ? "❯ " : "  "}</Text>
+            {renderLine(l)}
+          </Text>
         ))}
       </Box>
       {suggest && suggest.length > 0 ? (
