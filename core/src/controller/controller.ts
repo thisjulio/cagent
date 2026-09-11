@@ -82,13 +82,15 @@ export class Controller {
     this.interrupted = false;
     this.session.append({ ts: Date.now(), type: "user", payload: { content: text } });
     this.messages.push({ role: "user", content: text });
-    if (!s.title) {
-      const t = await generateTitle(this, text);
-      s.title = t;
-      this.session.append({ ts: Date.now(), type: "meta", payload: { kind: "title", title: t } });
-    }
     this.bump();
-    await this.executeTurn(s);
+    const titlePromise = s.title
+      ? Promise.resolve<void>()
+      : generateTitle(this, text).then((t) => {
+          s.title = t;
+          this.session.append({ ts: Date.now(), type: "meta", payload: { kind: "title", title: t } });
+          this.bump();
+        });
+    await Promise.all([this.executeTurn(s), titlePromise]);
   }
 
   private async executeTurn(s: UIState): Promise<void> {
