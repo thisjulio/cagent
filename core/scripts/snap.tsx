@@ -19,7 +19,7 @@ const controller = new Controller({
   registry: new Registry(),
   bus: new EventBus(),
   adapter,
-  model: "stub-model",
+  model: "stub/stub-model",
   systemPrompt: "snapshot",
 });
 controller.state.chat = []; // estado vazio e determinístico (a ctor cria uma sessão nova)

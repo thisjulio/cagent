@@ -20,6 +20,10 @@ _Avoid_: backend, modelo, "LLM"
 Usuário escolhe um modelo entre os provedores ativos; provedores habilitados ficam ativos e são usados apenas quando o usuário seleciona um modelo deles.
 _Avoid_: seleção de provedor, troca de modelo
 
+**Rota de modelo**:
+String canônica que identifica um modelo: `$provider/$model`; o split pelo primeiro `/` retorna `[$provider, $model]`. Provedor e modelo nunca são referidos separadamente.
+_Avoid_: nome de modelo (sem provedor), par (provider, model)
+
 ## Ferramentas
 
 **Ferramenta**:

@@ -4,14 +4,14 @@ import path from "node:path";
 import React from "react";
 import { describe, expect, it } from "bun:test";
 import { renderToString } from "ink";
-import { App, Controller, fuzzy, type ControllerDeps } from "../src/app";
+import { App, Controller, fuzzy, resolveRoute, type ControllerDeps } from "../src/app";
 import { EventBus } from "../src/events";
 import { Registry } from "../src/registry";
 import { Session } from "../src/session";
 
 function deps(permissions = false, configOverrides: Record<string, unknown> = {}): ControllerDeps {
   return {
-    config: { plugins: [], allowlist: [], model: "m1", permissions, ...configOverrides } as ControllerDeps["config"],
+    config: { plugins: [], allowlist: [], model: "openai/m1", permissions, ...configOverrides } as ControllerDeps["config"],
     registry: new Registry(),
     bus: new EventBus(),
     adapter: {
@@ -21,7 +21,7 @@ function deps(permissions = false, configOverrides: Record<string, unknown> = {}
         yield { type: "text", text: "oi" };
       },
     },
-    model: "m1",
+    model: "openai/m1",
     systemPrompt: "sys",
     sessionDir: fs.mkdtempSync(path.join(os.tmpdir(), "cagent-ui-")),
   };
@@ -35,10 +35,41 @@ describe("fuzzy", () => {
   it("case-insensitive", () => expect(fuzzy(models, "OPUS")).toEqual(["claude-opus"]));
 });
 
+describe("resolveRoute", () => {
+  const adapter = {
+    list_models: async () => ["m1", "m2"],
+    prepare_call: async (o: unknown) => o,
+    stream: async function* () {},
+  } as ControllerDeps["adapter"];
+
+  it("valida o par provider/modelo contra o catálogo", async () => {
+    const registry = new Registry();
+    registry.registerProvider("openai", adapter);
+    await expect(resolveRoute({ model: "openai/m1" } as ControllerDeps["config"], registry)).resolves.toBe("openai/m1");
+  });
+
+  it("rejeita provedor que não existe", async () => {
+    const registry = new Registry();
+    registry.registerProvider("openai", adapter);
+    await expect(resolveRoute({ model: "foo/m1" } as ControllerDeps["config"], registry)).rejects.toThrow("provedor não encontrado: foo");
+  });
+
+  it("rejeita modelo que não existe no provedor", async () => {
+    const registry = new Registry();
+    registry.registerProvider("openai", adapter);
+    await expect(resolveRoute({ model: "openai/m9" } as ControllerDeps["config"], registry)).rejects.toThrow("modelo m9 não existe no provedor openai");
+  });
+
+  it("sem config: fallback = 1º provedor + 1º modelo do catálogo", async () => {
+    const registry = new Registry();
+    registry.registerProvider("openai", adapter);
+    await expect(resolveRoute({} as ControllerDeps["config"], registry)).resolves.toBe("openai/m1");
+  });
+});
+
 describe("renderToString", () => {
   it("renderiza panes e status bar", () => {
     const c = new Controller(deps());
-    c.state.provider = "openai";
     const out = renderToString(React.createElement(App, { c }));
     expect(out).toContain("m1");
     expect(out).toContain("openai");
@@ -155,9 +186,8 @@ describe("controller", () => {
     c.state.modelPicker = { entries: [{ route: "r1", models: ["a", "b", "ab"] }], query: "" };
     c.handleKey({}, "a");
     expect(c.state.modelPicker?.query).toBe("a");
-    c.pickModel("a");
-    expect(c.state.model).toBe("a");
-    expect(c.state.provider).toBe("r1");
+    c.pickModel("r1/a");
+    expect(c.state.model).toBe("r1/a");
     expect(c.state.modelPicker).toBeNull();
   });
 
@@ -174,9 +204,8 @@ describe("controller", () => {
     const c = new Controller(d);
     await c.submit("/model");
     expect(c.state.modelPicker?.entries).toHaveLength(2);
-    c.pickModel("llama-1");
-    expect(c.state.provider).toBe("llama");
-    expect(c.state.model).toBe("llama-1");
+    c.pickModel("llama/llama-1");
+    expect(c.state.model).toBe("llama/llama-1");
     await c.submit("oi");
     expect(c.state.chat[c.state.chat.length - 1].content).toBe("do-llama");
   });

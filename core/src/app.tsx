@@ -39,7 +39,6 @@ export type UIState = {
   chat: ChatItem[];
   toolLog: ToolLogEntry[];
   model: string;
-  provider: string;
   tokens: number;
   threshold: number;
   busy: boolean;
@@ -64,6 +63,11 @@ export type InputKey = {
   shift?: boolean;
   tab?: boolean;
 };
+
+export function splitRoute(route: string): [string, string] {
+  const i = route.indexOf("/");
+  return i === -1 ? [route, route] : [route.slice(0, i), route.slice(i + 1)];
+}
 
 export function fuzzy(models: string[], q: string): string[] {
   if (!q) return models;
@@ -117,7 +121,6 @@ export class Controller {
       toolLog: [],
       title: titleRec ? String((titleRec.payload as Record<string, unknown>).title ?? "") : "",
       model: deps.model,
-      provider: "",
       tokens: estimateTokens(this.messages),
       threshold: deps.config.compact_threshold_tokens ?? 60_000,
       busy: false,
@@ -230,7 +233,7 @@ export class Controller {
     try {
       const turn = await runTurn({
         adapter: this.adapter,
-        model: s.model,
+        model: splitRoute(s.model)[1],
         messages: this.messages,
         tools: this.deps.registry.tools(),
         allowlist: this.deps.config.allowlist,
@@ -326,16 +329,16 @@ export class Controller {
     this.bump();
   }
 
-  pickModel(model: string): void {
+  pickModel(route: string): void {
     const p = this.state.modelPicker;
     if (!p) return;
-    const entry = p.entries.find((e) => e.models.includes(model));
+    const [prov, model] = splitRoute(route);
+    const entry = p.entries.find((e) => e.route === prov && e.models.includes(model));
     if (!entry) return;
-    const a = this.deps.registry.provider(entry.route);
+    const a = this.deps.registry.provider(prov);
     if (!a) return;
     this.adapter = a;
-    this.state.model = model;
-    this.state.provider = entry.route;
+    this.state.model = route;
     this.state.modelPicker = null;
     this.bump();
   }
@@ -386,7 +389,7 @@ export class Controller {
     try {
       const { text } = await streamOnce({
         adapter: this.adapter,
-        model: this.state.model,
+        model: splitRoute(this.state.model)[1],
         messages: [
           {
             role: "system",
@@ -449,7 +452,7 @@ export class Controller {
     const old = this.messages.slice(1, this.messages.length - keep);
     const { text: summary } = await streamOnce({
       adapter: this.adapter,
-      model: s.model,
+      model: splitRoute(s.model)[1],
       messages: [
         {
           role: "system",
@@ -682,15 +685,15 @@ function HelpBox() {
 }
 
 function ModelPicker({ c, p }: { c: Controller; p: { entries: { route: string; models: string[] }[]; query: string } }) {
-  const flat: { m: string; route: string }[] = [];
-  for (const e of p.entries) for (const m of e.models) flat.push({ m, route: e.route });
-  const filtered = flat.filter((x) => !p.query || fuzzy([x.m], p.query).length > 0);
+  const flat: { route: string }[] = [];
+  for (const e of p.entries) for (const m of e.models) flat.push({ route: `${e.route}/${m}` });
+  const filtered = flat.filter((x) => !p.query || fuzzy([x.route], p.query).length > 0);
   return (
     <Box flexDirection="column">
       <Text dimColor>modelo&gt; {p.query}  (↑↓ · 1-9 · enter · esc)</Text>
       {filtered.length === 0 ? <Text dimColor>(nenhum)</Text> : null}
       <SelectInput
-        items={filtered.map((x) => ({ label: `${x.m}  [${x.route}]`, value: x.m }))}
+        items={filtered.map((x) => ({ label: x.route, value: x.route }))}
         onSelect={(item) => c.pickModel(item.value)}
       />
     </Box>
@@ -766,11 +769,27 @@ export function App({ c }: { c: Controller }) {
         </Box>
       <Box borderTop borderColor="gray">
         <Text dimColor>
-          {(s.title || "nova").slice(0, 30)} | {s.provider} | {s.model} | {s.tokens} tok · {pct}% do contexto · Esc interrompe · /help
+          {(s.title || "nova").slice(0, 30)} | {s.model} | {s.tokens} tok · {pct}% do contexto · Esc interrompe · /help
         </Text>
       </Box>
     </Box>
   );
+}
+
+export async function resolveRoute(config: AppConfig, registry: Registry): Promise<string> {
+  if (config.model) {
+    const [prov, model] = splitRoute(config.model);
+    const adapter = registry.provider(prov);
+    if (!adapter) throw new Error(`provedor não encontrado: ${prov}`);
+    const models = await adapter.list_models();
+    if (!models.includes(model)) throw new Error(`modelo ${model} não existe no provedor ${prov} (disponíveis: ${models.join(", ")})`);
+    return config.model;
+  }
+  const first = registry.llmRoute();
+  if (!first) throw new Error("(sem provedor — nada a fazer)");
+  const models = await registry.provider(first)!.list_models();
+  if (!models.length) throw new Error("(sem provedor — nada a fazer)");
+  return `${first}/${models[0]}`;
 }
 
 export async function bootstrap(): Promise<void> {
@@ -779,23 +798,23 @@ export async function bootstrap(): Promise<void> {
   const bus = new EventBus();
   const { promptSections } = await loadPlugins(config, registry, bus);
 
-  const route = registry.llmRoute();
-  if (!route) {
-    console.error("(sem provedor — nada a fazer)");
+  let route: string;
+  try {
+    route = await resolveRoute(config, registry);
+  } catch (e) {
+    console.error(e instanceof Error ? e.message : String(e));
     process.exit(1);
   }
-  const adapter = registry.provider(route)!;
-  const model = config.model ?? (await adapter.list_models())[0];
+  const adapter = registry.provider(splitRoute(route)[0])!;
 
   const c = new Controller({
     config,
     registry,
     bus,
     adapter,
-    model,
+    model: route,
     systemPrompt: buildSystemPrompt(promptSections),
   });
-  c.state.provider = route;
 
   bus.on("tools/pre", (p) => c.onToolPre(p));
   bus.on("tools/post", (p) => c.onToolPost(p));
