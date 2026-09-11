@@ -10,6 +10,8 @@ import { openModelPicker, pickModel } from "./models";
 import { toolDenied, toolPost, toolPre, toolStream } from "./tool-events";
 import { onKey } from "./keys";
 import type { ControllerDeps, InputKey, UIState } from "./state";
+import { appendChat, MAX_CHAT_ITEMS } from "./chat-buffer";
+import { appendCapped, MAX_RESPONSE_CHARS, MAX_VISIBLE_STREAM_CHARS } from "../stream-buffer";
 
 export class Controller {
   state: UIState;
@@ -20,6 +22,7 @@ export class Controller {
 
   private deps: ControllerDeps;
   private interrupted = false;
+  private lastStreamBump = 0;
   envStamp: number = Date.now();
   private askResolver: ((ok: boolean) => void) | null = null;
 
@@ -30,7 +33,8 @@ export class Controller {
     const loaded = this.session.load();
     this.messages = [{ role: "system" as const, content: deps.systemPrompt }, ...loaded.messages];
     const s: UIState = {
-      chat: toChatItems(loaded.records),
+      chat: toChatItems(loaded.records).slice(-MAX_CHAT_ITEMS),
+      chatVersion: 0,
       toolLog: [],
       title: toTitle(loaded.records),
       model: deps.model,
@@ -47,7 +51,7 @@ export class Controller {
       suggestIdx: -1,
       inputKey: 0,
     };
-    if (loaded.records.length) s.chat.push({ kind: "meta", content: `resumindo sessão ${this.session.id} (${loaded.messages.length} mensagens)` });
+    if (loaded.records.length) appendChat(s, { kind: "meta", content: `resumindo sessão ${this.session.id} (${loaded.messages.length} mensagens)` });
     this.state = s;
   }
 
@@ -68,6 +72,13 @@ export class Controller {
 
   onToolStream(p: unknown, prefix = ""): void {
     toolStream(this.state, p, prefix);
+    this.bumpStream();
+  }
+
+  private bumpStream(): void {
+    const now = Date.now();
+    if (now - this.lastStreamBump < 33) return;
+    this.lastStreamBump = now;
     this.bump();
   }
 
@@ -93,12 +104,15 @@ export class Controller {
       return;
     }
     const s = this.state;
-    s.chat.push({ kind: "user", content: text });
+    appendChat(s, { kind: "user", content: text });
     s.busy = true;
     this.interrupted = false;
     this.session.append({ ts: Date.now(), type: "user", payload: { content: text } });
     this.messages.push({ role: "user", content: text });
     this.maybeEnvContext();
+    if (estimateTokens(this.messages) >= s.threshold) {
+      try { await compact(this); } catch (e) { s.notice = `compactação falhou: ${e instanceof Error ? e.message : String(e)}`; }
+    }
     this.bump();
     const titlePromise = s.title
       ? Promise.resolve<void>()
@@ -122,15 +136,15 @@ export class Controller {
         bus: this.deps.bus,
         onText: (t) => {
           const last = s.chat[s.chat.length - 1];
-          if (last.kind === "assistant") last.content += t;
-          else s.chat.push({ kind: "assistant", content: t });
-          this.bump();
+          if (last.kind === "assistant") last.content = appendCapped(last.content, t, MAX_VISIBLE_STREAM_CHARS);
+          else appendChat(s, { kind: "assistant", content: appendCapped("", t, MAX_VISIBLE_STREAM_CHARS) });
+          this.bumpStream();
         },
         onReasoning: (t) => {
           const last = s.chat[s.chat.length - 1];
-          if (last.kind === "thinking") last.content += t;
-          else s.chat.push({ kind: "thinking", content: t });
-          this.bump();
+          if (last.kind === "thinking") last.content = appendCapped(last.content, t, MAX_VISIBLE_STREAM_CHARS);
+          else appendChat(s, { kind: "thinking", content: appendCapped("", t, MAX_VISIBLE_STREAM_CHARS) });
+          this.bumpStream();
         },
         interrupted: () => this.interrupted,
       });

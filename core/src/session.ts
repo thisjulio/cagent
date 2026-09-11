@@ -37,10 +37,16 @@ export class Session {
       .split("\n")
       .filter(Boolean)
       .map((l) => JSON.parse(l) as SessionRecord);
+    const compacted = records.findLastIndex((r) => r.type === "meta" && r.payload.kind === "compacted");
+    const effective = compacted === -1
+      ? records
+      : [...records.slice(0, compacted).filter((r) => r.type === "meta" && r.payload.kind === "title"), ...records.slice(compacted)];
     const messages: Message[] = [];
-    for (const r of records) {
+    for (const r of effective) {
       const p = r.payload;
-      if (r.type === "user") {
+      if (r.type === "meta" && p.kind === "compacted") {
+        messages.push({ role: "user", content: `[resumo da conversa anterior]\n${String(p.summary ?? "")}` });
+      } else if (r.type === "user") {
         messages.push({ role: "user", content: String(p.content ?? "") });
       } else if (r.type === "assistant") {
         messages.push({
@@ -52,7 +58,7 @@ export class Session {
         messages.push({ role: "tool", tool_call_id: String(p.tool_call_id ?? ""), content: String(p.content ?? "") });
       }
     }
-    return { records, messages };
+    return { records: effective, messages };
   }
 
   static list(dir?: string): { id: string; updated: string; title: string }[] {

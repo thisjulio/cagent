@@ -50,4 +50,18 @@ describe("sessões JSONL", () => {
     const loaded = new Session("inexistente", dir).load();
     expect(loaded.messages).toEqual([]);
   });
+
+  it("load retoma do último resumo em vez de reconstruir o histórico antigo", () => {
+    const s = new Session("compactada", dir);
+    s.append({ ts: 1, type: "user", payload: { content: "antiga" } });
+    s.append({ ts: 2, type: "assistant", payload: { content: "resposta antiga" } });
+    s.append({ ts: 3, type: "meta", payload: { kind: "compacted", summary: "decisão importante" } });
+    s.append({ ts: 4, type: "user", payload: { content: "nova" } });
+    const loaded = new Session(s.id, dir).load();
+    expect(loaded.messages).toEqual([
+      { role: "user", content: "[resumo da conversa anterior]\ndecisão importante" },
+      { role: "user", content: "nova" },
+    ]);
+    expect(loaded.records).toHaveLength(2);
+  });
 });

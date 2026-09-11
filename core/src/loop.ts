@@ -1,6 +1,7 @@
 import { applyToolOverrides, overrideNameMap, type LlmCallOptions, type Message, type ProviderAdapter, type ToolArgs, type ToolDefinition } from "@cagent/sdk";
 import type { EventBus } from "./events";
 import { runToolPipeline, type ToolAsk } from "./tools";
+import { appendCapped, MAX_RESPONSE_CHARS } from "./stream-buffer";
 
 export interface StreamOpts {
   adapter: ProviderAdapter;
@@ -30,7 +31,7 @@ export async function streamOnce(
       for await (const chunk of opts.adapter.stream(request)) {
         if (opts.interrupted?.()) break;
         if (chunk.type === "text") {
-          text += chunk.text;
+          text = appendCapped(text, chunk.text, MAX_RESPONSE_CHARS);
           opts.onText?.(chunk.text);
         } else if (chunk.type === "reasoning") {
           opts.onReasoning?.(chunk.text);

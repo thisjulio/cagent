@@ -47,3 +47,16 @@ test("bash respeita timeout", async () => {
   expect(result.isError).toBe(true);
   expect(Date.now() - started).toBeLessThan(3000);
 });
+
+test("bash limita saída acumulada", async () => {
+  const registry = new Registry();
+  const bus = new EventBus();
+  await loadPlugins(
+    { plugins: [{ name: "bash", path: "./plugins/bash" }], allowlist: [] },
+    registry,
+    bus,
+  );
+  const result = await registry.tool("bash")!.execute({ command: "yes x | head -c 200000" });
+  expect(result.output).toContain("saida truncada");
+  expect(result.output.length).toBeLessThan(132000);
+});

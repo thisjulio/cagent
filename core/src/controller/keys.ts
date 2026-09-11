@@ -40,6 +40,10 @@ export function onKey(c: Controller, key: InputKey, input: string): void {
     c.bump();
     return;
   }
+  if (key.return) {
+    void c.submit(s.input);
+    return;
+  }
   if (key.ctrl && input === "o") c.toggleToolExpand();
   else if (key.escape) c.interrupt();
 }

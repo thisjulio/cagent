@@ -3,11 +3,7 @@ import { Session, estimateTokens, serializeMessages } from "../session";
 import { splitRoute } from "../route";
 import type { ChatItem } from "./state";
 import type { Controller } from "./controller";
-
-// ponytail: <Static> só acumula itens; limpar o scrollback via escape codes é a única forma de esvaziar a tela
-export function clearScrollback(): void {
-  if (process.stdout.isTTY) process.stdout.write("\x1b[3J\x1b[2J\x1b[H");
-}
+import { appendChat, clearScrollback, MAX_CHAT_ITEMS } from "./chat-buffer";
 
 type LoadedRecord = { type: "user" | "assistant" | "tool" | "meta"; payload: Record<string, unknown> };
 
@@ -33,6 +29,7 @@ export function startNewSession(c: Controller): void {
   c.interrupted = false;
   const s = c.state;
   s.chat = [];
+  s.chatVersion += 1;
   s.toolLog = [];
   s.title = "";
   s.busy = false;
@@ -53,9 +50,10 @@ export function restoreSession(c: Controller, id: string): void {
   const loaded = session.load();
   c.session = session;
   c.messages = [{ role: "system" as const, content: c.deps.systemPrompt }, ...loaded.messages];
-  c.state.chat = toChatItems(loaded.records);
+  c.state.chat = toChatItems(loaded.records).slice(-MAX_CHAT_ITEMS);
+  c.state.chatVersion += 1;
   c.state.title = toTitle(loaded.records);
-  c.state.chat.push({ kind: "meta", content: `restaurado ${id}` });
+  appendChat(c.state, { kind: "meta", content: `restaurado ${id}` });
   c.state.sessionList = null;
   c.state.tokens = estimateTokens(c.messages);
   c.bump();
@@ -137,7 +135,7 @@ export async function compact(c: Controller): Promise<void> {
   c.messages.length = 1;
   c.messages.push({ role: "user", content: `[resumo da conversa anterior]\n${summary}` }, ...rest);
   c.session.append({ ts: Date.now(), type: "meta", payload: { kind: "compacted", summary } });
-  s.chat.push({ kind: "meta", content: `compactado: ${est} → ${estimateTokens(c.messages)} tokens` });
+  appendChat(s, { kind: "meta", content: `compactado: ${est} → ${estimateTokens(c.messages)} tokens` });
   s.tokens = estimateTokens(c.messages);
   c.bump();
 }

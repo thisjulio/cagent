@@ -13,6 +13,7 @@ import { InputArea } from "./InputArea";
 
 export function App({ c }: { c: Controller }) {
   const [, setV] = useState(0);
+  const [inputOffset, setInputOffset] = useState(0);
   useEffect(() => {
     c.bump = () => setV((v) => v + 1);
     const onResize = () => c.bump();
@@ -27,7 +28,7 @@ export function App({ c }: { c: Controller }) {
   return (
     <Box flexDirection="column">
       <Box flexDirection="column">
-        <Static items={s.chat.slice(0, last)} style={{ width: process.stdout.columns }}>
+        <Static key={s.chatVersion} items={s.chat.slice(0, last)} style={{ width: process.stdout.columns }}>
           {(it, i) => <ChatItemRow it={it} streaming={false} key={`c${i}`} />}
         </Static>
         {s.chat.length > 0 ? <ChatItemRow it={s.chat[last]} streaming={s.busy} /> : null}
@@ -43,7 +44,7 @@ export function App({ c }: { c: Controller }) {
         ) : s.pendingAsk ? (
           <PendingAsk ask={s.pendingAsk} />
         ) : (
-          <InputArea input={s.input} inputKey={s.inputKey} busy={s.busy} running={running} suggest={s.suggest} onChange={(v) => c.setInput(v)} onSubmit={(v) => c.submit(v)} />
+          <InputArea input={s.input} inputKey={s.inputKey} busy={s.busy} running={running} suggest={s.suggest} offset={inputOffset} setOffset={setInputOffset} onChange={(v) => c.setInput(v)} onSubmit={(v) => c.submit(v)} />
         )}
         {s.notice ? <Text dimColor>{s.notice}</Text> : null}
       </Box>

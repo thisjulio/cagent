@@ -8,9 +8,26 @@ interface RunOptions {
   emit: (stream: "stdout" | "stderr", chunk: string) => void;
 }
 
+const MAX_OUTPUT_CHARS = 128 * 1024;
+type OutputBuffer = { parts: string[]; length: number; truncated: boolean };
+
+function capture(buffer: OutputBuffer, chunk: string): string {
+  const remaining = MAX_OUTPUT_CHARS - buffer.length;
+  if (remaining <= 0) { buffer.truncated = true; return ""; }
+  const kept = chunk.slice(0, remaining);
+  buffer.parts.push(kept);
+  buffer.length += kept.length;
+  if (kept.length < chunk.length) buffer.truncated = true;
+  return kept;
+}
+
+function output(buffer: OutputBuffer): string {
+  return buffer.parts.join("") + (buffer.truncated ? "\n[saida truncada para preservar memoria]" : "");
+}
+
 function runCommand(opts: RunOptions): Promise<{ code: number; stdout: string; stderr: string; timedOut: boolean; error?: string }> {
-  const out: string[] = [];
-  const err: string[] = [];
+  const out: OutputBuffer = { parts: [], length: 0, truncated: false };
+  const err: OutputBuffer = { parts: [], length: 0, truncated: false };
   return new Promise((resolve) => {
     let timedOut = false;
     const child = spawn(opts.command, { shell: true, cwd: opts.workdir, env: process.env });
@@ -19,20 +36,20 @@ function runCommand(opts: RunOptions): Promise<{ code: number; stdout: string; s
       child.kill("SIGTERM");
     }, opts.timeout);
     child.stdout.on("data", (chunk: Buffer) => {
-      out.push(chunk.toString("utf8"));
-      opts.emit("stdout", chunk.toString("utf8"));
+      const text = capture(out, chunk.toString("utf8"));
+      if (text) opts.emit("stdout", text);
     });
     child.stderr.on("data", (chunk: Buffer) => {
-      err.push(chunk.toString("utf8"));
-      opts.emit("stderr", chunk.toString("utf8"));
+      const text = capture(err, chunk.toString("utf8"));
+      if (text) opts.emit("stderr", text);
     });
     child.on("error", (e: Error) => {
       clearTimeout(timer);
-      resolve({ code: -1, stdout: out.join(""), stderr: err.join(""), timedOut, error: e.message });
+      resolve({ code: -1, stdout: output(out), stderr: output(err), timedOut, error: e.message });
     });
     child.on("close", (code) => {
       clearTimeout(timer);
-      resolve({ code, stdout: out.join(""), stderr: err.join(""), timedOut });
+      resolve({ code, stdout: output(out), stderr: output(err), timedOut });
     });
   });
 }

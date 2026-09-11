@@ -1,5 +1,6 @@
 import type { ToolArgs, ToolDefinition } from "@cagent/sdk";
 import type { EventBus } from "./events";
+import { appendCapped, MAX_TOOL_OUTPUT_CHARS } from "./stream-buffer";
 
 export type ToolAsk = (tool: ToolDefinition, args: ToolArgs) => Promise<boolean>;
 
@@ -24,7 +25,7 @@ export async function runToolPipeline(
   try {
     const result = await tool.execute(args);
     bus.emit("tools/post", { tool: tool.name, result });
-    return result;
+    return { ...result, output: appendCapped("", result.output, MAX_TOOL_OUTPUT_CHARS) };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     bus.emit("tools/post", { tool: tool.name, error: msg });

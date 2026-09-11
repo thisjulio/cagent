@@ -17,7 +17,6 @@ export type ChatItem = {
 export type ToolLogEntry = {
   tool: string;
   cmd: string;
-  output?: string;
   isError?: boolean;
   denied?: boolean;
   running?: boolean;
@@ -25,6 +24,7 @@ export type ToolLogEntry = {
 
 export type UIState = {
   chat: ChatItem[];
+  chatVersion: number;
   toolLog: ToolLogEntry[];
   model: string;
   tokens: number;
