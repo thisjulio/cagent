@@ -432,6 +432,7 @@ function decodeHtml(s: string): string {
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
+    .replace(/&#x27;/g, "'")
     .replace(/&#39;/g, "'")
     .replace(/&amp;/g, "&");
 }
@@ -447,17 +448,24 @@ function HighlightedCode({ code, language }: { code: string; language?: string }
   } catch {
     return <Text>{code}</Text>;
   }
-  const out: React.ReactNode[] = [];
-  const re = /<span class="([^"]+)">([\s\S]*?)<\/span>/g;
-  let last = 0;
+  // ponytail: parser com pilha para spans aninhados (hljs-function envolve hljs-params); regex antigo vazava markup cru
+  const segs: { text: string; color: string | undefined }[] = [];
+  const stack: (string | undefined)[] = [];
+  const re = /<span class="([^"]+)">|<\/span>|([^<]+)/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(html))) {
-    if (m.index > last) out.push(<Text key={`t${last}`}>{decodeHtml(html.slice(last, m.index))}</Text>);
-    out.push(<Text key={`s${m.index}`} color={HL_COLORS[m[1].split(" ")[0]]}>{decodeHtml(m[2])}</Text>);
-    last = m.index + m[0].length;
+    if (m[1] !== undefined) stack.push(HL_COLORS[m[1].split(" ")[0]]);
+    else if (m[0] === "</span>") stack.pop();
+    else {
+      const text = decodeHtml(m[2]);
+      if (!text) continue;
+      const color = stack[stack.length - 1];
+      const last = segs[segs.length - 1];
+      if (last && last.color === color) last.text += text;
+      else segs.push({ text, color });
+    }
   }
-  if (last < html.length) out.push(<Text key="tail">{decodeHtml(html.slice(last))}</Text>);
-  return <Text>{out}</Text>;
+  return <Text>{segs.map((s, i) => <Text key={i} color={s.color}>{s.text}</Text>)}</Text>;
 }
 
 function Markdown({ content }: { content: string }) {
@@ -479,8 +487,19 @@ function Markdown({ content }: { content: string }) {
           h2: ({ children }) => <Text bold>{children}</Text>,
           h3: ({ children }) => <Text bold>{children}</Text>,
           ul: ({ children }) => <Text>{children}</Text>,
-          ol: ({ children }) => <Text>{children}</Text>,
-          li: ({ children }) => <Text>{"  • "}{children}</Text>,
+          // ponytail: children do ol vem como ["\n", <li>, "\n", <li>, ...] — filtra elementos antes do cloneElement
+          ol: ({ children }) => (
+            <Text>
+              {React.Children.toArray(children)
+                .filter((c) => React.isValidElement(c))
+                .map((child, i) =>
+                  React.cloneElement(child as React.ReactElement<Record<string, unknown>>, { number: i + 1 })
+                )}
+            </Text>
+          ),
+          li: ({ children, number }: { children: unknown; number?: number }) => (
+            <Text>{number ? `  ${number}. ` : "  • "}{children}</Text>
+          ),
           blockquote: ({ children }) => <Text dimColor>{"  "}{children}</Text>,
           p: ({ children }) => <Text>{children}</Text>,
           pre: ({ children }) => <Text>{children}</Text>,

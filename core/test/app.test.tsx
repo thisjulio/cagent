@@ -53,6 +53,19 @@ describe("renderToString", () => {
     expect(out).toContain("•");
   });
 
+  it("lista numerada renderiza com números e código sem markup cru", () => {
+    const c = new Controller(deps());
+    c.state.chat.push({
+      kind: "assistant",
+      content: "1. Crie uma pasta:\n2. Registre:\n\n   ```ts\n   const a = 1;\n   ```",
+    });
+    const out = renderToString(React.createElement(App, { c }));
+    expect(out).toContain("1.");
+    expect(out).toContain("2.");
+    expect(out).not.toContain("<span");
+    expect(out).not.toContain("hljs-");
+  });
+
   it("tool item renderiza com cmd e dica de expandir", () => {
     const c = new Controller(deps());
     c.onToolPre({ tool: "bash", args: { command: "git status" } });
