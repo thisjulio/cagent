@@ -23,8 +23,18 @@ cagent
 Para instalar uma versão específica:
 
 ```bash
-  curl -fsSL https://raw.githubusercontent.com/thisjulio/cagent/main/install.sh | bash -s -- --version 0.1.1
+  curl -fsSL https://raw.githubusercontent.com/thisjulio/cagent/main/install.sh | bash -s -- --version 0.1.4
 ```
+
+Depois de instalado, atualize para a última Release com:
+
+```bash
+cagent upgrade
+```
+
+Se a versão atual já for a mais recente, o cagent informa que não há upgrade.
+O usuário que instalou em um diretório protegido, como `/usr/local/bin`, deve
+executar o comando com a mesma permissão usada na instalação.
 
 ## Configuração
 
