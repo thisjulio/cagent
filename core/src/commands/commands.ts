@@ -16,6 +16,8 @@ const commands: Record<string, SlashHandler> = {
   },
 };
 
+export const commandNames = Object.keys(commands);
+
 export function runSlash(c: Controller, text: string): void | Promise<void> {
   const space = text.indexOf(" ");
   const name = space === -1 ? text : text.slice(0, space);

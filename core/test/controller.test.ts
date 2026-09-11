@@ -193,6 +193,25 @@ describe("controller", () => {
     expect(c.state.title).toBe("mensagem de teste");
   });
 
+  it("tab completa/cicla sugestões de /... no input", () => {
+    const c = new Controller(deps());
+    c.setInput("/se");
+    expect(c.state.suggest).toEqual(["/session", "/sessions"]);
+    c.handleKey({ tab: true }, "");
+    expect(c.state.input).toBe("/session");
+    c.handleKey({ tab: true }, "");
+    expect(c.state.input).toBe("/sessions");
+    c.handleKey({ tab: true }, "");
+    expect(c.state.input).toBe("/session");
+  });
+
+  it("tab sem sugestão não muda o input", () => {
+    const c = new Controller(deps());
+    c.setInput("oi");
+    c.handleKey({ tab: true }, "");
+    expect(c.state.input).toBe("oi");
+  });
+
   it("/new cria sessão nova e limpa estado", async () => {
     const c = new Controller(deps());
     await c.submit("oi");

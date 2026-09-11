@@ -1,5 +1,6 @@
 import type { Message, ToolArgs, ToolDefinition, ProviderAdapter } from "@cagent/sdk";
 import { runSlash } from "../commands/commands";
+import { slashSuggestions } from "../commands/suggest";
 import { runTurn } from "../loop";
 import { Session, estimateTokens } from "../session";
 import { splitRoute } from "../route";
@@ -41,6 +42,8 @@ export class Controller {
       modelPicker: null,
       sessionList: null,
       helpOpen: false,
+      suggest: [],
+      suggestIdx: -1,
     };
     if (loaded.records.length) s.chat.push({ kind: "meta", content: `resumindo sessão ${this.session.id} (${loaded.messages.length} mensagens)` });
     this.state = s;
@@ -219,6 +222,15 @@ export class Controller {
 
   handleKey(key: InputKey, input: string): void {
     const s = this.state;
+    if (key.tab) {
+      // ponytail: suggestIdx inicia em -1; o 1o tab cai na 1a sugestao (0)
+      if (s.suggest.length) {
+        s.suggestIdx = (s.suggestIdx + 1) % s.suggest.length;
+        s.input = s.suggest[s.suggestIdx];
+      }
+      this.bump();
+      return;
+    }
     if (s.modelPicker) {
       if (key.escape) s.modelPicker = null;
       else if (input && !/^[1-9]$/.test(input)) s.modelPicker.query += input;
@@ -247,7 +259,10 @@ export class Controller {
   }
 
   setInput(v: string): void {
-    this.state.input = v;
+    const s = this.state;
+    s.input = v;
+    s.suggest = slashSuggestions(v);
+    s.suggestIdx = -1;
     this.bump();
   }
 }

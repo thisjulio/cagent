@@ -37,6 +37,8 @@ export type UIState = {
   sessionList: { id: string; updated: string; title: string }[] | null;
   helpOpen: boolean;
   title: string;
+  suggest: string[];
+  suggestIdx: number;
 };
 
 export type InputKey = {

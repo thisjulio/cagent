@@ -43,7 +43,7 @@ export function App({ c }: { c: Controller }) {
         ) : s.pendingAsk ? (
           <PendingAsk ask={s.pendingAsk} />
         ) : (
-          <InputArea input={s.input} busy={s.busy} running={running} onChange={(v) => c.setInput(v)} onSubmit={(v) => c.submit(v)} />
+          <InputArea input={s.input} busy={s.busy} running={running} suggest={s.suggest} onChange={(v) => c.setInput(v)} onSubmit={(v) => c.submit(v)} />
         )}
         {s.notice ? <Text dimColor>{s.notice}</Text> : null}
       </Box>

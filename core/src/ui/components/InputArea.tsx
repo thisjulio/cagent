@@ -6,6 +6,7 @@ export function InputArea(props: {
   input: string;
   busy: boolean;
   running?: string;
+  suggest?: string[];
   onChange: (v: string) => void;
   onSubmit: (v: string) => void;
 }) {
@@ -21,6 +22,9 @@ export function InputArea(props: {
         <Text color="cyan">❯ </Text>
         <TextInput value={props.input} onChange={props.onChange} onSubmit={props.onSubmit} />
       </Box>
+      {props.suggest && props.suggest.length > 0 ? (
+        <Text dimColor>{"  tab: " + props.suggest.join("  ")}</Text>
+      ) : null}
     </>
   );
 }
