@@ -34,7 +34,7 @@ a.ts
  c
 *** End patch`,
     );
-    expect(p).toEqual([{ path: "a.ts", hunks: [{ oldLines: ["a", "b", "c"], newLines: ["a", "c"] }] }]);
+    expect(p).toEqual([{ path: "a.ts", op: "update", hunks: [{ oldLines: ["a", "b", "c"], newLines: ["a", "c"] }] }]);
   });
 
   it("patch: sem blocos lança erro", () => {
@@ -57,8 +57,31 @@ gamma
   });
 
   it("applyHunks: hunk sem contexto substitui o arquivo", () => {
-    const out = applyHunks(["a", "b"], { path: "x", hunks: [{ oldLines: [], newLines: ["z"] }] }, 0.85);
+    const out = applyHunks(["a", "b"], { path: "x", op: "update", hunks: [{ oldLines: [], newLines: ["z"] }] }, 0.85);
     expect(out.error).toBeUndefined();
     expect(out.lines).toEqual(["z"]);
+  });
+
+  it("patch: formato Codex real (Begin Patch maiúsculo + Update File:)", () => {
+    const p = parseApplyPatch(
+      `*** Begin Patch
+*** Update File: src/a.ts
+@@ -1,3 +1,2 @@
+ a
+-b
+ c
+*** End Patch`,
+    );
+    expect(p).toEqual([{ path: "src/a.ts", op: "update", hunks: [{ oldLines: ["a", "b", "c"], newLines: ["a", "c"] }] }]);
+  });
+
+  it("patch: Add File (op add, conteúdo vira newLines)", () => {
+    const p = parseApplyPatch(`*** Begin Patch\n*** Add File: src/novo.ts\n+um\n+dois\n*** End Patch`);
+    expect(p).toEqual([{ path: "src/novo.ts", op: "add", hunks: [{ oldLines: [], newLines: ["um", "dois"] }] }]);
+  });
+
+  it("patch: Delete File (op delete, sem hunks)", () => {
+    const p = parseApplyPatch(`*** Begin Patch\n*** Delete File: src/velho.ts\n*** End Patch`);
+    expect(p).toEqual([{ path: "src/velho.ts", op: "delete", hunks: [] }]);
   });
 });

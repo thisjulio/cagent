@@ -5,7 +5,7 @@ export const CODE_TOOLS_OVERRIDES: ToolOverrides = {
   edit_file: {
     name: "apply_patch",
     description:
-      "Edita arquivos com um patch no formato *** Begin patch / *** End patch (caminho do arquivo e @@ hunks dentro do patch).",
+      "Edita/cria/remove arquivos com um patch no formato *** Begin patch / *** End patch (*** Update/Add/Delete File: com caminho e @@ hunks).",
     parameters: {
       type: "object",
       properties: {

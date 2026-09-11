@@ -32,8 +32,23 @@ interface Target {
 async function processTarget(t: Target, o: { seed: string; blocks: number; patch: number; out: string[] }): Promise<boolean> {
   let abs: string;
   try { abs = guardPath(t.path); } catch (e) { o.out.push(errorText("E_PATH", `${t.path}: ${e instanceof Error ? e.message : String(e)}`)); return false; }
+  const op = t.file?.op ?? "update";
+  if (op === "delete") {
+    try { fs.rmSync(abs); } catch { o.out.push(errorText("E_NOT_FOUND", t.path)); return false; }
+    recordWrite(abs, "");
+    o.out.push(`OK ${rel(abs)} (removido)`);
+    return true;
+  }
   let original: string;
-  try { original = fs.readFileSync(abs, "utf8"); } catch { o.out.push(errorText("E_NOT_FOUND", t.path)); return false; }
+  let missing = false;
+  try { original = fs.readFileSync(abs, "utf8"); }
+  catch { missing = true; original = ""; }
+  if (op === "add") {
+    if (!missing) { o.out.push(errorText("E_EXISTS", `${t.path}: arquivo já existe — use Update (blocos/patch) em vez de Add`)); return false; }
+  } else if (missing) {
+    o.out.push(errorText("E_NOT_FOUND", t.path));
+    return false;
+  }
   const prev = getRead(abs);
   if (prev && prev.hash !== fileHash(abs)) {
     o.out.push(errorText("E_STALE", `${t.path}: arquivo mudou desde o último read_file`));
@@ -41,7 +56,7 @@ async function processTarget(t: Target, o: { seed: string; blocks: number; patch
   }
   const body = original.startsWith("\uFEFF") ? original.slice(1) : original;
   const eol = body.includes("\r\n") ? "\r\n" : "\n";
-  const oldLines = body.split(eol);
+  const oldLines = body.length ? body.split(eol) : [];
   const applied = t.regions ? applyRegions(oldLines, t.regions, o.blocks) : applyHunks(oldLines, t.file!, o.patch);
   if (applied.error) {
     const n = bumpFailure(abs, o.seed);
@@ -107,7 +122,7 @@ export function editFileTool(ctx: PluginContext) {
 
   return defineTool(
     "edit_file",
-    "Edita arquivos por blocos << SEARCH >> / << REPLACE >> (arg blocks) ou patch *** Begin patch (arg patch, com o caminho dentro do patch). Falhas repetidas: 2ª pede read_file, 3ª é fatal.",
+    "Edita/cria/remove arquivos por blocos << SEARCH >> / << REPLACE >> (arg blocks) ou patch *** Begin patch (arg patch, com *** Update/Add/Delete File: e @@ hunks). Falhas repetidas: 2ª pede read_file, 3ª é fatal.",
     {
       type: "object",
       properties: {

@@ -1,6 +1,7 @@
 export type ErrorCode =
   | "E_PATH"
   | "E_NOT_FOUND"
+  | "E_EXISTS"
   | "E_STALE"
   | "E_NO_MATCH"
   | "E_AMBIGUOUS"

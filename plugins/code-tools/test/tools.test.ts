@@ -111,6 +111,36 @@ a7.ts
     expect(fs.readFileSync(path.join(ws, "a7.ts"), "utf8")).toBe("a\nc\n");
   });
 
+  it("edit_file: patch Add File cria o arquivo", async () => {
+    const { registry } = await freshRegistry();
+    const r = await registry.tool("edit_file")!.execute({
+      patch: `*** Begin Patch\n*** Add File: novo.ts\n+um\n+dois\n*** End Patch`,
+    });
+    expect(r.isError).toBeFalsy();
+    expect(fs.readFileSync(path.join(ws, "novo.ts"), "utf8")).toBe("um\ndois");
+  });
+
+  it("edit_file: Add em arquivo existente rejeita (E_EXISTS)", async () => {
+    const { registry } = await freshRegistry();
+    await registry.tool("write_file")!.execute({ path: "exist.ts", content: "a\n" });
+    const r = await registry.tool("edit_file")!.execute({
+      patch: `*** Begin Patch\n*** Add File: exist.ts\n+um\n*** End Patch`,
+    });
+    expect(r.isError).toBe(true);
+    expect(r.output).toContain("ERRO E_EXISTS");
+    expect(fs.readFileSync(path.join(ws, "exist.ts"), "utf8")).toBe("a\n");
+  });
+
+  it("edit_file: patch Delete File remove o arquivo", async () => {
+    const { registry } = await freshRegistry();
+    await registry.tool("write_file")!.execute({ path: "del.ts", content: "x\n" });
+    const r = await registry.tool("edit_file")!.execute({
+      patch: `*** Begin Patch\n*** Delete File: del.ts\n*** End patch`,
+    });
+    expect(r.isError).toBeFalsy();
+    expect(fs.existsSync(path.join(ws, "del.ts"))).toBe(false);
+  });
+
   it("edit_file: múltiplos blocos em uma chamada", async () => {
     const { registry } = await freshRegistry();
     await registry.tool("write_file")!.execute({ path: "a8.ts", content: "x\ny\nz\n" });
