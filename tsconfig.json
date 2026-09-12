@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "allowJs": false,
+    "types": ["bun-types"]
+  },
+  "include": [
+    "core/src/**/*.ts",
+    "core/src/**/*.tsx",
+    "sdk/src/**/*.ts",
+    "plugins/*/src/**/*.ts",
+    "release.ts"
+  ],
+  "exclude": ["node_modules", "graphify-out"]
+}
