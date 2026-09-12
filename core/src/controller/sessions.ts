@@ -3,7 +3,7 @@ import { Session, estimateTokens, serializeMessages } from "../session";
 import { splitRoute } from "../route";
 import type { ChatItem } from "./state";
 import type { Controller } from "./controller";
-import { appendChat, clearScrollback, MAX_CHAT_ITEMS } from "./chat-buffer";
+import { appendChat, MAX_CHAT_ITEMS } from "./chat-buffer";
 
 type LoadedRecord = { type: "user" | "assistant" | "tool" | "meta"; payload: Record<string, unknown> };
 
@@ -23,7 +23,6 @@ export function toTitle(records: LoadedRecord[]): string {
 }
 
 export function startNewSession(c: Controller): void {
-  clearScrollback();
   c.session = new Session(undefined, c.deps.sessionDir);
   c.messages = [{ role: "system" as const, content: c.deps.systemPrompt }];
   c.interrupted = false;
@@ -45,7 +44,6 @@ export function startNewSession(c: Controller): void {
 export function restoreSession(c: Controller, id: string): void {
   const entry = c.state.sessionList?.find((x) => x.id === id);
   if (!entry) return;
-  clearScrollback();
   const session = new Session(id);
   const loaded = session.load();
   c.session = session;
