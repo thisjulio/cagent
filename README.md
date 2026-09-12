@@ -108,3 +108,7 @@ git push origin v0.1.0
 
 O projeto está em desenvolvimento ativo. APIs de plugins e formatos de
 configuração podem mudar antes da versão 1.0.
+
+## Licença
+
+MIT. Consulte [`LICENSE`](LICENSE).

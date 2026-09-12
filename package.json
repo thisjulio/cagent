@@ -1,6 +1,7 @@
 {
   "name": "cagent",
   "description": "Agente de código extensível em Bun/TypeScript com plugins e UI de terminal",
+  "license": "MIT",
   "private": true,
   "type": "module",
   "workspaces": ["core", "sdk", "plugins/*"],
