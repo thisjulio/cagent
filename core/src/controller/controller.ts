@@ -81,7 +81,8 @@ export class Controller {
       const output = formatSkillToolOutput(name, activation.directory, activation.content);
       this.messages.push({ role: "assistant", content: "", tool_calls: [toolCall] });
       this.messages.push({ role: "tool", tool_call_id: id, content: output });
-      appendChat(this.state, { kind: "meta", content: `skill activated: ${name}` });
+      toolPre(this.state, { tool: "skill", args: { name } });
+      toolPost(this.state, { tool: "skill", result: { output } });
       this.session.append({
         ts: Date.now(),
         type: "meta",
@@ -98,7 +99,7 @@ export class Controller {
         payload: { tool_call_id: id, content: output, toolName: "skill" },
       });
     }
-    this.state.notice = `skill loaded: ${name}`;
+    this.state.notice = "";
     this.bump();
     return true;
   }

@@ -46,7 +46,8 @@ describe("controller", () => {
     expect(events.some((event) => event.includes("Interview the user before implementation."))).toBe(true);
     expect(events.some((event) => event.includes("implement clipboard support"))).toBe(true);
     expect(c.messages.some((message) => message.role === "tool" && message.content.includes("<skill_content name=\"grill-me\">"))).toBe(true);
-    expect(c.state.chat.some((item) => item.content === "skill activated: grill-me")).toBe(true);
+    expect(c.state.chat.some((item) => item.kind === "tool" && item.toolName === "skill" && item.content.includes("<skill_content name=\"grill-me\">"))).toBe(true);
+    expect(c.state.notice).toBe("");
   });
 
   it("does not duplicate an explicitly activated skill", async () => {

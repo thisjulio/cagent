@@ -21,7 +21,7 @@ export function toChatItems(records: LoadedRecord[]): ChatItem[] {
       return content ? [{ kind: "thinking", content }] : [];
     }
     if (r.type === "tool") return [{ kind: "tool", content: String(p.content ?? ""), toolName: p.toolName ? String(p.toolName) : String(p.tool_call_id ?? "") }];
-    if (p.kind === "skill-activated") return [{ kind: "meta", content: `skill activated: ${String(p.name ?? "")}` }];
+    if (p.kind === "skill-activated") return p.format === "tool-v1" ? [] : [{ kind: "meta", content: `skill activated: ${String(p.name ?? "")}` }];
     if (p.kind === "compacted") return [{ kind: "meta", content: "conversation compacted" }];
     return [];
   });

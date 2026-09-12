@@ -1,5 +1,7 @@
 import { useEffect, useRef } from "react";
-import type { TextareaRenderable } from "@opentui/core";
+import type { KeyEvent, TextareaRenderable } from "@opentui/core";
+import { useRenderer } from "@opentui/react";
+import { readClipboard } from "../../clipboard/clipboard";
 
 export function InputArea({
   input,
@@ -21,6 +23,7 @@ export function InputArea({
   onSubmit: (v: string) => void;
 }) {
   const textarea = useRef<TextareaRenderable>(null);
+  const renderer = useRenderer();
 
   useEffect(() => {
     const current = textarea.current;
@@ -45,6 +48,16 @@ export function InputArea({
             { name: "kpenter", action: "submit" },
             { name: "return", shift: true, action: "newline" },
           ]}
+          onKeyDown={(key: KeyEvent) => {
+            if (key.ctrl && key.name === "c" && key.shift) {
+              const selected = textarea.current?.getSelectedText() ?? "";
+              if (selected) renderer.copyToClipboardOSC52(selected);
+              return;
+            }
+            if (key.ctrl && key.name === "v") {
+              void paste(textarea.current, key.shift);
+            }
+          }}
           placeholder="type your next instruction"
           placeholderColor="#666666"
           onContentChange={() => {
@@ -59,4 +72,10 @@ export function InputArea({
       ) : null}
     </box>
   );
+}
+
+async function paste(textarea: TextareaRenderable | null, plain: boolean): Promise<void> {
+  if (!textarea) return;
+  const value = await readClipboard();
+  if (value !== undefined) textarea.insertText(plain ? value : value);
 }

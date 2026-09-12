@@ -3,6 +3,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { Session } from "../src/session";
+import { toChatItems } from "../src/controller/sessions";
 
 describe("JSONL sessions", () => {
   let dir: string;
@@ -88,6 +89,9 @@ describe("JSONL sessions", () => {
     expect(new Session(s.id, dir).load().messages).toEqual([
       { role: "assistant", content: "", tool_calls: [toolCall] },
       { role: "tool", tool_call_id: "skill-1", content: "<skill_content name=\"grill-me\">" },
+    ]);
+    expect(toChatItems(new Session(s.id, dir).load().records)).toEqual([
+      { kind: "tool", toolName: "skill", content: "<skill_content name=\"grill-me\">" },
     ]);
   });
 });

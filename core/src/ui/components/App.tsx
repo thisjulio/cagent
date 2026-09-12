@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { TextAttributes, type KeyEvent } from "@opentui/core";
-import { useKeyboard } from "@opentui/react";
+import { useKeyboard, useRenderer } from "@opentui/react";
 import type { Controller } from "../../controller/controller";
 import { filterModels } from "../../fuzzy";
 import { ChatViewport } from "./ChatViewport";
@@ -13,6 +13,7 @@ import { InputArea } from "./InputArea";
 
 export function App({ c }: { c: Controller }) {
   const [, setV] = useState(0);
+  const renderer = useRenderer();
 
   useEffect(() => {
     c.bump = () => setV((v) => v + 1);
@@ -26,6 +27,12 @@ export function App({ c }: { c: Controller }) {
     const input = key.sequence || (key.name === "space" ? " " : "");
     const overlay = s.helpOpen || s.modelPicker || s.sessionList || s.pendingAsk;
 
+    if (key.ctrl && key.shift && key.name === "c" && renderer.hasSelection) {
+      const selected = renderer.getSelection()?.getSelectedText() ?? "";
+      if (selected) renderer.copyToClipboardOSC52(selected);
+      key.preventDefault();
+      return;
+    }
     if (key.name === "tab") {
       c.handleKey({ tab: true }, "\t");
       key.preventDefault();
