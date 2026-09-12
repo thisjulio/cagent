@@ -52,7 +52,7 @@ function ThinkingRow({ it, streaming, showAgentLabel }: { it: ChatItem; streamin
       </text>
       {lines.map((line, lineIndex) => (
         <text key={`thinking-line-${lineIndex}`} attributes={TextAttributes.DIM}>
-          {"│  "}{plainLine(line) || " "}
+          <span fg="#d97757">│  </span>{plainLine(line) || " "}
         </text>
       ))}
     </box>
