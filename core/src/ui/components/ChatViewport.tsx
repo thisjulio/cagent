@@ -1,7 +1,7 @@
 import type { ChatItem } from "../../controller/state";
 import { ChatItemRow } from "./ChatItemRow";
 
-// offset 0 mostra o fim do histórico; offset positivo revela linhas anteriores.
+// Offset 0 shows the end of the history; a positive offset reveals earlier lines.
 export function ChatViewport({
   chat,
   busy,

@@ -15,7 +15,7 @@ const register: Plugin = (ctx) => {
   ctx.registerTool(editFileTool(ctx));
   ctx.promptSection(
     "code-tools",
-    "read_file antes de editar (registra o hash e detecta stale/reversão). edit_file aceita blocks (<< SEARCH >>/<< REPLACE >>) ou patch (*** Begin patch); 2ª falha pede read_file, 3ª é fatal. search (regex), list_files (glob), search_ast (AST com metavariáveis), write_file (cria/sobrescreve).",
+    "Use read_file before editing (records the hash and detects stale/reverted files). edit_file accepts blocks (<< SEARCH >>/<< REPLACE >>) or a patch (*** Begin patch); the second failure asks for read_file and the third is fatal. search (regex), list_files (glob), search_ast (AST with metavariables), write_file (creates/overwrites).",
   );
 };
 

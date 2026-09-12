@@ -27,8 +27,8 @@ async function freshRegistry(): Promise<{ registry: Registry; bus: EventBus }> {
   return { registry, bus };
 }
 
-describe("tools de code-tools", () => {
-  it("write_file cria e read_file lê com offset/limit", async () => {
+describe("code-tools tools", () => {
+  it("write_file creates and read_file reads with offset/limit", async () => {
     const { registry } = await freshRegistry();
     await registry.tool("write_file")!.execute({ path: "a1.ts", content: "l1\nl2\nl3\nl4\n" });
     const r = await registry.tool("read_file")!.execute({ path: "a1.ts", offset: 2, limit: 2 });
@@ -58,15 +58,15 @@ describe("tools de code-tools", () => {
     const edit = registry.tool("edit_file")!;
     const blocks = "<<< SEARCH\nzeta\n>>>\n<<< REPLACE\nZ\n>>>";
     const r1 = await edit.execute({ path: "a4.ts", blocks });
-    expect(r1.output).toContain("ERRO E_NO_MATCH");
+    expect(r1.output).toContain("ERROR E_NO_MATCH");
     const r2 = await edit.execute({ path: "a4.ts", blocks });
-    expect(r2.output).toContain("ERRO E_NO_MATCH");
+    expect(r2.output).toContain("ERROR E_NO_MATCH");
     expect(r2.output).toContain("use read_file");
     const r3 = await edit.execute({ path: "a4.ts", blocks });
-    expect(r3.output).toContain("ERRO E_REPEATED_FAILURE");
+    expect(r3.output).toContain("ERROR E_REPEATED_FAILURE");
   });
 
-  it("edit_file: stale bloqueia edição após mudança externa", async () => {
+  it("edit_file: stale blocks editing after an external change", async () => {
     const { registry } = await freshRegistry();
     await registry.tool("write_file")!.execute({ path: "a5.ts", content: "x\ny\n" });
     await registry.tool("read_file")!.execute({ path: "a5.ts" });
@@ -76,10 +76,10 @@ describe("tools de code-tools", () => {
       blocks: "<<< SEARCH\ny\n>>>\n<<< REPLACE\nY\n>>>",
     });
     expect(r.isError).toBe(true);
-    expect(r.output).toContain("ERRO E_STALE");
+    expect(r.output).toContain("ERROR E_STALE");
   });
 
-  it("read_file detecta reversão via hash", async () => {
+  it("read_file detects a revert through the hash", async () => {
     const { registry, bus } = await freshRegistry();
     const reverted: string[] = [];
     bus.on("code-tools/reverted", (p) => reverted.push(String((p as Record<string, unknown>).path)));
@@ -111,27 +111,27 @@ a7.ts
     expect(fs.readFileSync(path.join(ws, "a7.ts"), "utf8")).toBe("a\nc\n");
   });
 
-  it("edit_file: patch Add File cria o arquivo", async () => {
+  it("edit_file: Add File patch creates the file", async () => {
     const { registry } = await freshRegistry();
     const r = await registry.tool("edit_file")!.execute({
-      patch: `*** Begin Patch\n*** Add File: novo.ts\n+um\n+dois\n*** End Patch`,
+      patch: `*** Begin Patch\n*** Add File: new.ts\n+one\n+two\n*** End Patch`,
     });
     expect(r.isError).toBeFalsy();
-    expect(fs.readFileSync(path.join(ws, "novo.ts"), "utf8")).toBe("um\ndois");
+    expect(fs.readFileSync(path.join(ws, "new.ts"), "utf8")).toBe("one\ntwo");
   });
 
-  it("edit_file: Add em arquivo existente rejeita (E_EXISTS)", async () => {
+  it("edit_file: Add rejects an existing file (E_EXISTS)", async () => {
     const { registry } = await freshRegistry();
     await registry.tool("write_file")!.execute({ path: "exist.ts", content: "a\n" });
     const r = await registry.tool("edit_file")!.execute({
-      patch: `*** Begin Patch\n*** Add File: exist.ts\n+um\n*** End Patch`,
+      patch: `*** Begin Patch\n*** Add File: exist.ts\n+one\n*** End Patch`,
     });
     expect(r.isError).toBe(true);
-    expect(r.output).toContain("ERRO E_EXISTS");
+    expect(r.output).toContain("ERROR E_EXISTS");
     expect(fs.readFileSync(path.join(ws, "exist.ts"), "utf8")).toBe("a\n");
   });
 
-  it("edit_file: patch Delete File remove o arquivo", async () => {
+  it("edit_file: Delete File patch removes the file", async () => {
     const { registry } = await freshRegistry();
     await registry.tool("write_file")!.execute({ path: "del.ts", content: "x\n" });
     const r = await registry.tool("edit_file")!.execute({
@@ -141,7 +141,7 @@ a7.ts
     expect(fs.existsSync(path.join(ws, "del.ts"))).toBe(false);
   });
 
-  it("edit_file: múltiplos blocos em uma chamada", async () => {
+  it("edit_file: multiple blocks in one call", async () => {
     const { registry } = await freshRegistry();
     await registry.tool("write_file")!.execute({ path: "a8.ts", content: "x\ny\nz\n" });
     await registry.tool("read_file")!.execute({ path: "a8.ts" });
@@ -168,13 +168,13 @@ a7.ts
     expect(r.output).toContain("a10.ts");
   });
 
-  it("list_files lista por glob", async () => {
+  it("list_files lists by glob", async () => {
     const { registry } = await freshRegistry();
     const r = await registry.tool("list_files")!.execute({ pattern: "a9.ts" });
     expect(r.output).toBe("a9.ts");
   });
 
-  it("git sombra é criada em workspace não-git", async () => {
+  it("shadow Git is created in a non-Git workspace", async () => {
     expect(fs.existsSync(path.join(ws, ".cagent", ".shadow", ".git"))).toBe(true);
     const log = await runCmd("git", [
       "--git-dir",

@@ -1,4 +1,4 @@
-// ponytail: LCS O(n·m); suficiente para arquivos de código, degenera em arquivos gigantes
+// ponytail: LCS O(n·m); sufficient for code files, degrades on huge files.
 export function unifiedDiff(oldLines: string[], newLines: string[]): string {
   const n = oldLines.length;
   const m = newLines.length;

@@ -45,7 +45,7 @@ export class Session {
     for (const r of effective) {
       const p = r.payload;
       if (r.type === "meta" && p.kind === "compacted") {
-        messages.push({ role: "user", content: `[resumo da conversa anterior]\n${String(p.summary ?? "")}` });
+        messages.push({ role: "user", content: `[previous conversation summary]\n${String(p.summary ?? "")}` });
       } else if (r.type === "user") {
         messages.push({ role: "user", content: String(p.content ?? "") });
       } else if (r.type === "assistant") {
@@ -79,10 +79,10 @@ export class Session {
             if (r.type === "meta" && r.payload.kind === "title" && !title) title = String(r.payload.title ?? "");
             else if (r.type === "user" && !firstUser) firstUser = String(r.payload.content ?? "");
           } catch {
-            // linha inválida — ignora
+            // Ignore invalid lines.
           }
         }
-        return { id: f.slice(0, -6), updated: stats.mtime.toISOString(), title: (title || firstUser || "(vazio)").slice(0, 60) };
+        return { id: f.slice(0, -6), updated: stats.mtime.toISOString(), title: (title || firstUser || "(empty)").slice(0, 60) };
       })
       .sort((a, b) => a.updated.localeCompare(b.updated));
   }

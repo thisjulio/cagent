@@ -19,7 +19,7 @@ export function applyRegions(lines: string[], regions: Region[], threshold: numb
 export function applyHunks(lines: string[], file: PatchFile, threshold: number): { lines: string[]; error?: ApplyError } {
   const result = [...lines];
   for (const h of file.hunks) {
-    // ponytail: hunk sem contexto (só +) substitui o arquivo inteiro
+  // ponytail: a context-free hunk (only +) replaces the entire file.
     if (!h.oldLines.length) {
       result.length = 0;
       result.push(...h.newLines);

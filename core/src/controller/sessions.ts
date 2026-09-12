@@ -67,7 +67,7 @@ export function openSessions(c: Controller): void {
 export function renameSession(c: Controller, name: string): void {
   const s = c.state;
   if (!name) {
-    s.notice = "uso: /rename <título>";
+    s.notice = "usage: /rename <title>";
     c.bump();
     return;
   }
@@ -86,7 +86,7 @@ export async function generateTitle(c: Controller, msg: string): Promise<string>
         {
           role: "system",
           content:
-            "Gere um título curto (máx. 6 palavras) para a conversa que começa com a mensagem do usuário. Responda apenas com o título, sem aspas.",
+            "Generate a short title (6 words max) for the conversation that starts with the user's message. Reply with only the title, without quotation marks.",
         },
         { role: "user", content: msg },
       ],
@@ -97,7 +97,7 @@ export async function generateTitle(c: Controller, msg: string): Promise<string>
     const t = text.trim().replace(/^["'“”]+|["'“”]+$/g, "").trim();
     if (t) return t.slice(0, 60);
   } catch {
-    // fallback: LLM falhou ou o usuário interrompeu
+    // Fallback when the LLM fails or the user interrupts.
   }
   return msg.length > 40 ? msg.slice(0, 40) + "…" : msg;
 }
@@ -107,13 +107,13 @@ export async function compact(c: Controller): Promise<void> {
   const threshold = s.threshold;
   const est = estimateTokens(c.messages);
   if (est < threshold) {
-    s.notice = `sem compactação (${est} < ${threshold} tokens)`;
+    s.notice = `no compaction (${est} < ${threshold} tokens)`;
     c.bump();
     return;
   }
   const keep = 10;
   if (c.messages.length <= keep + 1) {
-    s.notice = "(pouco para compactar)";
+    s.notice = "(not enough to compact)";
     c.bump();
     return;
   }
@@ -125,7 +125,7 @@ export async function compact(c: Controller): Promise<void> {
       {
         role: "system",
         content:
-          "Resuma a conversa abaixo em até 5 linhas, preservando decisões, comandos executados e resultados relevantes.",
+          "Summarize the conversation below in at most 5 lines, preserving decisions, executed commands, and relevant results.",
       },
       { role: "user", content: serializeMessages(old) },
     ],
@@ -133,9 +133,9 @@ export async function compact(c: Controller): Promise<void> {
   });
   const rest = c.messages.slice(c.messages.length - keep);
   c.messages.length = 1;
-  c.messages.push({ role: "user", content: `[resumo da conversa anterior]\n${summary}` }, ...rest);
+  c.messages.push({ role: "user", content: `[previous conversation summary]\n${summary}` }, ...rest);
   c.session.append({ ts: Date.now(), type: "meta", payload: { kind: "compacted", summary } });
-  appendChat(s, { kind: "meta", content: `compactado: ${est} → ${estimateTokens(c.messages)} tokens` });
+  appendChat(s, { kind: "meta", content: `compacted: ${est} -> ${estimateTokens(c.messages)} tokens` });
   s.tokens = estimateTokens(c.messages);
   c.bump();
 }

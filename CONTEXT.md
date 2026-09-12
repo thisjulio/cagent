@@ -1,71 +1,71 @@
 # cagent
 
-Code agent com arquitetura de plugins: o núcleo (loop de agente + terminal UI) é a caixa vazia; tudo o que não é núcleo — provedores, ferramentas, integrações — é plugin.
+Code agent with a plugin architecture: the core (agent loop + terminal UI) is the empty box; everything outside the core — providers, tools, and integrations — is a plugin.
 
-## Núcleo
+## Core
 
-**Núcleo**:
-Parte não-plugin do cagent: loop de agente (mensagem → LLM → tool call → resultado), gerenciamento de contexto, persistência de sessões e a terminal UI (OpenTUI).
-_Avoid_: harness, engine, "caixa" (coloquial)
+**Core**:
+The non-plugin part of cagent: agent loop (message → LLM → tool call → result), context management, session persistence, and the terminal UI (OpenTUI).
+_Avoid_: harness, engine, "box" (colloquial)
 
 **Plugin**:
-Unidade carregável que implementa exatamente uma categoria funcional: provedor, ferramenta ou integração.
-_Avoid_: módulo, componente, extensão
+Loadable unit that implements exactly one functional category: provider, tool, or integration.
+_Avoid_: module, component, extension
 
-**Provedor**:
-Plugin que implementa um backend de LLM: cliente de API, autenticação e catálogo de modelos.
-_Avoid_: backend, modelo, "LLM"
+**Provider**:
+Plugin that implements an LLM backend: API client, authentication, and model catalog.
+_Avoid_: backend, model, "LLM"
 
-**Seleção de modelo**:
-Usuário escolhe um modelo entre os provedores ativos; provedores habilitados ficam ativos e são usados apenas quando o usuário seleciona um modelo deles.
-_Avoid_: seleção de provedor, troca de modelo
+**Model selection**:
+The user chooses a model from the active providers; enabled providers remain active and are used only when the user selects one of their models.
+_Avoid_: provider selection, model switching
 
-**Rota de modelo**:
-String canônica que identifica um modelo: `$provider/$model`; o split pelo primeiro `/` retorna `[$provider, $model]`. Provedor e modelo nunca são referidos separadamente.
-_Avoid_: nome de modelo (sem provedor), par (provider, model)
+**Model route**:
+Canonical string identifying a model: `$provider/$model`; splitting on the first `/` returns `[$provider, $model]`. Provider and model are never referred to separately.
+_Avoid_: model name (without provider), (provider, model) pair
 
-## Ferramentas
+## Tools
 
-**Ferramenta**:
-Operação invocada pelo agente que atua no sistema (executar bash, buscar código, editar arquivos).
-_Avoid_: comando, função
+**Tool**:
+Operation invoked by the agent that acts on the system (run bash, search code, edit files).
+_Avoid_: command, function
 
-**Ferramenta de codificação**:
-Conjunto de ferramentas de manipulação de código (busca, edição, escrita), genéricas por padrão. Cada provedor pode sobrescrever as que o formato de seus modelos exige. Gerar código em si é capacidade do LLM, não ferramenta; rodar testes é workflow do usuário (via bash), não ferramenta.
-_Avoid_: geração de código (capacidade do LLM), rodar testes (workflow do usuário), IDE
+**Coding tool**:
+Set of code manipulation tools (search, edit, write), generic by default. Each provider can override the ones required by its model format. Generating code is an LLM capability, not a tool; running tests is the user's workflow (through bash), not a tool.
+_Avoid_: code generation (LLM capability), running tests (user workflow), IDE
 
-## Edição
+## Editing
 
-**Superfície de edição**:
-Ferramenta de edição no formato nativo do provedor: apply_patch (openai), SEARCH/REPLACE (llama.cpp). Uma superfície por provedor, via override do plugin do provedor sobre a ferramenta genérica. O formato exact-match old_string/new_string é ponto de extensão, não superfície ativa.
-_Avoid_: perfil, formato de edição
+**Editing surface**:
+Editing tool in the provider's native format: apply_patch (openai), SEARCH/REPLACE (llama.cpp). One surface per provider, through the provider plugin overriding the generic tool. The exact-match old_string/new_string format is an extension point, not an active surface.
+_Avoid_: profile, editing format
 
-**Override de tool**:
-Mecanismo pelo qual um plugin de provedor substitui uma ferramenta genérica do plugin de tools por uma versão no formato nativo de sua família de modelos; a versão ativa resolve-se pela rota ativa.
-_Avoid_: re-registro dinâmico, troca de tool
+**Tool override**:
+Mechanism by which a provider plugin replaces a generic tool from the tools plugin with a version in its model family's native format; the active version is resolved from the active route.
+_Avoid_: dynamic re-registration, tool switching
 
-**IR de edição**:
-Representação normalizada a que toda superfície normaliza antes do matching: caminho absoluto, busca, substituição e dica opcional de linha.
-_Avoid_: patch, diff, bloco SEARCH/REPLACE
+**Editing IR**:
+Normalized representation to which every surface normalizes before matching: absolute path, search, replacement, and an optional line hint.
+_Avoid_: patch, diff, SEARCH/REPLACE block
 
-**Escada de matching**:
-Ordem fixa de estratégias de casamento, do exato ao fuzzy, parada no primeiro sucesso; níveis fuzzy exigem limiar de confiança. Ambiguidade nunca é resolvida por heurística.
+**Matching ladder**:
+Fixed order of matching strategies, from exact to fuzzy, stopping at the first success; fuzzy levels require a confidence threshold. Ambiguity is never resolved heuristically.
 _Avoid_: fallback, fuzzy match
 
 **Anti-loop**:
-Contador de falhas idênticas dentro da tool que escala a mensagem e corta a 3ª repetição; existe porque o loop do núcleo é ilimitado e o erro volta ao modelo no mesmo turno.
-_Avoid_: retry, timeout de tool
+Counter of identical failures inside the tool that escalates the message and stops on the third repetition; it exists because the core loop is unlimited and the error returns to the model in the same turn.
+_Avoid_: retry, tool timeout
 
-**Git sombra**:
-Repo git paralelo que checkpointa os arquivos escritos antes de cada batch de escrita, para undo.
+**Shadow Git**:
+Parallel Git repository that checkpoints written files before each write batch, for undo.
 _Avoid_: backup, snapshot
 
-**Convenção de erro**:
-Prefixo de texto estável (ERRO <CODE> — <caminho>) que renderiza falhas para o modelo e para métricas, em vez de schema estruturado, porque o resultado de tool só carrega string.
-_Avoid_: catálogo JSON, erro tipado
+**Error convention**:
+Stable text prefix (`ERROR <CODE> — <path>`) that renders failures for the model and metrics instead of a structured schema, because tool results only carry strings.
+_Avoid_: JSON catalog, typed error
 
-## Permissões
+## Permissions
 
 **Allowlist**:
-Conjunto de comandos de ferramenta pré-aprovados; o que não está na lista exige aprovação no terminal antes de executar.
-_Avoid_: whitelist, perfil de permissão
+Set of pre-approved tool commands; anything not on the list requires approval in the terminal before execution.
+_Avoid_: whitelist, permission profile

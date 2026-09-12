@@ -30,7 +30,7 @@ export async function loadPlugins(
     const spec = source.startsWith(".") ? pathToFileURL(path.resolve(source)).href : source;
     const mod = builtin ? undefined : ((await import(spec)) as Record<string, unknown>);
     const plugin = builtin ?? (mod?.default ?? mod?.register) as Plugin | undefined;
-    if (typeof plugin !== "function") throw new Error(`plugin sem função de registro: ${p.name}`);
+    if (typeof plugin !== "function") throw new Error(`plugin has no registration function: ${p.name}`);
 
     const ctx: PluginContext = {
       name: p.name,

@@ -3,7 +3,7 @@ export function StatusBar({ title, model, tokens, threshold }: { title: string; 
   return (
     <box border={["top"]} borderColor="#666666" height={2} flexShrink={0}>
       <text fg="#666666">
-        {(title || "nova").slice(0, 30)} | {model} | {tokens} tok · {pct}% do contexto · Esc interrompe · /help
+        {(title || "new").slice(0, 30)} | {model} | {tokens} tok · {pct}% context · Esc interrupts · /help
       </text>
     </box>
   );

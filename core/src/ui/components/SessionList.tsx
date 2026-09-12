@@ -5,7 +5,7 @@ type SessionInfo = NonNullable<UIState["sessionList"]>[number];
 export function SessionList({ list, onSelect }: { list: SessionInfo[]; onSelect: (id: string) => void }) {
   return (
     <box flexDirection="column" flexShrink={0}>
-      <text fg="#666666">sessoes  (up/down | enter | esc)</text>
+      <text fg="#666666">sessions  (up/down | enter | esc)</text>
       <select
         focused
         height={Math.min(8, Math.max(1, list.length))}

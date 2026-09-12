@@ -1,6 +1,6 @@
 import { commandNames } from "./commands";
 
-// ponytail: ordem alfabética (não Object.keys) para sugestão previsível — "/session" antes de "/sessions"
+// ponytail: alphabetical order (not Object.keys) keeps suggestions predictable - "/session" before "/sessions".
 export function slashSuggestions(input: string): string[] {
   if (!input.startsWith("/")) return [];
   const q = input.toLowerCase();

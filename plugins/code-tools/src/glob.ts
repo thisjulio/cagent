@@ -9,12 +9,12 @@ const MAX_FILES = 500;
 export function globTool(ctx: PluginContext) {
   return defineTool(
     "list_files",
-    "Lista arquivos do workspace por glob (respeita .gitignore).",
+    "Lists workspace files by glob (respects .gitignore).",
     {
       type: "object",
       properties: {
         pattern: { type: "string", description: "Glob (default: **/*)" },
-        max_files: { type: "number", description: `Máx. (default ${MAX_FILES})` },
+        max_files: { type: "number", description: `Max files (default ${MAX_FILES})` },
       },
     },
     async (args: ToolArgs) => {
@@ -23,7 +23,7 @@ export function globTool(ctx: PluginContext) {
       const ROOT = root();
       try {
         const files = fg.sync(pattern, { cwd: ROOT, ignore: gitignorePatterns(ROOT), onlyFiles: true }).slice(0, max);
-        return { output: files.length ? files.join("\n") : "sem resultados" };
+        return { output: files.length ? files.join("\n") : "no results" };
       } catch (e) {
         return { output: errorText("E_PARSE", `${pattern}: ${e instanceof Error ? e.message : String(e)}`), isError: true };
       }

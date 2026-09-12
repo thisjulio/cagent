@@ -6,20 +6,20 @@ import { permission, runToolPipeline } from "../src/tools";
 const tool = defineTool("bash", "exec", {}, async () => ({ output: "ok" }));
 const bus = new EventBus();
 
-describe("pipeline de tools", () => {
-  it("allowlist permite sem prompt", async () => {
+describe("tool pipeline", () => {
+  it("allowlist permits without a prompt", async () => {
     const res = await runToolPipeline(tool, { command: "git status" }, ["git"], async () => false, bus);
     expect(res.output).toBe("ok");
     expect(res.isError).toBeUndefined();
   });
 
-  it("fora da allowlist pede aprovação e nega", async () => {
+  it("outside the allowlist asks for approval and denies", async () => {
     const res = await runToolPipeline(tool, { command: "rm -rf /" }, ["git"], async () => false, bus);
     expect(res.isError).toBe(true);
-    expect(res.output).toContain("negou");
+    expect(res.output).toContain("denied");
   });
 
-  it("crash de plugin vira resultado de erro", async () => {
+  it("a plugin crash becomes an error result", async () => {
     const broken = defineTool("x", "x", {}, async () => {
       throw new Error("boom");
     });
@@ -28,7 +28,7 @@ describe("pipeline de tools", () => {
     expect(res.output).toContain("boom");
   });
 
-  it("permission casa por prefixo", () => {
+  it("permission matches by prefix", () => {
     expect(permission(tool, { command: "ls" }, ["ls"])).toBe("allow");
     expect(permission(tool, { command: "ls -la" }, ["ls"])).toBe("allow");
     expect(permission(tool, { command: "ls" }, ["lso"])).toBe("ask");

@@ -1,12 +1,12 @@
 import fs from "node:fs";
 import path from "node:path";
 
-// root() resolve o workspace por chamada — cwd pode mudar entre loads (tests)
+// root() resolves the workspace per call - cwd can change between loads (tests).
 export function root(): string {
   return path.resolve(process.cwd());
 }
 
-// ponytail: djb2 fingerprint, não é hash de segurança
+// ponytail: djb2 fingerprint, not a security hash.
 export function hash(s: string): string {
   let h = 5381;
   for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
@@ -45,7 +45,7 @@ export function recordWrite(absPath: string, content: string): void {
   lastWrite.set(absPath, hash(content));
 }
 
-// ponytail: reversão = hash divergente entre o último write e o próximo read
+// ponytail: reverted = hash differs between the last write and the next read.
 export function wasReverted(absPath: string): boolean {
   const prev = lastWrite.get(absPath);
   return prev !== undefined && fileHash(absPath) !== prev;

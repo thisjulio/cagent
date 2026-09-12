@@ -32,7 +32,7 @@ function makeAuthResolver(opts: AdapterOptions): () => Promise<AuthState> {
         try {
           creds = await refreshCreds(creds.refresh);
         } catch (e) {
-          console.error("refresh falhou, fazendo login novo:", e);
+          console.error("refresh failed, starting a new login:", e);
         }
       }
       if (!creds || creds.expires <= Date.now()) creds = await pkceLogin();
@@ -64,7 +64,7 @@ export function createAdapter(opts: AdapterOptions): ProviderAdapter {
 
     async prepare_call(options: LlmCallOptions): Promise<LlmCallOptions> {
       const model = options.model || (opts.config.model as string | undefined) || process.env.CAGENT_MODEL;
-      if (!model) throw new Error("modelo não selecionado — defina via config, env CAGENT_MODEL ou /model");
+      if (!model) throw new Error("no model selected - set it in config, env CAGENT_MODEL, or /model");
       return { ...options, model };
     },
 

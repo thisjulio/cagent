@@ -10,6 +10,6 @@ export function parseSearchReplace(blocks: string): Region[] {
   for (const m of blocks.matchAll(BLOCK_RE)) {
     regions.push({ search: m[1], replace: m[2] ?? null });
   }
-  if (!regions.length) throw new Error("nenhum bloco << SEARCH >> encontrado");
+  if (!regions.length) throw new Error("no << SEARCH >> block found");
   return regions;
 }

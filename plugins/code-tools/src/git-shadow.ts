@@ -3,7 +3,7 @@ import path from "node:path";
 import { root } from "./state";
 import { runCmd } from "./exec";
 
-// ponytail: sombra só em workspace não-git; git com --work-tree=root() e --git-dir=.cagent/.shadow/.git
+// ponytail: shadow only in non-Git workspaces; Git uses --work-tree=root() and --git-dir=.cagent/.shadow/.git.
 let ready: boolean | undefined;
 
 async function isGitWorkspace(): Promise<boolean> {

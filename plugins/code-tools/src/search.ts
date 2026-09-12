@@ -16,10 +16,10 @@ async function rgSearch(pattern: string, abs: string, max: number): Promise<stri
   const r = await runCmd(RG_BIN, ["-n", "--color=never", pattern, abs], { cwd: ROOT, timeoutMs: 30_000 });
   if (r.code !== 0 && r.code !== 1) return null;
   const lines = r.stdout.split("\n").filter((l) => l.length > 0);
-  return lines.slice(0, max).join("\n") || "sem resultados";
+  return lines.slice(0, max).join("\n") || "no results";
 }
 
-// ponytail: fallback JS com .gitignore sem negações; rg é o caminho padrão
+// ponytail: JS fallback ignores .gitignore negations; rg is the default path.
 async function jsSearch(pattern: string, abs: string, max: number): Promise<string> {
   const ROOT = root();
   const re = new RegExp(pattern, "i");
@@ -41,25 +41,25 @@ async function jsSearch(pattern: string, abs: string, max: number): Promise<stri
       if (matches.length >= max) return matches.join("\n");
     }
   }
-  return matches.length ? matches.join("\n") : "sem resultados";
+  return matches.length ? matches.join("\n") : "no results";
 }
 
 export function searchTool(ctx: PluginContext) {
   return defineTool(
     "search",
-    "Busca regex em arquivos do workspace (rg quando disponível, fallback JS; respeita .gitignore). Retorna 'caminho:linha: texto'.",
+    "Searches workspace files with a regex (rg when available, JS fallback; respects .gitignore). Returns 'path:line: text'.",
     {
       type: "object",
       properties: {
         pattern: { type: "string", description: "Regex (case-insensitive)" },
-        target: { type: "string", description: "Arquivo ou diretório (default: workspace)" },
-        max_matches: { type: "number", description: `Máx. (default ${MAX_MATCHES})` },
+        target: { type: "string", description: "File or directory (default: workspace)" },
+        max_matches: { type: "number", description: `Max matches (default ${MAX_MATCHES})` },
       },
       required: ["pattern"],
     },
     async (args: ToolArgs) => {
       const pattern = String(args.pattern ?? "");
-      if (!pattern) return { output: errorText("E_PARSE", "pattern vazio"), isError: true };
+      if (!pattern) return { output: errorText("E_PARSE", "empty pattern"), isError: true };
       const target = String(args.target ?? ".");
       const max = Math.min(MAX_MATCHES, Math.max(1, Math.trunc(Number(args.max_matches ?? MAX_MATCHES))));
       let abs: string;

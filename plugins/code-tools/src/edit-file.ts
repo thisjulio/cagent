@@ -36,7 +36,7 @@ async function processTarget(t: Target, o: { seed: string; blocks: number; patch
   if (op === "delete") {
     try { fs.rmSync(abs); } catch { o.out.push(errorText("E_NOT_FOUND", t.path)); return false; }
     recordWrite(abs, "");
-    o.out.push(`OK ${rel(abs)} (removido)`);
+    o.out.push(`OK ${rel(abs)} (removed)`);
     return true;
   }
   let original: string;
@@ -44,14 +44,14 @@ async function processTarget(t: Target, o: { seed: string; blocks: number; patch
   try { original = fs.readFileSync(abs, "utf8"); }
   catch { missing = true; original = ""; }
   if (op === "add") {
-    if (!missing) { o.out.push(errorText("E_EXISTS", `${t.path}: arquivo já existe — use Update (blocos/patch) em vez de Add`)); return false; }
+    if (!missing) { o.out.push(errorText("E_EXISTS", `${t.path}: file already exists - use Update (blocks/patch) instead of Add`)); return false; }
   } else if (missing) {
     o.out.push(errorText("E_NOT_FOUND", t.path));
     return false;
   }
   const prev = getRead(abs);
   if (prev && prev.hash !== fileHash(abs)) {
-    o.out.push(errorText("E_STALE", `${t.path}: arquivo mudou desde o último read_file`));
+    o.out.push(errorText("E_STALE", `${t.path}: file changed since the last read_file`));
     return false;
   }
   const body = original.startsWith("\uFEFF") ? original.slice(1) : original;
@@ -60,7 +60,7 @@ async function processTarget(t: Target, o: { seed: string; blocks: number; patch
   const applied = t.regions ? applyRegions(oldLines, t.regions, o.blocks) : applyHunks(oldLines, t.file!, o.patch);
   if (applied.error) {
     const n = bumpFailure(abs, o.seed);
-    o.out.push(errorText(n >= 3 ? "E_REPEATED_FAILURE" : applied.error.code, n >= 3 ? `${t.path}: 3 falhas seguidas com o mesmo alvo — leia o arquivo e reformule a edição` : n === 2 ? `${t.path}: use read_file em ${t.path} para ver o conteúdo atual` : `${t.path}: alvo ${JSON.stringify(applied.error.search.slice(0, 80))}`));
+    o.out.push(errorText(n >= 3 ? "E_REPEATED_FAILURE" : applied.error.code, n >= 3 ? `${t.path}: 3 consecutive failures with the same target - read the file and reformulate the edit` : n === 2 ? `${t.path}: use read_file on ${t.path} to see the current content` : `${t.path}: target ${JSON.stringify(applied.error.search.slice(0, 80))}`));
     return false;
   }
   const next = (original.startsWith("\uFEFF") ? "\uFEFF" : "") + applied.lines.join(eol);
@@ -81,7 +81,7 @@ async function processTarget(t: Target, o: { seed: string; blocks: number; patch
 async function runEdit(args: ToolArgs, ctx: PluginContext, blocks: number, patch: number): Promise<{ output: string; isError: boolean }> {
   const argBlocks = typeof args.blocks === "string" ? args.blocks : undefined;
   const argPatch = typeof args.patch === "string" ? args.patch : undefined;
-  if (!argBlocks && !argPatch) return { output: errorText("E_PARSE", "informe 'blocks' ou 'patch'"), isError: true };
+  if (!argBlocks && !argPatch) return { output: errorText("E_PARSE", "provide 'blocks' or 'patch'"), isError: true };
   const seed = argBlocks ?? argPatch!;
   const inputPath = typeof args.path === "string" ? args.path : undefined;
 
@@ -107,10 +107,10 @@ async function runEdit(args: ToolArgs, ctx: PluginContext, blocks: number, patch
   const tscAfter = await tscErrors(root());
   const newErrors = tscAfter.filter((l) => !tscBefore.includes(l));
   if (fmt) out.push(`format:\n${fmt.slice(0, 500)}`);
-  if (newErrors.length) out.push(`novos erros tsc:\n${newErrors.slice(0, 20).join("\n")}`);
+  if (newErrors.length) out.push(`new tsc errors:\n${newErrors.slice(0, 20).join("\n")}`);
   if (ok) {
     await ensureShadow();
-    await shadowCommit(`edit ${ok} arquivo(s)`);
+    await shadowCommit(`edit ${ok} file(s)`);
   }
   ctx.emit("code-tools/edit", { ok, failed: targets.length - ok, newErrors });
   return { output: out.join("\n"), isError: ok === 0 };
@@ -122,13 +122,13 @@ export function editFileTool(ctx: PluginContext) {
 
   return defineTool(
     "edit_file",
-    "Edita/cria/remove arquivos por blocos << SEARCH >> / << REPLACE >> (arg blocks) ou patch *** Begin patch (arg patch, com *** Update/Add/Delete File: e @@ hunks). Falhas repetidas: 2ª pede read_file, 3ª é fatal.",
+    "Edits/creates/deletes files with << SEARCH >> / << REPLACE >> blocks (blocks arg) or a *** Begin patch patch (patch arg, with *** Update/Add/Delete File: and @@ hunks). Repeated failures: the second asks for read_file and the third is fatal.",
     {
       type: "object",
       properties: {
-        path: { type: "string", description: "Caminho do arquivo (para blocks; o patch traz o próprio caminho)" },
-        blocks: { type: "string", description: "Blocos << SEARCH >> / << REPLACE >>" },
-        patch: { type: "string", description: "Patch completo no formato *** Begin patch / *** End patch" },
+        path: { type: "string", description: "File path (for blocks; the patch contains its own path)" },
+        blocks: { type: "string", description: "<< SEARCH >> / << REPLACE >> blocks" },
+        patch: { type: "string", description: "Complete patch in the *** Begin patch / *** End patch format" },
       },
     },
     (args: ToolArgs) => runEdit(args, ctx, thresholdBlocks, thresholdPatch),

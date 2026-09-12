@@ -7,12 +7,12 @@ import { recordRead, recordWrite } from "./state";
 export function writeFileTool(ctx: PluginContext) {
   return defineTool(
     "write_file",
-    "Cria ou sobrescreve um arquivo com o conteúdo dado (escrita atômica).",
+    "Creates or overwrites a file with the given content (atomic write).",
     {
       type: "object",
       properties: {
-        path: { type: "string", description: "Caminho do arquivo (relativo ao workspace ou absoluto)" },
-        content: { type: "string", description: "Conteúdo completo do arquivo" },
+        path: { type: "string", description: "File path (relative to the workspace or absolute)" },
+        content: { type: "string", description: "Complete file content" },
       },
       required: ["path", "content"],
     },
@@ -33,7 +33,7 @@ export function writeFileTool(ctx: PluginContext) {
       recordRead(abs);
       recordWrite(abs, content);
       ctx.emit("code-tools/write", { path: abs });
-      return { output: `gravado ${abs}` };
+      return { output: `written ${abs}` };
     },
   );
 }

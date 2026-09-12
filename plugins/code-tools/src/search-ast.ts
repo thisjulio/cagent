@@ -58,25 +58,25 @@ function searchFiles(files: string[], pattern: string, language: string | undefi
 export function searchAstTool(ctx: PluginContext) {
   return defineTool(
     "search_ast",
-    "Busca código por padrão AST com metavariáveis (ex.: console.log($X)).",
+    "Searches code by AST pattern with metavariables (for example, console.log($X)).",
     {
       type: "object",
       properties: {
-        pattern: { type: "string", description: "Padrão AST (ex.: console.log($X))" },
-        lang: { type: "string", description: "Linguagem (ts, js, tsx, html, css); opcional, inferida da extensão" },
-        target: { type: "string", description: "Arquivo ou diretório (default: workspace)" },
-        max_matches: { type: "number", description: `Máx. (default ${MAX_MATCHES})` },
+        pattern: { type: "string", description: "AST pattern (for example, console.log($X))" },
+        lang: { type: "string", description: "Language (ts, js, tsx, html, css); optional, inferred from the extension" },
+        target: { type: "string", description: "File or directory (default: workspace)" },
+        max_matches: { type: "number", description: `Max matches (default ${MAX_MATCHES})` },
       },
       required: ["pattern"],
     },
     async (args: ToolArgs) => {
       const pattern = String(args.pattern ?? "");
-      if (!pattern) return { output: errorText("E_PARSE", "pattern vazio"), isError: true };
+      if (!pattern) return { output: errorText("E_PARSE", "empty pattern"), isError: true };
       const target = String(args.target ?? ".");
       const max = Math.min(MAX_MATCHES, Math.max(1, Math.trunc(Number(args.max_matches ?? MAX_MATCHES))));
       const language = typeof args.lang === "string" && args.lang ? args.lang : undefined;
       if (language && !LANGUAGES[language.toLowerCase()]) {
-        return { output: errorText("E_LANG", `${language}: linguagem não suportada`), isError: true };
+        return { output: errorText("E_LANG", `${language}: unsupported language`), isError: true };
       }
       let abs: string;
       try {
@@ -85,7 +85,7 @@ export function searchAstTool(ctx: PluginContext) {
         return { output: errorText("E_PATH", `${target}: ${e instanceof Error ? e.message : String(e)}`), isError: true };
       }
       try {
-        return { output: searchFiles(filesFor(abs), pattern, language, max).join("\n") || "sem resultados" };
+        return { output: searchFiles(filesFor(abs), pattern, language, max).join("\n") || "no results" };
       } catch (e) {
         return { output: errorText("E_SEARCH", `${target}: ${e instanceof Error ? e.message : String(e)}`), isError: true };
       }

@@ -29,7 +29,7 @@ export function InputArea({
 
   return (
     <box height={7} flexDirection="column" flexShrink={0} border={["top"]} borderColor="#666666" justifyContent="flex-start">
-      <text height={1} fg="#666666">{busy ? `... ${running ? `usando ${running}` : "pensando"}` : ""}</text>
+      <text height={1} fg="#666666">{busy ? `... ${running ? `running ${running}` : "thinking"}` : ""}</text>
       <box border borderStyle="single" borderColor="cyan" paddingX={1} width="100%" height={4} flexDirection="row">
         <text fg="cyan" width={2} flexShrink={0}>{"> "}</text>
         <textarea
@@ -45,7 +45,7 @@ export function InputArea({
             { name: "kpenter", action: "submit" },
             { name: "return", shift: true, action: "newline" },
           ]}
-          placeholder="escreva sua proxima instrucao"
+          placeholder="type your next instruction"
           placeholderColor="#666666"
           onContentChange={() => {
             const value = textarea.current?.plainText ?? "";

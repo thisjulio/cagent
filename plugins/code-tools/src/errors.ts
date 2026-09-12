@@ -10,7 +10,7 @@ export type ErrorCode =
   | "E_WRITE"
   | "E_SEARCH";
 
-// convenção: primeira linha é sempre `ERRO <CODE> — <detail>` (o detail começa com o caminho)
+// Convention: the first line is always `ERROR <CODE> - <detail>` (detail starts with the path).
 export function errorText(code: ErrorCode, detail: string): string {
-  return `ERRO ${code} — ${detail}`;
+  return `ERROR ${code} - ${detail}`;
 }

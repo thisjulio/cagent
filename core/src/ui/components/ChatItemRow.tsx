@@ -53,10 +53,10 @@ function ToolRow({ it }: { it: ChatItem }) {
         {it.cmd ? (
           <span attributes={TextAttributes.DIM}> · {it.expanded ? it.cmd : it.cmd.length > 40 ? it.cmd.slice(0, 40) + "..." : it.cmd}</span>
         ) : null}
-        {it.running ? <span fg="yellow"> (executando...)</span> : null}
-        {it.denied ? <span fg="yellow"> (negado)</span> : null}
+         {it.running ? <span fg="yellow"> (running...)</span> : null}
+         {it.denied ? <span fg="yellow"> (denied)</span> : null}
         {!it.running && !it.denied && !it.expanded && lines > 0 && (
-          <span attributes={TextAttributes.DIM}> +{lines} linha{lines === 1 ? "" : "s"} (ctrl+o)</span>
+           <span attributes={TextAttributes.DIM}> +{lines} line{lines === 1 ? "" : "s"} (ctrl+o)</span>
         )}
       </text>
       {it.expanded && it.content ? (

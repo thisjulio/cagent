@@ -21,9 +21,9 @@ export function defineTool(
   return { name, description, parameters, execute };
 }
 
-// override de schema declarado por um provedor: mesmo nome canônico, schema trocado
-// para o formato nativo da família de modelos. O nome canônico (chave do map)
-// segue valendo para UI, logs e métricas.
+// Provider-declared schema override: same canonical name, schema changed to the
+// model family's native format. The canonical name (map key) remains valid for
+// the UI, logs, and metrics.
 export type ToolSchemaOverride = {
   name: string;
   description?: string;
@@ -61,7 +61,7 @@ export type WireMessage = {
   tool_call_id?: string;
 };
 
-// formato wire de chat completions (assistant: tool_calls com type/function; tool: tool_call_id)
+// Chat completions wire format (assistant: tool_calls with type/function; tool: tool_call_id).
 export function toChatMessages(messages: Message[]): WireMessage[] {
   return messages.map((m) => {
     const out: WireMessage = { role: m.role, content: m.content };

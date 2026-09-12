@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { Session } from "../src/session";
 
-describe("sessões JSONL", () => {
+describe("JSONL sessions", () => {
   let dir: string;
   beforeEach(() => {
     dir = mkdtempSync(path.join(tmpdir(), "cagent-sess-"));
@@ -12,18 +12,18 @@ describe("sessões JSONL", () => {
 
   it("append + load roundtrip", () => {
     const s = new Session(undefined, dir);
-    s.append({ ts: 1, type: "user", payload: { content: "oi" } });
-    s.append({ ts: 2, type: "assistant", payload: { content: "olá" } });
+    s.append({ ts: 1, type: "user", payload: { content: "hi" } });
+    s.append({ ts: 2, type: "assistant", payload: { content: "hello" } });
     s.append({ ts: 3, type: "tool", payload: { tool_call_id: "t1", content: "ok" } });
     const loaded = new Session(s.id, dir).load();
     expect(loaded.messages).toEqual([
-      { role: "user", content: "oi" },
-      { role: "assistant", content: "olá" },
+      { role: "user", content: "hi" },
+      { role: "assistant", content: "hello" },
       { role: "tool", tool_call_id: "t1", content: "ok" },
     ]);
   });
 
-  it("nova sessão sempre tem id novo (sem auto-resume)", () => {
+  it("a new session always has a new id (no auto-resume)", () => {
     const a = new Session("aaa", dir);
     a.append({ ts: 1, type: "user", payload: { content: "x" } });
     const b = new Session("bbb", dir);
@@ -33,34 +33,34 @@ describe("sessões JSONL", () => {
     expect(c.id).not.toBe("bbb");
   });
 
-  it("listagem mostra o título (meta) com fallback da 1ª mensagem", () => {
+  it("listing shows the title (metadata) with the first-message fallback", () => {
     const s = new Session("abc", dir);
     s.append({ ts: 1, type: "user", payload: { content: "hello world" } });
-    s.append({ ts: 2, type: "meta", payload: { kind: "title", title: "Meu título" } });
+    s.append({ ts: 2, type: "meta", payload: { kind: "title", title: "My title" } });
     const s2 = new Session("xyz", dir);
-    s2.append({ ts: 3, type: "user", payload: { content: "oi oi" } });
+    s2.append({ ts: 3, type: "user", payload: { content: "hello hello" } });
     const list = Session.list(dir);
     const abc = list.find((x) => x.id === "abc")!;
     const xyz = list.find((x) => x.id === "xyz")!;
-    expect(abc.title).toBe("Meu título");
-    expect(xyz.title).toBe("oi oi");
+    expect(abc.title).toBe("My title");
+    expect(xyz.title).toBe("hello hello");
   });
 
-  it("sessão inexistente tem mensagens vazias", () => {
+  it("a missing session has empty messages", () => {
     const loaded = new Session("inexistente", dir).load();
     expect(loaded.messages).toEqual([]);
   });
 
-  it("load retoma do último resumo em vez de reconstruir o histórico antigo", () => {
-    const s = new Session("compactada", dir);
+  it("load resumes from the last summary instead of rebuilding old history", () => {
+    const s = new Session("compacted", dir);
     s.append({ ts: 1, type: "user", payload: { content: "antiga" } });
     s.append({ ts: 2, type: "assistant", payload: { content: "resposta antiga" } });
-    s.append({ ts: 3, type: "meta", payload: { kind: "compacted", summary: "decisão importante" } });
-    s.append({ ts: 4, type: "user", payload: { content: "nova" } });
+    s.append({ ts: 3, type: "meta", payload: { kind: "compacted", summary: "important decision" } });
+    s.append({ ts: 4, type: "user", payload: { content: "new" } });
     const loaded = new Session(s.id, dir).load();
     expect(loaded.messages).toEqual([
-      { role: "user", content: "[resumo da conversa anterior]\ndecisão importante" },
-      { role: "user", content: "nova" },
+      { role: "user", content: "[previous conversation summary]\nimportant decision" },
+      { role: "user", content: "new" },
     ]);
     expect(loaded.records).toHaveLength(2);
   });

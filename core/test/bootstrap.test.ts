@@ -10,25 +10,25 @@ describe("resolveRoute", () => {
     stream: async function* () {},
   } as ControllerDeps["adapter"];
 
-  it("valida o par provider/modelo contra o catálogo", async () => {
+  it("validates the provider/model pair against the catalog", async () => {
     const registry = new Registry();
     registry.registerProvider("openai", adapter);
     await expect(resolveRoute({ model: "openai/m1" } as ControllerDeps["config"], registry)).resolves.toBe("openai/m1");
   });
 
-  it("rejeita provedor que não existe", async () => {
+  it("rejects a provider that does not exist", async () => {
     const registry = new Registry();
     registry.registerProvider("openai", adapter);
-    await expect(resolveRoute({ model: "foo/m1" } as ControllerDeps["config"], registry)).rejects.toThrow("provedor não encontrado: foo");
+    await expect(resolveRoute({ model: "foo/m1" } as ControllerDeps["config"], registry)).rejects.toThrow("provider not found: foo");
   });
 
-  it("rejeita modelo que não existe no provedor", async () => {
+  it("rejects a model that does not exist in the provider", async () => {
     const registry = new Registry();
     registry.registerProvider("openai", adapter);
-    await expect(resolveRoute({ model: "openai/m9" } as ControllerDeps["config"], registry)).rejects.toThrow("modelo m9 não existe no provedor openai");
+    await expect(resolveRoute({ model: "openai/m9" } as ControllerDeps["config"], registry)).rejects.toThrow("model m9 does not exist in provider openai");
   });
 
-  it("sem config: fallback = 1º provedor + 1º modelo do catálogo", async () => {
+  it("without config: fallback = first provider + first catalog model", async () => {
     const registry = new Registry();
     registry.registerProvider("openai", adapter);
     await expect(resolveRoute({} as ControllerDeps["config"], registry)).resolves.toBe("openai/m1");

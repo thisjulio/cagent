@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-// ponytail: conversão gitignore→glob sem negação (!); negações entram quando o agente se deparar com elas
+// ponytail: gitignore-to-glob conversion without negation (!); add negations when the agent encounters them.
 export function gitignorePatterns(cwd: string): string[] {
   const file = path.join(cwd, ".gitignore");
   if (!fs.existsSync(file)) return [];

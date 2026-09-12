@@ -1,9 +1,9 @@
 # cagent
 
-Agente de código para terminal, escrito em Bun/TypeScript. O núcleo coordena
-conversas, sessões, ferramentas e a UI; provedores e ferramentas são plugins.
+Terminal coding agent written in Bun/TypeScript. The core coordinates
+conversations, sessions, tools, and the UI; providers and tools are plugins.
 
-## Instalação
+## Installation
 
 Linux e macOS:
 
@@ -11,50 +11,52 @@ Linux e macOS:
 curl -fsSL https://raw.githubusercontent.com/thisjulio/cagent/main/install.sh | bash
 ```
 
-O instalador detecta a arquitetura, baixa o binário da última Release, verifica
-o SHA-256 e instala `cagent` em `~/.local/bin`. Abra um novo terminal depois da
-instalação, ou execute:
+The installer detects the architecture, downloads the latest release binary,
+verifies its SHA-256 checksum, and installs `cagent` in `~/.local/bin`. Open a
+new terminal after installation, or run:
 
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
 cagent
 ```
 
-Para instalar uma versão específica:
+To install a specific version:
 
 ```bash
   curl -fsSL https://raw.githubusercontent.com/thisjulio/cagent/main/install.sh | bash -s -- --version 0.1.4
 ```
 
-Depois de instalado, atualize para a última Release com:
+After installation, update to the latest release with:
 
 ```bash
 cagent upgrade
 ```
 
-Se a versão atual já for a mais recente, o cagent informa que não há upgrade.
-O usuário que instalou em um diretório protegido, como `/usr/local/bin`, deve
-executar o comando com a mesma permissão usada na instalação.
+If the current version is already the latest, cagent reports that no upgrade is
+available. Users who installed it in a protected directory such as
+`/usr/local/bin` must run the command with the same permissions used during
+installation.
 
-## Configuração
+## Configuration
 
-O cagent lê a configuração global em `~/.cagent/config.yml` e a configuração
-local em `cagent.yml`. A configuração local tem prioridade.
+cagent reads the global configuration from `~/.cagent/config.yml` and the
+project configuration from `cagent.yml`. The project configuration takes
+precedence.
 
-Exemplo mínimo usando a API da OpenAI:
+A minimal example using the OpenAI API:
 
 ```bash
-export OPENAI_API_KEY="sua-chave"
+export OPENAI_API_KEY="your-key"
 mkdir -p ~/.cagent
 cat > ~/.cagent/config.yml <<'YAML'
 model: openai/gpt-4o-mini
 YAML
 ```
 
-A rota do modelo sempre usa o formato `provedor/modelo`. O plugin OpenAI também
-suporta o login OAuth usado pelo Codex quando nenhuma chave de API é definida.
+Model routes always use the `provider/model` format. The OpenAI plugin also
+supports the OAuth login used by Codex when no API key is configured.
 
-## Desenvolvimento
+## Development
 
 Requer Bun:
 
@@ -65,39 +67,40 @@ bun install
 bun start
 ```
 
-Comandos úteis:
+Useful commands:
 
 ```bash
 bun test
 bun run build:release
 ```
 
-## Plugins incluídos
+## Included Plugins
 
-- `openai`: provedor OpenAI e Codex.
-- `llama.cpp`: provedor compatível com `llama-server`.
-- `bash`: execução de comandos no workspace.
-- `code-tools`: leitura, busca, edição e busca estrutural por AST.
+- `openai`: OpenAI and Codex provider.
+- `llama.cpp`: provider compatible with `llama-server`.
+- `bash`: workspace command execution.
+- `code-tools`: reading, searching, editing, and AST structural search.
 
-`search_ast` usa `@ast-grep/napi` em processo, sem executar `bun x` ou um CLI
-externo. As linguagens embutidas são JavaScript, TypeScript, TSX, HTML e CSS.
+`search_ast` uses `@ast-grep/napi` in-process, without running `bun x` or an
+external CLI. Supported languages are JavaScript, TypeScript, TSX, HTML, and
+CSS.
 
-## Arquitetura
+## Architecture
 
 ```text
-UI terminal -> Controller -> núcleo (loop, sessões, registry) -> SDK
+Terminal UI -> Controller -> core (loop, sessions, registry) -> SDK
                                       ^
                                       |
                                   plugins
 ```
 
-Consulte [`CONTEXT.md`](CONTEXT.md) e [`docs/adr/`](docs/adr/) para o glossário
-e as decisões arquiteturais.
+See [`CONTEXT.md`](CONTEXT.md) and [`docs/adr/`](docs/adr/) for the glossary and
+architectural decisions.
 
 ## Release
 
-Uma tag `v*` dispara o workflow de release. O CI gera executáveis para Linux e
-macOS em `x64` e `arm64`, publica os quatro binários e o arquivo `SHA256SUMS`.
+A `v*` tag triggers the release workflow. CI builds executables for Linux and
+macOS on `x64` and `arm64`, then publishes the four binaries and `SHA256SUMS`.
 
 ```bash
 git tag v0.1.0
@@ -106,9 +109,9 @@ git push origin v0.1.0
 
 ## Status
 
-O projeto está em desenvolvimento ativo. APIs de plugins e formatos de
-configuração podem mudar antes da versão 1.0.
+The project is under active development. Plugin APIs and configuration formats
+may change before version 1.0.
 
-## Licença
+## License
 
-MIT. Consulte [`LICENSE`](LICENSE).
+MIT. See [`LICENSE`](LICENSE).

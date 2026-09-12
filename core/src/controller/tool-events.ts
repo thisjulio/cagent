@@ -35,6 +35,6 @@ export function toolPost(state: UIState, p: unknown): void {
 export function toolDenied(state: UIState, p: unknown): void {
   const { tool, args } = p as { tool: string; args: Record<string, unknown> };
   const cmd = typeof args.command === "string" ? args.command : JSON.stringify(args);
-  appendChat(state, { kind: "tool", toolName: tool, cmd, denied: true, isError: true, running: false, content: "usuário negou" });
+  appendChat(state, { kind: "tool", toolName: tool, cmd, denied: true, isError: true, running: false, content: "user denied" });
   appendToolLog(state, { tool, cmd, denied: true });
 }

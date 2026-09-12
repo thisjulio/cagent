@@ -4,7 +4,7 @@ const register: Plugin = (ctx) => {
   ctx.registerTool(
     defineTool(
       "echo",
-      "Repete o texto informado.",
+      "Repeats the provided text.",
       {
         type: "object",
         properties: { text: { type: "string" } },

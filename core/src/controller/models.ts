@@ -1,7 +1,7 @@
 import { splitRoute } from "../route";
 import type { Controller } from "./controller";
 
-// ponytail: provedor que falha em list_models é ignorado; nome duplicado entre provedores → primeiro registro vence
+// ponytail: providers that fail list_models are ignored; duplicate model names across providers use the first registration.
 export async function openModelPicker(c: Controller): Promise<void> {
   const entries = await Promise.all(
     [...c.deps.registry.providers()].map(async ([route, a]) => {

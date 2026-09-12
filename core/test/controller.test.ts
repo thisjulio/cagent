@@ -13,10 +13,10 @@ function deps(permissions = false, configOverrides: Record<string, unknown> = {}
     registry: new Registry(),
     bus: new EventBus(),
     adapter: {
-      list_models: async () => ["modelo-a", "modelo-b"],
+      list_models: async () => ["model-a", "model-b"],
       prepare_call: async (o) => o,
       stream: async function* () {
-        yield { type: "text", text: "oi" };
+        yield { type: "text", text: "hi" };
       },
     },
     model: "openai/m1",
@@ -26,35 +26,35 @@ function deps(permissions = false, configOverrides: Record<string, unknown> = {}
 }
 
 describe("controller", () => {
-  it("digita e envia mensagem (usuário entra no contexto)", async () => {
+  it("types and submits a message (user enters the context)", async () => {
     const c = new Controller(deps());
-    c.setInput("oi");
-    expect(c.state.input).toBe("oi");
-    const p = c.submit("oi");
+    c.setInput("hi");
+    expect(c.state.input).toBe("hi");
+    const p = c.submit("hi");
     await new Promise((r) => setTimeout(r, 50));
     await p;
     const kinds = c.state.chat.map((i) => i.kind);
     expect(kinds).toContain("user");
     expect(kinds).toContain("assistant");
-    expect(c.state.chat[c.state.chat.length - 1].content).toBe("oi");
-    expect(c.messages.some((m) => m.role === "user" && m.content === "oi")).toBe(true);
+    expect(c.state.chat[c.state.chat.length - 1].content).toBe("hi");
+    expect(c.messages.some((m) => m.role === "user" && m.content === "hi")).toBe(true);
   });
 
-  it("re-injeta data atual quando o contexto envelheceu", async () => {
+  it("re-injects current date when the context is stale", async () => {
     const c = new Controller(deps());
     c.envStamp = 0;
-    const p = c.submit("oi");
+    const p = c.submit("hi");
     await new Promise((r) => setTimeout(r, 50));
     await p;
-    expect(c.messages.some((m) => m.role === "user" && m.content.startsWith("[contexto] Data/hora:"))).toBe(true);
+    expect(c.messages.some((m) => m.role === "user" && m.content.startsWith("[context] Date/time:"))).toBe(true);
   });
 
-  it("não re-injeta com contexto fresco", async () => {
+  it("does not re-inject with a fresh context", async () => {
     const c = new Controller(deps());
-    const p = c.submit("oi");
+    const p = c.submit("hi");
     await new Promise((r) => setTimeout(r, 50));
     await p;
-    expect(c.messages.some((m) => m.content.startsWith("[contexto] Data/hora:"))).toBe(false);
+    expect(c.messages.some((m) => m.content.startsWith("[context] Date/time:"))).toBe(false);
   });
 
   it("pendingAsk: esc nega; y aprova", async () => {
@@ -68,7 +68,7 @@ describe("controller", () => {
     await expect(p2).resolves.toBe(true);
   });
 
-  it("'a' adiciona o comando ao allowlist da sessão", async () => {
+  it("'a' adds the command to the session allowlist", async () => {
     const d = deps(true);
     const c = new Controller(d);
     const p = c.ask({ name: "bash" }, { command: "rm -rf node_modules" });
@@ -77,7 +77,7 @@ describe("controller", () => {
     expect(d.config.allowlist).toContain("rm -rf node_modules");
   });
 
-  it("tool items vivos no chat via eventos do bus", () => {
+  it("live tool items appear in chat through bus events", () => {
     const c = new Controller(deps());
     c.onToolPre({ tool: "bash", args: { command: "ls -la" } });
     const last = c.state.chat[c.state.chat.length - 1];
@@ -93,7 +93,7 @@ describe("controller", () => {
     expect(done.content).toBe("a\n");
   });
 
-  it("onToolDenied marca item negado", () => {
+  it("onToolDenied marks a denied item", () => {
     const c = new Controller(deps());
     c.onToolDenied({ tool: "bash", args: { command: "rm -rf /" } });
     const last = c.state.chat[c.state.chat.length - 1];
@@ -102,7 +102,7 @@ describe("controller", () => {
     expect(last.isError).toBe(true);
   });
 
-  it("ctrl+o expande o último tool item", () => {
+  it("ctrl+o expands the last tool item", () => {
     const c = new Controller(deps());
     c.onToolPre({ tool: "bash", args: { command: "ls" } });
     c.onToolPost({ tool: "bash", result: { output: "ok" } });
@@ -112,7 +112,7 @@ describe("controller", () => {
     expect(c.state.chat[c.state.chat.length - 1].expanded).toBe(false);
   });
 
-  it("model picker: filtra e seleciona", async () => {
+  it("model picker: filters and selects", async () => {
     const d = deps();
     d.registry.registerProvider("r1", d.adapter);
     const c = new Controller(d);
@@ -124,7 +124,7 @@ describe("controller", () => {
     expect(c.state.modelPicker).toBeNull();
   });
 
-  it("selecionar modelo de outro provedor troca o adapter", async () => {
+  it("selecting a model from another provider changes the adapter", async () => {
     const d = deps();
     d.registry.registerProvider("openai", d.adapter);
     d.registry.registerProvider("llama", {
@@ -139,47 +139,47 @@ describe("controller", () => {
     expect(c.state.modelPicker?.entries).toHaveLength(2);
     c.pickModel("llama/llama-1");
     expect(c.state.model).toBe("llama/llama-1");
-    await c.submit("oi");
+    await c.submit("hi");
     expect(c.state.chat[c.state.chat.length - 1].content).toBe("do-llama");
   });
 
-  it("comando /model abre o picker", async () => {
+  it("/model opens the picker", async () => {
     const c = new Controller(deps());
     c.setInput("/model");
     await c.submit("/model");
     expect(c.state.modelPicker).not.toBeNull();
   });
 
-  it("/session abre a lista de sessões", async () => {
+  it("/session opens the session list", async () => {
     const c = new Controller(deps());
     await c.submit("/session");
     expect(c.state.sessionList).not.toBeNull();
   });
 
-  it("gera título da sessão na 1ª mensagem", async () => {
+  it("generates the session title from the first message", async () => {
     const c = new Controller(deps());
-    await c.submit("oi");
-    expect(c.state.title).toBe("oi");
+    await c.submit("hi");
+    expect(c.state.title).toBe("hi");
   });
 
-  it("stream de thinking vira item de chat", async () => {
+  it("thinking stream becomes a chat item", async () => {
     const d = deps();
     d.adapter = {
       list_models: async () => ["m1"],
       prepare_call: async (o) => o,
       stream: async function* () {
-        yield { type: "reasoning", text: "pensando…" };
-        yield { type: "text", text: "oi" };
+        yield { type: "reasoning", text: "thinking…" };
+        yield { type: "text", text: "hi" };
         yield { type: "finish", finish_reason: "stop" };
       },
     } as ControllerDeps["adapter"];
     const c = new Controller(d);
-    await c.submit("oi");
+    await c.submit("hi");
     const t = c.state.chat.find((i) => i.kind === "thinking");
-    expect(t?.content).toBe("pensando…");
+    expect(t?.content).toBe("thinking…");
   });
 
-  it("falha no LLM → título é a própria mensagem", async () => {
+  it("LLM failure uses the message as the title", async () => {
     const d = deps();
     d.adapter = {
       list_models: async () => ["m1"],
@@ -189,11 +189,11 @@ describe("controller", () => {
       },
     } as ControllerDeps["adapter"];
     const c = new Controller(d);
-    await c.submit("mensagem de teste");
-    expect(c.state.title).toBe("mensagem de teste");
+    await c.submit("test message");
+    expect(c.state.title).toBe("test message");
   });
 
-  it("tab completa/cicla sugestões de /... no input", () => {
+  it("tab completes/cycles /... suggestions in the input", () => {
     const c = new Controller(deps());
     c.setInput("/se");
     expect(c.state.suggest).toEqual(["/session", "/sessions"]);
@@ -205,42 +205,42 @@ describe("controller", () => {
     expect(c.state.input).toBe("/session");
   });
 
-  it("tab remonta o input (inputKey) para levar o cursor ao fim; digitação não remonta", () => {
+  it("tab remounts the input (inputKey) to move the cursor to the end; typing does not remount", () => {
     const c = new Controller(deps());
     c.setInput("/se");
     const base = c.state.inputKey;
-    c.setInput("/se"); // digitar não remonta
+    c.setInput("/se"); // Typing does not remount.
     expect(c.state.inputKey).toBe(base);
     c.handleKey({ tab: true }, "");
     expect(c.state.inputKey).toBe(base + 1);
   });
 
-  it("tab sem sugestão não muda o input", () => {
+  it("tab without a suggestion does not change the input", () => {
     const c = new Controller(deps());
-    c.setInput("oi");
+    c.setInput("hi");
     c.handleKey({ tab: true }, "");
-    expect(c.state.input).toBe("oi");
+    expect(c.state.input).toBe("hi");
   });
 
-  it("/new cria sessão nova e limpa estado", async () => {
+  it("/new creates a new session and clears state", async () => {
     const c = new Controller(deps());
-    await c.submit("oi");
+    await c.submit("hi");
     await c.submit("/new");
     expect(c.state.chat).toEqual([]);
     expect(c.state.title).toBe("");
     expect(c.messages).toHaveLength(1);
   });
 
-  it("/rename define o título da sessão", async () => {
+  it("/rename sets the session title", async () => {
     const d = deps();
     const c = new Controller(d);
-    await c.submit("/rename fixar o build");
-    expect(c.state.title).toBe("fixar o build");
+    await c.submit("/rename fix the build");
+    expect(c.state.title).toBe("fix the build");
     const list = Session.list(d.sessionDir);
-    expect(list[0]?.title).toBe("fixar o build");
+    expect(list[0]?.title).toBe("fix the build");
   });
 
-  it("comando /help abre o painel de ajuda", async () => {
+  it("/help opens the help panel", async () => {
     const c = new Controller(deps());
     await c.submit("/help");
     expect(c.state.helpOpen).toBe(true);
@@ -248,19 +248,19 @@ describe("controller", () => {
     expect(c.state.helpOpen).toBe(false);
   });
 
-  it("comando desconhecido marca notice", async () => {
+  it("unknown command sets a notice", async () => {
     const c = new Controller(deps());
     await c.submit("/fly");
-    expect(c.state.notice).toBe("comando desconhecido: /fly");
+    expect(c.state.notice).toBe("unknown command: /fly");
   });
 
-  it("esc interrompe turno em andamento", async () => {
+  it("esc interrupts an in-progress turn", async () => {
     const c = new Controller(deps());
-    const p = c.submit("oi");
+    const p = c.submit("hi");
     expect(c.state.busy).toBe(true);
     c.handleKey({ escape: true }, "");
     await p;
     expect(c.state.busy).toBe(false);
-    expect(c.state.notice).toContain("interrompido");
+    expect(c.state.notice).toContain("interrupted");
   });
 });

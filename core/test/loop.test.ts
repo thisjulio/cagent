@@ -20,20 +20,20 @@ function fakeAdapter(script: LlmChunk[][], failFirst = 0): ProviderAdapter {
   };
 }
 
-describe("loop de agente", () => {
-  const tool = defineTool("bash", "exec", {}, async () => ({ output: "resultado" }));
+describe("agent loop", () => {
+  const tool = defineTool("bash", "exec", {}, async () => ({ output: "result" }));
   const bus = new EventBus();
 
-  it("multi-turno com tool call", async () => {
-    const messages: Message[] = [{ role: "system", content: "s" }, { role: "user", content: "rode ls" }];
+  it("multi-turn with a tool call", async () => {
+    const messages: Message[] = [{ role: "system", content: "s" }, { role: "user", content: "run ls" }];
     const r = await runTurn({
       adapter: fakeAdapter([
         [
-          { type: "text", text: "rodando" },
+           { type: "text", text: "running" },
           { type: "tool-call", tool_call: { id: "t1", name: "bash", arguments: '{"command":"ls"}' } },
           { type: "finish", finish_reason: "stop" },
         ],
-        [{ type: "text", text: "feito" }, { type: "finish", finish_reason: "stop" }],
+         [{ type: "text", text: "done" }, { type: "finish", finish_reason: "stop" }],
       ]),
       model: "m",
       messages,
@@ -46,11 +46,11 @@ describe("loop de agente", () => {
     expect(messages[messages.length - 3].role).toBe("assistant");
     expect(messages[messages.length - 3].tool_calls).toEqual([{ id: "t1", name: "bash", arguments: '{"command":"ls"}' }]);
     expect(messages[messages.length - 2].role).toBe("tool");
-    expect(messages[messages.length - 2].content).toBe("resultado");
+    expect(messages[messages.length - 2].content).toBe("result");
     expect(messages[messages.length - 1].role).toBe("assistant");
   });
 
-  it("streamOnce passa reasoning ao callback", async () => {
+  it("streamOnce passes reasoning to the callback", async () => {
     const seen: string[] = [];
     const r = await streamOnce({
       adapter: fakeAdapter([[{ type: "reasoning", text: "r1" }, { type: "text", text: "ok" }, { type: "finish", finish_reason: "stop" }]]),
@@ -63,7 +63,7 @@ describe("loop de agente", () => {
     expect(seen).toEqual(["r1"]);
   });
 
-  it("retry com backoff até sucesso", async () => {
+  it("retries with backoff until success", async () => {
     const r = await streamOnce({
       adapter: fakeAdapter([[{ type: "text", text: "ok" }, { type: "finish", finish_reason: "stop" }]], 1),
       model: "m",
@@ -74,11 +74,11 @@ describe("loop de agente", () => {
     expect(r.text).toBe("ok");
   });
 
-  it("tool desconhecida vira erro de resultado e o loop encerra", async () => {
+  it("an unknown tool becomes a result error and ends the loop", async () => {
     const messages: Message[] = [{ role: "user", content: "x" }];
     const r = await runTurn({
       adapter: fakeAdapter([
-        [{ type: "tool-call", tool_call: { id: "t9", name: "inexistente", arguments: "{}" } }, { type: "finish", finish_reason: "stop" }],
+         [{ type: "tool-call", tool_call: { id: "t9", name: "missing", arguments: "{}" } }, { type: "finish", finish_reason: "stop" }],
         [{ type: "text", text: "ok" }, { type: "finish", finish_reason: "stop" }],
       ]),
       model: "m",
@@ -90,11 +90,11 @@ describe("loop de agente", () => {
     });
     expect(r.records).toHaveLength(3);
     const toolMsg = r.records.find((x) => x.role === "tool");
-    expect(toolMsg?.content).toContain("inexistente");
+    expect(toolMsg?.content).toContain("missing");
   });
 
-  it("override de schema do provedor: nome do modelo volta ao canônico no registry", async () => {
-    const edit = defineTool("edit_file", "edit", { type: "object", properties: {} }, async () => ({ output: "editado" }));
+  it("provider schema override maps the model name back to the canonical registry name", async () => {
+    const edit = defineTool("edit_file", "edit", { type: "object", properties: {} }, async () => ({ output: "edited" }));
     let sentTools: string[] = [];
     let calls = 0;
     const script: LlmChunk[][] = [
@@ -122,15 +122,15 @@ describe("loop de agente", () => {
     expect(sentTools).toEqual(["apply_patch"]);
     const toolMsg = r.records.find((x) => x.role === "tool");
     expect(toolMsg?.toolName).toBe("edit_file");
-    expect(toolMsg?.content).toBe("editado");
+    expect(toolMsg?.content).toBe("edited");
   });
 
-  it("interrupto para o stream sem executar tools", async () => {
+  it("interrupting stops the stream without executing tools", async () => {
     const messages: Message[] = [{ role: "user", content: "x" }];
     const r = await runTurn({
       adapter: fakeAdapter([
         [
-          { type: "text", text: "parcial" },
+           { type: "text", text: "partial" },
           { type: "tool-call", tool_call: { id: "t1", name: "bash", arguments: "{}" } },
           { type: "finish", finish_reason: "stop" },
         ],

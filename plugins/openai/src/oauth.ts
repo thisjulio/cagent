@@ -88,7 +88,7 @@ function extractAccountId(tokens: Record<string, unknown>): string | undefined {
         ((claims.organizations as { id: string }[] | undefined)?.[0]?.id);
       if (id) return id;
     } catch {
-      // token não é JWT
+      // Token is not a JWT.
     }
   }
   return undefined;
@@ -106,7 +106,7 @@ export async function exchangeCode(code: string, verifier: string, redirectUri: 
       code_verifier: verifier,
     }).toString(),
   });
-  if (!res.ok) throw new Error(`troca de token falhou: ${res.status}`);
+  if (!res.ok) throw new Error(`token exchange failed: ${res.status}`);
   const t = (await res.json()) as Record<string, unknown>;
   return {
     access: t.access_token as string,
@@ -126,7 +126,7 @@ export async function refreshCreds(refreshToken: string): Promise<Creds> {
       client_id: CLIENT_ID,
     }).toString(),
   });
-  if (!res.ok) throw new Error(`refresh de token falhou: ${res.status}`);
+  if (!res.ok) throw new Error(`token refresh failed: ${res.status}`);
   const t = (await res.json()) as Record<string, unknown>;
   return {
     access: t.access_token as string,
@@ -136,28 +136,28 @@ export async function refreshCreds(refreshToken: string): Promise<Creds> {
   };
 }
 
-// o redirect_uri deve bater byte a byte com o registrado para o client público
-// (http://localhost:1455/auth/callback)
+// redirect_uri must match the public client registration byte for byte
+// (http://localhost:1455/auth/callback).
 function parseCallback(url: URL, expectedState: string): { code?: string; error?: string } {
   if (url.pathname !== "/auth/callback") return { error: "not found" };
   const code = url.searchParams.get("code");
   const error = url.searchParams.get("error") ?? url.searchParams.get("error_description");
   if (error) return { error };
-  if (!code || url.searchParams.get("state") !== expectedState) return { error: "state inválido" };
+  if (!code || url.searchParams.get("state") !== expectedState) return { error: "invalid state" };
   return { code };
 }
 
 function openInBrowser(url: string): void {
-  console.log("\nAbrindo browser para login no ChatGPT...");
+  console.log("\nOpening a browser for ChatGPT login...");
   for (const cmd of ["xdg-open", "open", "wslview"]) {
     try {
       spawn(cmd, [url], { stdio: "ignore" });
       break;
     } catch {
-      // tenta o próximo opener
+      // Try the next opener.
     }
   }
-  console.log(`Se o browser não abriu, use: ${url}`);
+  console.log(`If the browser did not open, use: ${url}`);
 }
 
 function authorizeParams(state: string, challenge: string, redirectUri: string): URLSearchParams {
@@ -187,17 +187,17 @@ function makeCallbackServer(o: {
     const cb = parseCallback(url, o.state);
     if (cb.error === "not found") {
       res.writeHead(404);
-      res.end("não encontrado");
+      res.end("not found");
       return;
     }
     if (cb.error) {
       res.writeHead(500, { "Content-Type": "text/plain; charset=utf-8" });
-      res.end(`erro: ${cb.error}`);
+      res.end(`error: ${cb.error}`);
       o.fail(new Error(cb.error));
       return;
     }
     res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
-    res.end("Login concluído. Esta página pode ser fechada.");
+    res.end("Login complete. You can close this page.");
     exchangeCode(cb.code!, o.verifier, o.redirect()).then(o.finish, o.fail);
   });
   return server;
@@ -226,9 +226,9 @@ export async function pkceLogin(): Promise<Creds> {
       }
     };
     const server = makeCallbackServer({ state, verifier, redirect: () => redirectUri, finish, fail });
-    const timer = setTimeout(() => fail(new Error("timeout: o callback do browser não chegou em 5 min")), 5 * 60 * 1000);
+    const timer = setTimeout(() => fail(new Error("timeout: the browser callback did not arrive within 5 minutes")), 5 * 60 * 1000);
     server.on("error", (e: Error) => {
-      fail(new Error(`não foi possível abrir o servidor de callback na porta ${OAUTH_PORT}: ${e.message}`));
+      fail(new Error(`could not open the callback server on port ${OAUTH_PORT}: ${e.message}`));
     });
     server.listen(OAUTH_PORT, "localhost", () => {
       redirectUri = `http://localhost:${OAUTH_PORT}/auth/callback`;

@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-// ponytail: sobe os pais pegando o 1º AGENTS.md/CLAUDE.md (AGENTS vence no mesmo dir); precedência de aninhados estilo Codex, se subprojetos importarem
+// ponytail: walk up parent directories for the first AGENTS.md/CLAUDE.md (AGENTS wins in the same directory); nested precedence follows Codex if subprojects are imported.
 export function loadAgentsMd(cwd: string, instructions: string[] = []): string | null {
   const parts: string[] = [];
   const project = findProjectDoc(cwd);

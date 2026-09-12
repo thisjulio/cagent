@@ -6,7 +6,7 @@ export type ToolAsk = (tool: ToolDefinition, args: ToolArgs) => Promise<boolean>
 
 export function permission(tool: ToolDefinition, args: ToolArgs, allowlist: string[]): "allow" | "ask" {
   const target = typeof args.command === "string" ? (args.command as string).trim() : JSON.stringify(args);
-  // ponytail: apenas prefixos da allowlist; denylist e UX de allowlist entram na Fase 7
+  // ponytail: prefixes only for now; denylist and allowlist UX belong in Phase 7.
   return allowlist.some((p) => target.startsWith(p)) ? "allow" : "ask";
 }
 
@@ -19,7 +19,7 @@ export async function runToolPipeline(
 ): Promise<{ output: string; isError?: boolean }> {
   if (permission(tool, args, allowlist) === "ask" && !(await ask(tool, args))) {
     bus.emit("tools/denied", { tool: tool.name, args });
-    return { output: `usuário negou a execução de ${tool.name}`, isError: true };
+    return { output: `user denied execution of ${tool.name}`, isError: true };
   }
   bus.emit("tools/pre", { tool: tool.name, args });
   try {
@@ -29,6 +29,6 @@ export async function runToolPipeline(
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     bus.emit("tools/post", { tool: tool.name, error: msg });
-    return { output: `erro na tool ${tool.name}: ${msg}`, isError: true };
+    return { output: `error in tool ${tool.name}: ${msg}`, isError: true };
   }
 }

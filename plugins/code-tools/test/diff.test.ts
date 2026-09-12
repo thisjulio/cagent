@@ -1,20 +1,20 @@
 import { describe, expect, it } from "bun:test";
 import { unifiedDiff } from "../src/diff";
 
-describe("diff unificado", () => {
-  it("apenas adição", () => {
+describe("unified diff", () => {
+  it("addition only", () => {
     expect(unifiedDiff(["a", "b"], ["a", "x", "b"])).toBe(" a\n+x\n b");
   });
 
-  it("apenas remoção", () => {
+  it("removal only", () => {
     expect(unifiedDiff(["a", "b", "c"], ["a", "c"])).toBe(" a\n-b\n c");
   });
 
-  it("substituição", () => {
+  it("replacement", () => {
     expect(unifiedDiff(["a", "b"], ["a", "c"])).toBe(" a\n-b\n+c");
   });
 
-  it("arquivos vazios", () => {
+  it("empty files", () => {
     expect(unifiedDiff([], ["x"])).toBe("+x");
     expect(unifiedDiff(["x"], [])).toBe("-x");
   });

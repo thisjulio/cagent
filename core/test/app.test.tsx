@@ -16,10 +16,10 @@ function deps(): ControllerDeps {
     registry: new Registry(),
     bus: new EventBus(),
     adapter: {
-      list_models: async () => ["modelo-a", "modelo-b"],
+      list_models: async () => ["model-a", "model-b"],
       prepare_call: async (o) => o,
       stream: async function* () {
-        yield { type: "text", text: "oi" };
+        yield { type: "text", text: "hi" };
       },
     },
     model: "openai/m1",
@@ -29,7 +29,7 @@ function deps(): ControllerDeps {
 }
 
 describe("OpenTUI render", () => {
-  it("renderiza panes e status bar", async () => {
+  it("renders panes and the status bar", async () => {
     const c = new Controller(deps());
     const setup = await testRender(React.createElement(App, { c }), { width: 80, height: 24 });
     await act(async () => { await setup.flush(); });
@@ -41,27 +41,27 @@ describe("OpenTUI render", () => {
     act(() => setup.renderer.destroy());
   });
 
-  it("mantém o indicador do input na mesma linha do texto", async () => {
+  it("keeps the input indicator on the same line as the text", async () => {
     const c = new Controller(deps());
-    c.state.input = "escreva um texto longo sem quebrar o indicador";
+    c.state.input = "type a long text without breaking the indicator";
     const previousColumns = process.stdout.columns;
     process.stdout.columns = 40;
     try {
       const setup = await testRender(React.createElement(App, { c }), { width: 40, height: 24 });
       await act(async () => { await setup.flush(); });
       const lines = setup.captureCharFrame().split("\n");
-      expect(lines.some((line) => line.includes("> escreva"))).toBe(true);
+      expect(lines.some((line) => line.includes("> type"))).toBe(true);
       act(() => setup.renderer.destroy());
     } finally {
       process.stdout.columns = previousColumns;
     }
   });
 
-  it("rola o histórico longo com a roda do mouse", async () => {
+  it("scrolls long history with the mouse wheel", async () => {
     const c = new Controller(deps());
     c.state.chat.push({
       kind: "assistant",
-      content: Array.from({ length: 30 }, (_, i) => `parágrafo ${i}`).join("\n\n"),
+       content: Array.from({ length: 30 }, (_, i) => `paragraph ${i}`).join("\n\n"),
     });
     const previousColumns = process.stdout.columns;
     const previousRows = process.stdout.rows;
@@ -81,22 +81,22 @@ describe("OpenTUI render", () => {
     }
   });
 
-  it("markdown em mensagem de assistant concluída", async () => {
+  it("renders markdown in a completed assistant message", async () => {
     const c = new Controller(deps());
-    c.state.chat.push({ kind: "assistant", content: "# título\n\n- item 1\n- item 2\n" });
+     c.state.chat.push({ kind: "assistant", content: "# title\n\n- item 1\n- item 2\n" });
     const setup = await testRender(React.createElement(App, { c }), { width: 80, height: 24 });
     await act(async () => { await setup.flush(); });
     const out = setup.captureCharFrame();
-    expect(out).toContain("título");
+     expect(out).toContain("title");
     expect(out).toContain("- item 1");
       act(() => setup.renderer.destroy());
   });
 
-  it("lista numerada renderiza com números e código sem markup cru", async () => {
+  it("renders numbered lists and code without raw markup", async () => {
     const c = new Controller(deps());
     c.state.chat.push({
       kind: "assistant",
-      content: "1. Crie uma pasta:\n2. Registre:\n\n```ts\nconst a = 1;\n```",
+       content: "1. Create a folder:\n2. Register it:\n\n```ts\nconst a = 1;\n```",
     });
     const setup = await testRender(React.createElement(App, { c }), { width: 80, height: 24 });
     await act(async () => { await setup.flush(); });
@@ -107,10 +107,10 @@ describe("OpenTUI render", () => {
     act(() => setup.renderer.destroy());
   });
 
-  it("tool item renderiza com cmd e dica de expandir", async () => {
+  it("renders a tool item with its command and expand hint", async () => {
     const c = new Controller(deps());
     c.onToolPre({ tool: "bash", args: { command: "git status" } });
-    c.onToolPost({ tool: "bash", result: { output: "linhas\na\nb" } });
+     c.onToolPost({ tool: "bash", result: { output: "lines\na\nb" } });
     const setup = await testRender(React.createElement(App, { c }), { width: 80, height: 24 });
     await act(async () => { await setup.flush(); });
     const out = setup.captureCharFrame();
@@ -120,7 +120,7 @@ describe("OpenTUI render", () => {
     act(() => setup.renderer.destroy());
   });
 
-  it("tab completa e enter confirma o comando /... completo (sem envio incompleto)", async () => {
+  it("tab completes and enter confirms the complete /... command (without incomplete submission)", async () => {
     const c = new Controller(deps());
     const setup = await testRender(React.createElement(App, { c }), { width: 80, height: 24 });
     await act(async () => { await setup.flush(); });
@@ -139,7 +139,7 @@ describe("OpenTUI render", () => {
     act(() => setup.renderer.destroy());
   });
 
-  it("navega e confirma o seletor de modelos", async () => {
+  it("navigates and confirms the model selector", async () => {
     const d = deps();
     d.registry.registerProvider("openai", d.adapter);
     const c = new Controller(d);
@@ -154,11 +154,11 @@ describe("OpenTUI render", () => {
     act(() => setup.renderer.destroy());
   });
 
-  it("navega e confirma o seletor de sessoes", async () => {
+  it("navigates and confirms the session selector", async () => {
     const c = new Controller(deps());
     c.state.sessionList = [
-      { id: c.session.id, updated: "2026-01-01T00:00:00", title: "uma" },
-      { id: c.session.id, updated: "2026-01-02T00:00:00", title: "duas" },
+       { id: c.session.id, updated: "2026-01-01T00:00:00", title: "one" },
+       { id: c.session.id, updated: "2026-01-02T00:00:00", title: "two" },
     ];
     const setup = await testRender(React.createElement(App, { c }), { width: 80, height: 24 });
     await act(async () => { await setup.flush(); });

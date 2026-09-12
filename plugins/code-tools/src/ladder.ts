@@ -27,7 +27,7 @@ export function levenshtein(a: string, b: string): number {
   return prev[b.length];
 }
 
-// ponytail: janela fuzzy é O(n·L·M); suficiente para arquivos de código, degenera em arquivos gigantes
+// ponytail: fuzzy window is O(n·L·M); sufficient for code files, degrades on huge files.
 export function findBlock(lines: string[], search: string, threshold: number): FindResult {
   const sLines = search.split("\n");
   if (!sLines.length) return null;

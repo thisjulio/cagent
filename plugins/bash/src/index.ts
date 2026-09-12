@@ -22,7 +22,7 @@ function capture(buffer: OutputBuffer, chunk: string): string {
 }
 
 function output(buffer: OutputBuffer): string {
-  return buffer.parts.join("") + (buffer.truncated ? "\n[saida truncada para preservar memoria]" : "");
+  return buffer.parts.join("") + (buffer.truncated ? "\n[output truncated to preserve memory]" : "");
 }
 
 function runCommand(opts: RunOptions): Promise<{ code: number; stdout: string; stderr: string; timedOut: boolean; error?: string }> {
@@ -58,13 +58,13 @@ const register: Plugin = (ctx) => {
   const defaultTimeout = (ctx.config.timeout_ms as number) ?? 30_000;
   ctx.registerTool({
     name: "bash",
-    description: "Executa um comando shell e streama stdout/stderr",
+    description: "Runs a shell command and streams stdout/stderr",
     parameters: {
       type: "object",
       properties: {
-        command: { type: "string", description: "Comando a executar" },
-        workdir: { type: "string", description: "Diretório de execução (default: cwd)" },
-        timeout_ms: { type: "number", description: `Timeout em ms (default: ${defaultTimeout})` },
+        command: { type: "string", description: "Command to run" },
+        workdir: { type: "string", description: "Working directory (default: cwd)" },
+        timeout_ms: { type: "number", description: `Timeout in ms (default: ${defaultTimeout})` },
       },
       required: ["command"],
     },

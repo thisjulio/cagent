@@ -1,13 +1,13 @@
 import type { Controller } from "./controller";
 import type { InputKey } from "./state";
 
-// ponytail: orquestração de teclas do input (autocomplete, pickers, pendingAsk) —
-// sai do controller para caber no limite de 250 linhas; é uma camada de regras de estado.
+// ponytail: input key orchestration (autocomplete, pickers, pendingAsk) lives
+// outside the controller to keep it under 250 lines; this is a state-rules layer.
 export function onKey(c: Controller, key: InputKey, input: string): void {
   const s = c.state;
   if (key.tab) {
-    // ponytail: suggestIdx inicia em -1; o 1o tab cai na 1a sugestao (0).
-    // inputKey++ sinaliza à UI que o valor foi completado externamente.
+    // ponytail: suggestIdx starts at -1; the first tab selects suggestion 0.
+    // inputKey++ tells the UI that the value was completed externally.
     if (s.suggest.length) {
       s.suggestIdx = (s.suggestIdx + 1) % s.suggest.length;
       s.input = s.suggest[s.suggestIdx];

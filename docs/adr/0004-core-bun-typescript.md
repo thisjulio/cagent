@@ -1,3 +1,3 @@
-# Core e plugins em Bun/TypeScript
+# Core and plugins in Bun/TypeScript
 
-Core (loop de agente, contexto, sessões, UI) e todos os plugins são implementados em TypeScript sobre Bun. A UI usa ink; ratatui foi rejeitado — não tem equivalente em JS e o trade-off favoreceu velocidade de desenvolvimento + ecossistema npm. Plugins são packages TS carregados via dynamic import; sem Rust, sem FFI, sem cdylib.
+The core (agent loop, context, sessions, UI) and all plugins are implemented in TypeScript on Bun. The UI uses OpenTUI; ratatui was rejected because it has no JavaScript equivalent and the trade-off favored development speed and the npm ecosystem. Plugins are TypeScript packages loaded through dynamic import; no Rust, FFI, or cdylib.

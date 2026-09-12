@@ -51,7 +51,7 @@ export class Controller {
       suggestIdx: -1,
       inputKey: 0,
     };
-    if (loaded.records.length) appendChat(s, { kind: "meta", content: `resumindo sessão ${this.session.id} (${loaded.messages.length} mensagens)` });
+    if (loaded.records.length) appendChat(s, { kind: "meta", content: `resuming session ${this.session.id} (${loaded.messages.length} messages)` });
     this.state = s;
   }
 
@@ -84,10 +84,10 @@ export class Controller {
 
   private maybeEnvContext(): void {
     if (Date.now() - this.envStamp < 30 * 60_000) return;
-    // ponytail: 30min entre re-injeções; se sessões de horas mostrarem staleness, baixar o intervalo
+    // ponytail: 30 minutes between reinjections; lower the interval if multi-hour sessions show staleness.
     this.messages.push({
       role: "user" as const,
-      content: `[contexto] Data/hora: ${new Date().toISOString()} (UTC); fuso: ${Intl.DateTimeFormat().resolvedOptions().timeZone}`,
+      content: `[context] Date/time: ${new Date().toISOString()} (UTC); timezone: ${Intl.DateTimeFormat().resolvedOptions().timeZone}`,
     });
     this.envStamp = Date.now();
   }
@@ -111,7 +111,7 @@ export class Controller {
     this.messages.push({ role: "user", content: text });
     this.maybeEnvContext();
     if (estimateTokens(this.messages) >= s.threshold) {
-      try { await compact(this); } catch (e) { s.notice = `compactação falhou: ${e instanceof Error ? e.message : String(e)}`; }
+      try { await compact(this); } catch (e) { s.notice = `compaction failed: ${e instanceof Error ? e.message : String(e)}`; }
     }
     this.bump();
     const titlePromise = s.title
@@ -160,9 +160,9 @@ export class Controller {
         }
       }
       for (const it of s.chat) if (it.kind === "tool" && it.running) it.running = false;
-      s.notice = turn.interrupted ? "[interrompido — digite para steer]" : "";
+      s.notice = turn.interrupted ? "[interrupted - type to steer]" : "";
     } catch (e) {
-      s.notice = `erro: ${e instanceof Error ? e.message : String(e)}`;
+      s.notice = `error: ${e instanceof Error ? e.message : String(e)}`;
     }
     s.busy = false;
     s.tokens = estimateTokens(this.messages);
@@ -193,7 +193,7 @@ export class Controller {
     if (!s.pendingAsk) return;
     const cmd = s.pendingAsk.cmd;
     if (!this.deps.config.allowlist.includes(cmd)) this.deps.config.allowlist.push(cmd);
-    // ponytail: allowlist em memória (sessão); persistência na config é Fase 7
+    // ponytail: allowlist is in memory for the session; config persistence is Phase 7.
     this.answerAsk(true);
   }
 

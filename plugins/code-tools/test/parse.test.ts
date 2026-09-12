@@ -3,8 +3,8 @@ import { applyHunks, applyRegions } from "../src/apply-edit";
 import { parseSearchReplace } from "../src/parse-search-replace";
 import { parseApplyPatch } from "../src/parse-apply-patch";
 
-describe("parsers de edição", () => {
-  it("SEARCH/REPLACE: par completo e par sem replace", () => {
+describe("editing parsers", () => {
+  it("SEARCH/REPLACE: complete pair and pair without replace", () => {
     const r = parseSearchReplace(
       `<<< SEARCH\nold\n>>>
 <<< REPLACE
@@ -20,11 +20,11 @@ drop
     ]);
   });
 
-  it("SEARCH/REPLACE: sem blocos lança erro", () => {
+  it("SEARCH/REPLACE: no blocks throws", () => {
     expect(() => parseSearchReplace("nada")).toThrow();
   });
 
-  it("patch: arquivo com hunk de contexto", () => {
+  it("patch: file with a context hunk", () => {
     const p = parseApplyPatch(
       `*** Begin patch
 a.ts
@@ -37,11 +37,11 @@ a.ts
     expect(p).toEqual([{ path: "a.ts", op: "update", hunks: [{ oldLines: ["a", "b", "c"], newLines: ["a", "c"] }] }]);
   });
 
-  it("patch: sem blocos lança erro", () => {
+  it("patch: no blocks throws", () => {
     expect(() => parseApplyPatch("x")).toThrow();
   });
 
-  it("applyRegions: replace e delete", () => {
+  it("applyRegions: replace and delete", () => {
     const regions = parseSearchReplace(
       `<<< SEARCH\nbeta\n>>>
 <<< REPLACE
@@ -56,13 +56,13 @@ gamma
     expect(out.lines).toEqual(["alpha", "B", "delta"]);
   });
 
-  it("applyHunks: hunk sem contexto substitui o arquivo", () => {
+  it("applyHunks: context-free hunk replaces the file", () => {
     const out = applyHunks(["a", "b"], { path: "x", op: "update", hunks: [{ oldLines: [], newLines: ["z"] }] }, 0.85);
     expect(out.error).toBeUndefined();
     expect(out.lines).toEqual(["z"]);
   });
 
-  it("patch: formato Codex real (Begin Patch maiúsculo + Update File:)", () => {
+  it("patch: real Codex format (uppercase Begin Patch + Update File:)", () => {
     const p = parseApplyPatch(
       `*** Begin Patch
 *** Update File: src/a.ts
@@ -75,12 +75,12 @@ gamma
     expect(p).toEqual([{ path: "src/a.ts", op: "update", hunks: [{ oldLines: ["a", "b", "c"], newLines: ["a", "c"] }] }]);
   });
 
-  it("patch: Add File (op add, conteúdo vira newLines)", () => {
-    const p = parseApplyPatch(`*** Begin Patch\n*** Add File: src/novo.ts\n+um\n+dois\n*** End Patch`);
-    expect(p).toEqual([{ path: "src/novo.ts", op: "add", hunks: [{ oldLines: [], newLines: ["um", "dois"] }] }]);
+  it("patch: Add File (add operation, content becomes newLines)", () => {
+    const p = parseApplyPatch(`*** Begin Patch\n*** Add File: src/new.ts\n+one\n+two\n*** End Patch`);
+    expect(p).toEqual([{ path: "src/new.ts", op: "add", hunks: [{ oldLines: [], newLines: ["one", "two"] }] }]);
   });
 
-  it("patch: Delete File (op delete, sem hunks)", () => {
+  it("patch: Delete File (delete operation, no hunks)", () => {
     const p = parseApplyPatch(`*** Begin Patch\n*** Delete File: src/velho.ts\n*** End Patch`);
     expect(p).toEqual([{ path: "src/velho.ts", op: "delete", hunks: [] }]);
   });

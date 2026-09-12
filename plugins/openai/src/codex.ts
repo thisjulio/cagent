@@ -1,6 +1,6 @@
 import type { LlmCallOptions } from "@cagent/sdk";
 
-// catálogo de modelos do token ChatGPT vem do backend Codex, não do /v1/models público
+// The ChatGPT token's model catalog comes from the Codex backend, not public /v1/models.
 export async function fetchCodexModels(access: string, accountId?: string): Promise<string[]> {
   const res = await fetch("https://chatgpt.com/backend-api/codex/models?client_version=1.0.0", {
     headers: {
@@ -8,7 +8,7 @@ export async function fetchCodexModels(access: string, accountId?: string): Prom
       ...(accountId ? { "ChatGPT-Account-Id": accountId } : {}),
     },
   });
-  if (!res.ok) throw new Error(`listagem de modelos falhou: ${res.status}`);
+  if (!res.ok) throw new Error(`model listing failed: ${res.status}`);
   const data = (await res.json()) as { models: { id?: string; slug?: string }[] };
   return data.models.map((m) => m.id ?? m.slug).filter((s) => s).sort();
 }

@@ -6,17 +6,17 @@ export class Registry {
   private serviceList = new Map<string, unknown>();
 
   registerTool(tool: ToolDefinition): void {
-    if (this.toolList.has(tool.name)) throw new Error(`tool duplicada: ${tool.name}`);
+    if (this.toolList.has(tool.name)) throw new Error(`duplicate tool: ${tool.name}`);
     this.toolList.set(tool.name, tool);
   }
 
   registerProvider(route: string, adapter: ProviderAdapter): void {
-    if (this.providerList.has(route)) throw new Error(`provedor duplicado: ${route}`);
+    if (this.providerList.has(route)) throw new Error(`duplicate provider: ${route}`);
     this.providerList.set(route, adapter);
   }
 
   register(key: string, service: unknown): void {
-    if (this.serviceList.has(key)) throw new Error(`serviço duplicado: ${key}`);
+    if (this.serviceList.has(key)) throw new Error(`duplicate service: ${key}`);
     this.serviceList.set(key, service);
   }
 

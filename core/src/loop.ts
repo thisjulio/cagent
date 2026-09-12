@@ -77,11 +77,11 @@ async function runToolCall(ctx: ToolLoopCtx, tc: { id: string; name: string; arg
   try {
     args = JSON.parse(tc.arguments) as ToolArgs;
   } catch {
-    // args inválidos → vazio
+    // Invalid args become an empty object.
   }
   const result = tool
     ? await runToolPipeline(tool, args, opts.allowlist, opts.ask, opts.bus)
-    : { output: `tool não encontrada: ${tc.name}`, isError: true };
+    : { output: `tool not found: ${tc.name}`, isError: true };
   opts.messages.push({ role: "tool", tool_call_id: tc.id, content: result.output });
   ctx.records.push({
     role: "tool",
@@ -94,7 +94,7 @@ async function runToolCall(ctx: ToolLoopCtx, tc: { id: string; name: string; arg
 }
 
 export async function runTurn(opts: TurnOpts): Promise<{ records: TurnRecord[]; interrupted: boolean }> {
-  // ponytail: o override é da superfície do provedor; o registry mantém o nome canônico
+  // ponytail: the override belongs to the provider surface; the registry keeps the canonical name.
   const overrides = opts.adapter.tool_overrides?.() ?? {};
   const nameToCanonical = overrideNameMap(overrides);
   const streamOpts: StreamOpts = { ...opts, tools: applyToolOverrides(opts.tools, overrides) };

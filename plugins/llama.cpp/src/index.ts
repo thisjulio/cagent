@@ -53,7 +53,7 @@ async function* streamChatCompletions(request: LlmCallOptions, config: Config): 
     const error = await response.text();
     throw new Error(`llama-server respondeu ${response.status}: ${error.slice(0, 500)}`);
   }
-  if (!response.body) throw new Error("llama-server não retornou um stream");
+  if (!response.body) throw new Error("llama-server did not return a stream");
 
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
@@ -74,7 +74,7 @@ async function* streamChatCompletions(request: LlmCallOptions, config: Config): 
       const choice = json.choices?.[0];
       const delta = choice?.delta ?? {};
       if (typeof delta.content === "string") yield { type: "text", text: delta.content };
-      // ponytail: campo varia por versão do llama-server (reasoning_content | reasoning)
+      // ponytail: field varies by llama-server version (reasoning_content | reasoning).
       const reasoning =
         typeof delta.reasoning_content === "string"
           ? delta.reasoning_content

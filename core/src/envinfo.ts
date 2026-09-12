@@ -4,12 +4,12 @@ import path from "node:path";
 
 export function envFacts(cwd: string): string {
   const lines = [
-    `Sistema: ${os.platform()} ${os.release()}`,
-    `Shell: ${process.env.SHELL ?? "desconhecido"}`,
+    `System: ${os.platform()} ${os.release()}`,
+    `Shell: ${process.env.SHELL ?? "unknown"}`,
     `CWD: ${cwd}`,
-    `Data/hora: ${new Date().toISOString()} (UTC)`,
-    `Fuso local: ${Intl.DateTimeFormat().resolvedOptions().timeZone}`,
-    `Repo git: ${fs.existsSync(path.join(cwd, ".git")) ? "sim" : "não"}`,
+    `Date/time: ${new Date().toISOString()} (UTC)`,
+    `Local timezone: ${Intl.DateTimeFormat().resolvedOptions().timeZone}`,
+    `Git repo: ${fs.existsSync(path.join(cwd, ".git")) ? "yes" : "no"}`,
   ];
   return lines.join("\n");
 }

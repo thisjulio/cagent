@@ -3,7 +3,7 @@ import { EventBus } from "../../../core/src/events";
 import { Registry } from "../../../core/src/registry";
 import { loadPlugins } from "../../../core/src/loader";
 
-test("bash executa comando e streama stdout", async () => {
+test("bash runs a command and streams stdout", async () => {
   const registry = new Registry();
   const bus = new EventBus();
   const chunks: string[] = [];
@@ -17,17 +17,17 @@ test("bash executa comando e streama stdout", async () => {
     bus,
   );
 
-  const result = (await registry.tool("bash")!.execute({ command: "echo oi" })) as {
+  const result = (await registry.tool("bash")!.execute({ command: "echo hi" })) as {
     output: string;
     isError?: boolean;
   };
 
-  expect(result.output).toBe("oi\n");
+  expect(result.output).toBe("hi\n");
   expect(result.isError).toBe(false);
-  expect(chunks.join("")).toBe("oi\n");
+  expect(chunks.join("")).toBe("hi\n");
 });
 
-test("bash respeita timeout", async () => {
+test("bash respects the timeout", async () => {
   const registry = new Registry();
   const bus = new EventBus();
 
@@ -48,7 +48,7 @@ test("bash respeita timeout", async () => {
   expect(Date.now() - started).toBeLessThan(3000);
 });
 
-test("bash limita saída acumulada", async () => {
+test("bash limits accumulated output", async () => {
   const registry = new Registry();
   const bus = new EventBus();
   await loadPlugins(
@@ -57,6 +57,6 @@ test("bash limita saída acumulada", async () => {
     bus,
   );
   const result = await registry.tool("bash")!.execute({ command: "yes x | head -c 200000" });
-  expect(result.output).toContain("saida truncada");
+  expect(result.output).toContain("output truncated");
   expect(result.output.length).toBeLessThan(132000);
 });

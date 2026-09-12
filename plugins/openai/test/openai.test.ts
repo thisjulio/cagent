@@ -4,8 +4,8 @@ import { createAdapter, fetchCodexModels } from "../src/index";
 
 function fakeClient(): OpenAI {
   const chunks = [
-    { choices: [{ delta: { content: "Olá" } }] },
-    { choices: [{ delta: { content: " mundo" } }] },
+    { choices: [{ delta: { content: "Hello" } }] },
+    { choices: [{ delta: { content: " world" } }] },
     { choices: [{ delta: {}, finish_reason: "stop" }], usage: { prompt_tokens: 7, completion_tokens: 2 } },
   ];
   return {
@@ -33,11 +33,11 @@ describe("openai adapter", () => {
     const adapter = createAdapter({ config: {}, client: fakeClient() });
     const parts: string[] = [];
     let finish: { finish_reason: string; usage?: { input_tokens: number; output_tokens: number } } | undefined;
-    for await (const chunk of adapter.stream({ model: "gpt-5.4-mini", messages: [{ role: "user", content: "oi" }], tools: [] })) {
+    for await (const chunk of adapter.stream({ model: "gpt-5.4-mini", messages: [{ role: "user", content: "hi" }], tools: [] })) {
       if (chunk.type === "text") parts.push(chunk.text);
       if (chunk.type === "finish") finish = chunk;
     }
-    expect(parts.join("")).toBe("Olá mundo");
+    expect(parts.join("")).toBe("Hello world");
     expect(finish?.finish_reason).toBe("stop");
     expect(finish?.usage).toEqual({ input_tokens: 7, output_tokens: 2 });
   });
@@ -63,8 +63,8 @@ describe("openai adapter", () => {
 
   test("stream uses the codex responses endpoint for oauth auth", async () => {
     const sse =
-      'event: response.output_text.delta\ndata: {"delta":"Olá"}\n\n' +
-      'event: response.output_text.delta\ndata: {"delta":" mundo"}\n\n' +
+      'event: response.output_text.delta\ndata: {"delta":"Hello"}\n\n' +
+      'event: response.output_text.delta\ndata: {"delta":" world"}\n\n' +
       'event: response.completed\ndata: {"response":{"status":"completed","usage":{"input_tokens":3,"output_tokens":2}}}\n\n';
     const orig = globalThis.fetch;
     try {
@@ -80,11 +80,11 @@ describe("openai adapter", () => {
       const adapter = createAdapter({ config: {}, auth: { kind: "oauth", access: "tok", account_id: "acct" } });
       const parts: string[] = [];
       let finish: { finish_reason: string; usage?: { input_tokens: number; output_tokens: number } } | undefined;
-      for await (const chunk of adapter.stream({ model: "gpt-5.5", messages: [{ role: "user", content: "oi" }], tools: [] })) {
+      for await (const chunk of adapter.stream({ model: "gpt-5.5", messages: [{ role: "user", content: "hi" }], tools: [] })) {
         if (chunk.type === "text") parts.push(chunk.text);
         if (chunk.type === "finish") finish = chunk;
       }
-      expect(parts.join("")).toBe("Olá mundo");
+      expect(parts.join("")).toBe("Hello world");
       expect(finish?.usage).toEqual({ input_tokens: 3, output_tokens: 2 });
     } finally {
       globalThis.fetch = orig;
@@ -93,6 +93,6 @@ describe("openai adapter", () => {
 
   test("prepare_call throws without a selected model", async () => {
     const adapter = createAdapter({ config: {}, client: fakeClient() });
-    await expect(adapter.prepare_call({ model: "", messages: [], tools: [] })).rejects.toThrow("modelo não selecionado");
+    await expect(adapter.prepare_call({ model: "", messages: [], tools: [] })).rejects.toThrow("no model selected");
   });
 });

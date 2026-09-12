@@ -39,7 +39,7 @@ export async function* streamCodex(request: LlmCallOptions, access: string, acco
   });
   if (!res.ok || !res.body) {
     const text = await res.text().catch(() => "");
-    throw new Error(`stream falhou: ${res.status} ${text}`);
+    throw new Error(`stream failed: ${res.status} ${text}`);
   }
 
   const reader = res.body.getReader();

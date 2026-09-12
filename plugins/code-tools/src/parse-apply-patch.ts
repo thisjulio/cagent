@@ -11,7 +11,7 @@ export interface PatchFile {
   hunks: Hunk[];
 }
 
-// formato Codex apply_patch: *** Begin Patch / *** {Update|Add|Delete} File: <caminho> / @@ hunks / linhas +,-,contexto
+// Codex apply_patch format: *** Begin Patch / *** {Update|Add|Delete} File: <path> / @@ hunks / +,-,context lines.
 const BEGIN_RE = /\*\*\* Begin patch\s*\n/i;
 
 function parsePathLine(line: string): { path: string; op: Op } {
@@ -51,12 +51,12 @@ export function parseApplyPatch(patch: string): PatchFile[] {
   for (const part of parts) {
     const body = part.split(/\*\*\* End patch/i)[0];
     const lines = body.split("\n");
-    if (lines[lines.length - 1] === "") lines.pop(); // artefato do \n final, não linha do hunk
+    if (lines[lines.length - 1] === "") lines.pop(); // Final newline artifact, not a hunk line.
     const fileIdx = lines.findIndex((l) => !l.startsWith("@@") && l.trim().length > 0);
-    if (fileIdx < 0) throw new Error("patch sem caminho de arquivo");
+    if (fileIdx < 0) throw new Error("patch has no file path");
     const { path, op } = parsePathLine(lines[fileIdx]);
     files.push({ path, op, hunks: op === "add" ? addHunks(lines.slice(fileIdx + 1)) : op === "delete" ? [] : updateHunks(lines.slice(fileIdx + 1)) });
   }
-  if (!files.length) throw new Error("nenhum bloco *** Begin patch encontrado");
+  if (!files.length) throw new Error("no *** Begin patch block found");
   return files;
 }

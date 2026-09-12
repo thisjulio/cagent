@@ -15,15 +15,15 @@ export async function resolveRoute(config: AppConfig, registry: Registry): Promi
   if (config.model) {
     const [prov, model] = splitRoute(config.model);
     const adapter = registry.provider(prov);
-    if (!adapter) throw new Error(`provedor não encontrado: ${prov}`);
+    if (!adapter) throw new Error(`provider not found: ${prov}`);
     const models = await adapter.list_models();
-    if (!models.includes(model)) throw new Error(`modelo ${model} não existe no provedor ${prov} (disponíveis: ${models.join(", ")})`);
+    if (!models.includes(model)) throw new Error(`model ${model} does not exist in provider ${prov} (available: ${models.join(", ")})`);
     return config.model;
   }
   const first = registry.llmRoute();
-  if (!first) throw new Error("(sem provedor — nada a fazer)");
+  if (!first) throw new Error("(no provider - nothing to do)");
   const models = await registry.provider(first)!.list_models();
-  if (!models.length) throw new Error("(sem provedor — nada a fazer)");
+  if (!models.length) throw new Error("(no provider - nothing to do)");
   return `${first}/${models[0]}`;
 }
 
