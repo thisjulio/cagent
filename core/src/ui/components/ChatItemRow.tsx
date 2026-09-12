@@ -25,7 +25,7 @@ function UserRow({ it }: { it: ChatItem }) {
 function AssistantRow({ it, streaming }: { it: ChatItem; streaming: boolean }) {
   return (
     <box border borderStyle="single" borderColor="#666666" paddingX={1} width="100%" flexDirection="column" flexShrink={0}>
-      {!streaming && it.content ? <Markdown content={it.content} /> : <text>{it.content || "..."}</text>}
+      {!streaming && it.content ? <Markdown content={it.content} /> : streaming ? <text>{it.content || "..."}</text> : null}
     </box>
   );
 }
