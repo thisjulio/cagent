@@ -1,0 +1,32 @@
+export type TaskStatus = "pending" | "in_progress" | "completed" | "blocked";
+export type Task = { id: string; title: string; status: TaskStatus; reason?: string; evidence?: string };
+
+export function taskProgress(tasks: Task[]): string {
+  return `${tasks.filter((task) => task.status === "completed").length}/${tasks.length}`;
+}
+
+export function updateTask(tasks: Task[], id: string, status: TaskStatus, details?: string): Task[] {
+  if (!tasks.some((task) => task.id === id)) throw new Error(`task not found: ${id}`);
+  if (status === "in_progress") {
+    const current = tasks.find((task) => task.status === "in_progress" && task.id !== id);
+    if (current) throw new Error(`task already in progress: ${current.id}`);
+  }
+  if (status === "completed" && !details?.trim()) throw new Error("task completion requires evidence");
+  return tasks.map((task) => task.id === id ? {
+    ...task,
+    status,
+    ...(status === "blocked" ? { reason: details } : {}),
+    ...(status === "completed" ? { evidence: details } : {}),
+  } : task);
+}
+
+export function createTasks(tasks: Task[], titles: string[]): Task[] {
+  return [...tasks, ...titles.filter(Boolean).map((title, index) => ({
+    id: `${Date.now()}-${index}`, title, status: "pending" as const,
+  }))];
+}
+
+export function removeTask(tasks: Task[], id: string): Task[] {
+  if (!tasks.some((task) => task.id === id)) throw new Error(`task not found: ${id}`);
+  return tasks.filter((task) => task.id !== id);
+}

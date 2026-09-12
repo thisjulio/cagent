@@ -26,6 +26,10 @@ export class Session {
     this.file = path.join(base, `${this.id}.jsonl`);
   }
 
+  appendTasks(tasks: unknown[]): void {
+    this.append({ ts: Date.now(), type: "meta", payload: { kind: "tasks", tasks } });
+  }
+
   append(rec: SessionRecord): void {
     fs.appendFileSync(this.file, JSON.stringify(rec) + "\n");
   }

@@ -4,6 +4,7 @@ import type { EventBus } from "../events";
 import type { Registry } from "../registry";
 import type { SkillActivation } from "../skills/types";
 import type { ToolCategory } from "../tool-category";
+import type { Task } from "../tasks";
 
 export type ChatItem = {
   kind: "user" | "assistant" | "tool" | "meta" | "thinking";
@@ -29,6 +30,7 @@ export type ToolLogEntry = {
 };
 
 export type UIState = {
+  tasks: Task[];
   chat: ChatItem[];
   chatVersion: number;
   toolLog: ToolLogEntry[];

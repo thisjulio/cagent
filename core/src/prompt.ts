@@ -14,6 +14,12 @@ const PERSONA = [
 
 export function buildSystemPrompt(cwd: string, sections: Map<string, string>, instructions: string[] = [], skills?: SkillCatalog): string {
   const parts = [PERSONA, `## Environment\n${envFacts(cwd)}`];
+  parts.push([
+    "## Task checklist",
+    "For any request involving file changes, multiple tools, or multiple steps, first create a task plan with the tasks tool.",
+    "Work through the checklist sequentially: mark one task in_progress, verify the result, then mark it completed with concrete evidence.",
+    "Never claim completion without evidence. Use blocked when progress requires user input or permission.",
+  ].join("\n"));
   const agents = loadAgentsMd(cwd, instructions);
   if (agents) parts.push(agents);
   const skillText = skills && renderSkillCatalog(skills);

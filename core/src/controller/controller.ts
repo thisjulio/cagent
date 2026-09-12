@@ -16,6 +16,7 @@ import { executeTurn } from "./turn";
 import { mergeSystemMessages } from "../message-context";
 import { addEnvironmentContext } from "./environment";
 import { toggleToolExpand as toggleToolExpandAction } from "./chat-actions";
+import { createTasks, removeTask, restoreTasks, updateTask, type Task, type TaskStatus } from "../tasks";
 export class Controller {
   state: UIState;
   messages: Message[];
@@ -41,6 +42,7 @@ export class Controller {
     const percent = Math.min(100, Math.max(1, configuredPercent));
     const threshold = deps.config.compact_threshold_tokens ?? Math.floor(contextWindow * percent / 100);
     const s: UIState = {
+      tasks: restoreTasks(loaded.records),
       chat: toChatItems(loaded.records).slice(-MAX_CHAT_ITEMS),
       chatVersion: 0,
       toolLog: [],
@@ -104,6 +106,20 @@ export class Controller {
     this.state.notice = "";
     this.bump();
     return true;
+  }
+
+  updateTasks(operation: string, args: Record<string, unknown>): string {
+    try {
+      if (operation === "create") this.state.tasks = createTasks(this.state.tasks, (args.titles as string[]) ?? []);
+      else if (operation === "update") this.state.tasks = updateTask(this.state.tasks, String(args.id), String(args.status) as TaskStatus, args.details as string);
+      else if (operation === "remove") this.state.tasks = removeTask(this.state.tasks, String(args.id));
+      else if (operation === "clear") this.state.tasks = [];
+      else if (operation === "list") return JSON.stringify(this.state.tasks);
+      else throw new Error(`unknown task operation: ${operation}`);
+      this.session.appendTasks(this.state.tasks);
+      this.bump();
+      return JSON.stringify(this.state.tasks);
+    } catch (error) { return error instanceof Error ? error.message : String(error); }
   }
 
   reloadSkills(): boolean {

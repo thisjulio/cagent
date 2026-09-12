@@ -6,6 +6,7 @@ import type { Controller } from "./controller";
 import { appendChat, MAX_CHAT_ITEMS } from "./chat-buffer";
 import { mergeSystemMessages } from "../message-context";
 import { classifyTool } from "../tool-category";
+import { restoreTasks } from "../tasks";
 
 type LoadedRecord = { ts: number; type: "user" | "assistant" | "thinking" | "tool" | "meta"; payload: Record<string, unknown> };
 
@@ -42,6 +43,7 @@ export function startNewSession(c: Controller): void {
   c.interrupted = false;
   const s = c.state;
   s.chat = [];
+  s.tasks = [];
   s.chatVersion += 1;
   s.toolLog = [];
   s.title = "";
@@ -68,6 +70,7 @@ export function restoreSession(c: Controller, id: string): void {
   c.session = session;
   c.messages = mergeSystemMessages(c.deps.systemPrompt, loaded.messages);
   c.state.chat = toChatItems(loaded.records).slice(-MAX_CHAT_ITEMS);
+  c.state.tasks = restoreTasks(loaded.records);
   c.state.chatVersion += 1;
   c.state.title = toTitle(loaded.records);
   c.state.notice = `restaurado ${id}`;

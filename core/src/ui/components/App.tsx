@@ -10,6 +10,7 @@ import { PendingAsk } from "./PendingAsk";
 import { SessionList } from "./SessionList";
 import { StatusBar } from "./StatusBar";
 import { InputArea } from "./InputArea";
+import { TaskPanel } from "./TaskPanel";
 
 export function App({ c }: { c: Controller }) {
   const [, setV] = useState(0);
@@ -84,6 +85,7 @@ export function App({ c }: { c: Controller }) {
         <text fg={s.busy ? "#d97757" : "#777777"}>{s.busy ? `◌ working ${(s.elapsedMs / 1000).toFixed(1)}s` : status}</text>
       </box>
       <ChatViewport chat={s.chat} busy={s.busy} controller={c} />
+      <TaskPanel tasks={s.tasks} />
       {s.helpOpen ? (
         <HelpBox />
       ) : s.modelPicker ? (

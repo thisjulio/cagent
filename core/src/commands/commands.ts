@@ -9,6 +9,23 @@ const commands: Record<string, SlashHandler> = {
   "/session": (c) => c.openSessions(),
   "/new": (c) => c.newSession(),
   "/rename": (c, arg) => c.renameSession(arg.trim()),
+  "/tasks": (c, arg) => {
+    const parts = arg.trim().split(/\s+/);
+    if (!arg.trim() || parts[0] === "list") {
+      c.state.notice = c.updateTasks("list", {});
+    } else if (parts[0] === "add") {
+      c.state.notice = c.updateTasks("create", { titles: [parts.slice(1).join(" ")] });
+    } else if (parts[0] === "complete" || parts[0] === "reopen") {
+      c.state.notice = c.updateTasks("update", { id: parts[1], status: parts[0] === "complete" ? "completed" : "pending", details: parts.slice(2).join(" ") });
+    } else if (parts[0] === "remove") {
+      c.state.notice = c.updateTasks("remove", { id: parts[1] });
+    } else if (parts[0] === "clear" && parts[1] === "--confirm") {
+      c.state.notice = c.updateTasks("clear", {});
+    } else {
+      c.state.notice = "usage: /tasks [list|add <title>|complete <id> <evidence>|reopen <id>|remove <id>|clear --confirm]";
+    }
+    c.bump();
+  },
   "/model": (c) => c.openModelPicker(),
   "/help": (c) => {
     c.state.helpOpen = true;

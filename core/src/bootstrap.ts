@@ -14,6 +14,7 @@ import { discoverSkills } from "./skills/discovery";
 import { createReadSkillTool, readSkill } from "./skills/read-tool";
 import { addBuiltinSkills } from "./skills/builtin";
 import { applySkillArguments } from "./skills/arguments";
+import { createTaskTool } from "./tasks/task-tool";
 
 export async function resolveRoute(config: AppConfig, registry: Registry): Promise<string> {
   if (config.model) {
@@ -79,6 +80,7 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
     skillNames: () => [...(skills?.byName.keys() ?? [])]
       .filter((name) => skills?.byName.get(name)?.metadata.userInvocable !== false),
   });
+  registry.registerTool(createTaskTool((operation, args) => c.updateTasks(operation, args)));
   bus.on("tools/pre", (p) => c.onToolPre(p));
   bus.on("tools/post", (p) => c.onToolPost(p));
   bus.on("tools/denied", (p) => c.onToolDenied(p));
