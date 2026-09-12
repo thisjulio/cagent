@@ -168,6 +168,7 @@ export class Controller {
         },
         interrupted: () => this.interrupted,
       });
+      if (thinkingContent) this.session.append({ ts: Date.now(), type: "thinking", payload: { content: thinkingContent } });
       for (const r of turn.records) {
         if (r.role === "assistant") {
           this.session.append({
@@ -179,7 +180,6 @@ export class Controller {
           this.session.append({ ts: Date.now(), type: "tool", payload: { tool_call_id: r.tool_call_id, content: r.content, isError: r.isError, toolName: r.toolName } });
         }
       }
-      if (thinkingContent) this.session.append({ ts: Date.now(), type: "thinking", payload: { content: thinkingContent } });
       for (const it of s.chat) if (it.kind === "tool" && it.running) it.running = false;
       if (turn.inputTokens !== undefined) s.tokens = turn.inputTokens;
       s.notice = turn.interrupted ? "[interrupted - type to steer]" : "";
