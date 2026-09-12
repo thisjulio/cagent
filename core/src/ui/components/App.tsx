@@ -11,6 +11,7 @@ import { SessionList } from "./SessionList";
 import { StatusBar } from "./StatusBar";
 import { InputArea } from "./InputArea";
 import { TaskPanel } from "./TaskPanel";
+import { formatHeaderTitle } from "../render/title";
 
 export function App({ c }: { c: Controller }) {
   const [, setV] = useState(0);
@@ -81,7 +82,7 @@ export function App({ c }: { c: Controller }) {
         flexDirection="row"
         justifyContent="space-between"
       >
-        <text fg="#d97757">cagent</text>
+        <text fg="#d97757">{formatHeaderTitle(s.title, terminalWidth())}</text>
         <text fg={s.busy ? "#d97757" : "#777777"}>{s.busy ? `◌ working ${(s.elapsedMs / 1000).toFixed(1)}s` : status}</text>
       </box>
       <ChatViewport chat={s.chat} busy={s.busy} controller={c} />
@@ -113,9 +114,13 @@ export function App({ c }: { c: Controller }) {
       <box height={1} flexShrink={0}>
         <text attributes={TextAttributes.DIM}>{s.notice}</text>
       </box>
-      <StatusBar title={s.title} model={s.model} tokens={s.tokens} contextWindow={s.contextWindow ?? s.threshold} />
+      <StatusBar model={s.model} tokens={s.tokens} contextWindow={s.contextWindow ?? s.threshold} />
     </box>
   );
+}
+
+function terminalWidth(): number {
+  return Number.isFinite(process.stdout.columns) && process.stdout.columns > 0 ? process.stdout.columns : 80;
 }
 
 function isPrintable(input: string): boolean {

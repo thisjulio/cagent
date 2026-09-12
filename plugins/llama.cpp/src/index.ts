@@ -1,9 +1,12 @@
 import { toChatMessages, type LlmCallOptions, type LlmChunk, type Plugin, type ProviderAdapter } from "@cagent/sdk";
+import { addAgentPrompt } from "./agent-prompt";
 
 interface Config {
   url?: string;
   api_key?: string;
   timeout_ms?: number;
+  agent_prompt?: string;
+  inject_agent_prompt?: boolean;
 }
 
 function baseUrl(config: Config): string {
@@ -31,6 +34,11 @@ function toolPayload(request: LlmCallOptions): unknown[] | undefined {
     type: "function",
     function: { name: tool.name, description: tool.description, parameters: tool.parameters },
   }));
+}
+
+function modelKey(id: string): string {
+  const cut = Math.max(id.lastIndexOf("/"), id.lastIndexOf("\\"));
+  return cut === -1 ? id : id.slice(cut + 1);
 }
 
 async function* streamChatCompletions(request: LlmCallOptions, config: Config): AsyncGenerator<LlmChunk> {
@@ -109,6 +117,10 @@ async function* streamChatCompletions(request: LlmCallOptions, config: Config): 
 }
 
 export function createAdapter(config: Config = {}): ProviderAdapter {
+  // ponytail: llama-server lists models by full path, but the picker wants only the name.
+  // prepare_call maps the name back to the full id because the server rejects anything else.
+  const modelIds = new Map<string, string>();
+
   return {
     async list_models(): Promise<string[]> {
       const response = await fetch(`${baseUrl(config)}/v1/models`, {
@@ -117,13 +129,24 @@ export function createAdapter(config: Config = {}): ProviderAdapter {
       });
       const json = await checkedJson(response);
       const data = Array.isArray(json.data) ? json.data : [];
-      return data
+      const ids = data
         .map((item) => (item && typeof item === "object" ? (item as { id?: unknown }).id : undefined))
         .filter((id): id is string => typeof id === "string");
+      const keys: string[] = [];
+      for (const id of ids) {
+        const key = modelKey(id);
+        modelIds.set(key, id);
+        if (!keys.includes(key)) keys.push(key);
+      }
+      return keys;
     },
 
     async prepare_call(options: LlmCallOptions): Promise<LlmCallOptions> {
-      return options;
+      const messages =
+        config.inject_agent_prompt === false
+          ? options.messages
+          : addAgentPrompt(options.messages, config.agent_prompt);
+      return { ...options, model: modelIds.get(options.model) ?? options.model, messages };
     },
 
     async *stream(request: LlmCallOptions): AsyncGenerator<LlmChunk> {

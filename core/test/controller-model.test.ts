@@ -71,9 +71,13 @@ describe("controller model and commands", () => {
   });
 
   it("generates the session title from the first message", async () => {
-    const c = new Controller(deps());
+    const d = deps();
+    d.adapter.stream = async function* () {
+      yield { type: "text", text: "**Plan**: `renew catalog`" };
+    };
+    const c = new Controller(d);
     await c.submit("hi");
-    expect(c.state.title).toBe("hi");
+    expect(c.state.title).toBe("Plan: renew catalog");
   });
 
   it("thinking stream becomes a chat item", async () => {

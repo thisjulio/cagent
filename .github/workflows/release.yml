@@ -34,6 +34,8 @@ jobs:
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
@@ -54,12 +56,72 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - uses: actions/download-artifact@v4
         with:
           pattern: cagent-*
           path: dist
           merge-multiple: true
       - run: (cd dist && sha256sum cagent-* > SHA256SUMS)
-      - run: gh release create "$GITHUB_REF_NAME" dist/cagent-* dist/SHA256SUMS --verify-tag --generate-notes
+      - name: Generate release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="$GITHUB_REF_NAME"
+          previous_tag="$(git describe --tags --abbrev=0 "${tag}^" 2>/dev/null || true)"
+          if [ -n "$previous_tag" ]; then
+            range="$previous_tag..$tag"
+          else
+            range="$tag"
+          fi
+
+          {
+            echo "## What's changed"
+            echo
+            declare -A sections=(
+              [feat]="Features"
+              [fix]="Fixes"
+              [perf]="Performance"
+              [docs]="Documentation"
+              [chore]="Maintenance"
+              [refactor]="Maintenance"
+              [test]="Maintenance"
+              [build]="Maintenance"
+              [ci]="Maintenance"
+            )
+            declare -A grouped
+            other=""
+            while IFS=$'\t' read -r subject hash; do
+              [ -z "$subject" ] && continue
+              if [[ "$subject" =~ ^([a-z]+)(\([^)]*\))?!:[[:space:]]+(.*)$ ]]; then
+                type="${BASH_REMATCH[1]}"
+                message="${BASH_REMATCH[3]}"
+                if [ -n "${sections[$type]:-}" ]; then
+                  grouped["${sections[$type]}"]+="- ${message} (${hash})"$'\n'
+                  continue
+                fi
+              fi
+              other+="- ${subject} (${hash})"$'\n'
+            done < <(git log "$range" --no-merges --pretty=format:'%s%x09%h')
+            for title in Features Fixes Performance Documentation Maintenance; do
+              if [ -n "${grouped[$title]:-}" ]; then
+                echo "### $title"
+                printf '%s' "${grouped[$title]}"
+                echo
+              fi
+            done
+            echo "### Other changes"
+            if [ -n "$other" ]; then printf '%s' "$other"; else echo "- See the commit history for details."; fi
+            echo
+            echo "## Checksums"
+            echo
+            echo '```text'
+            cat dist/SHA256SUMS
+            echo '```'
+          } > release-notes.md
+          cat release-notes.md
+      - run: gh release create "$GITHUB_REF_NAME" dist/cagent-* dist/SHA256SUMS --verify-tag --notes-file release-notes.md
         env:
           GH_TOKEN: ${{ github.token }}

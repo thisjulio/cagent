@@ -34,9 +34,25 @@ export function toChatItems(records: LoadedRecord[]): ChatItem[] {
   });
 }
 
+function sanitizeTitle(value: string): string {
+  return value
+    .trim()
+    .replace(/^["'“”]+|["'“”]+$/g, "")
+    .replace(/^#{1,6}\s+/, "")
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/(\*\*|__)(.*?)\1/g, "$2")
+    .replace(/~~(.*?)~~/g, "$1")
+    .replace(/(^|[\s(])([*_~`]+)(?=\S)/g, "$1")
+    .replace(/(\S)([*_~`]+)(?=[\s).,!?:;]|$)/g, "$1")
+    .replace(/^\s*[-+*>]\s+/, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function toTitle(records: LoadedRecord[]): string {
   const rec = records.find((r) => r.type === "meta" && (r.payload as Record<string, unknown>).kind === "title");
-  return rec ? String((rec.payload as Record<string, unknown>).title ?? "") : "";
+  return rec ? sanitizeTitle(String((rec.payload as Record<string, unknown>).title ?? "")) : "";
 }
 
 export function startNewSession(c: Controller): void {
@@ -97,7 +113,7 @@ export function renameSession(c: Controller, name: string): void {
     c.bump();
     return;
   }
-  s.title = name.slice(0, 60);
+  s.title = sanitizeTitle(name).slice(0, 60);
   c.session.append({ ts: Date.now(), type: "meta", payload: { kind: "title", title: s.title } });
   s.notice = "";
   c.bump();
@@ -112,7 +128,7 @@ export async function generateTitle(c: Controller, msg: string): Promise<string>
         {
           role: "system",
           content:
-            "Generate a short title (6 words max) for the conversation that starts with the user's message. Reply with only the title, without quotation marks.",
+            "Create a concise, specific conversation title in Title Case, using 3–6 words. Capture the user's main goal or topic, not the wording of the request. Prefer an action plus an object when appropriate (for example, 'Improve Session Titles' or 'Debug Login Timeout'). Reply with only the title on one line: no Markdown, labels, explanation, sentence-ending punctuation, or quotation marks.",
         },
         { role: "user", content: msg },
       ],
@@ -120,12 +136,13 @@ export async function generateTitle(c: Controller, msg: string): Promise<string>
       attempts: 1,
       interrupted: () => c.interrupted,
     });
-    const t = text.trim().replace(/^["'“”]+|["'“”]+$/g, "").trim();
+    const t = sanitizeTitle(text);
     if (t) return t.slice(0, 60);
   } catch {
     // Fallback when the LLM fails or the user interrupts.
   }
-  return msg.length > 40 ? msg.slice(0, 40) + "…" : msg;
+  const fallback = sanitizeTitle(msg);
+  return fallback.length > 40 ? fallback.slice(0, 40) + "…" : fallback;
 }
 
 export async function compact(c: Controller): Promise<void> {
