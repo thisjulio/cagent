@@ -1,2 +1,22 @@
- bunx biome check --staged
- bun test
+#!/bin/sh
+
+if ! command -v bun >/dev/null 2>&1; then
+  for bun_dir in \
+    "$HOME/.bun/bin" \
+    "$HOME/.nvm/versions/node"/*/bin
+  do
+    if [ -x "$bun_dir/bun" ]; then
+      PATH="$bun_dir:$PATH"
+      export PATH
+      break
+    fi
+  done
+fi
+
+if ! command -v bun >/dev/null 2>&1; then
+  echo "pre-commit: bun is required but was not found in PATH" >&2
+  exit 127
+fi
+
+bunx biome check --staged --no-errors-on-unmatched
+bun test
