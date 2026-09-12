@@ -17,15 +17,19 @@ jobs:
         include:
           - runner: ubuntu-latest
             target: bun-linux-x64
+            cpu: x64
             asset: cagent-linux-x64
           - runner: ubuntu-24.04-arm
             target: bun-linux-arm64
+            cpu: arm64
             asset: cagent-linux-arm64
           - runner: macos-14
             target: bun-darwin-x64
+            cpu: x64
             asset: cagent-darwin-x64
           - runner: macos-14
             target: bun-darwin-arm64
+            cpu: arm64
             asset: cagent-darwin-arm64
     runs-on: ${{ matrix.runner }}
     steps:
@@ -33,7 +37,7 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-      - run: bun install --frozen-lockfile
+      - run: bun install --frozen-lockfile --cpu=${{ matrix.cpu }}
       - run: |
           mkdir -p dist
           version="${GITHUB_REF_NAME#v}"
