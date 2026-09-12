@@ -79,7 +79,8 @@ async function runToolCall(ctx: ToolLoopCtx, tc: { id: string; name: string; arg
   try {
     args = JSON.parse(tc.arguments) as ToolArgs;
   } catch {
-    // Invalid args become an empty object.
+    // Custom/freeform tools return their payload directly instead of JSON.
+    if (tool?.name === "edit_file" && tc.name === "apply_patch") args = { patch: tc.arguments };
   }
   const result = tool
     ? await runToolPipeline(tool, args, opts.allowlist, opts.ask, opts.bus)
