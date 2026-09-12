@@ -1,5 +1,7 @@
 import type { Controller } from "../controller/controller";
 import { expandCommand } from "./discovery";
+import { appendChat } from "../controller/chat-buffer";
+import type { Task } from "../tasks";
 
 type SlashHandler = (c: Controller, arg: string) => void | Promise<void>;
 
@@ -11,20 +13,24 @@ const commands: Record<string, SlashHandler> = {
   "/new": (c) => c.newSession(),
   "/rename": (c, arg) => c.renameSession(arg.trim()),
   "/tasks": (c, arg) => {
+    appendChat(c.state, { kind: "user", content: `/tasks${arg ? ` ${arg}` : ""}` });
     const parts = arg.trim().split(/\s+/);
+    let result: string;
     if (!arg.trim() || parts[0] === "list") {
-      c.state.notice = c.updateTasks("list", {});
+      result = c.updateTasks("list", {});
     } else if (parts[0] === "add") {
-      c.state.notice = c.updateTasks("create", { titles: [parts.slice(1).join(" ")] });
+      result = c.updateTasks("create", { titles: [parts.slice(1).join(" ")] });
     } else if (parts[0] === "complete" || parts[0] === "reopen") {
-      c.state.notice = c.updateTasks("update", { id: parts[1], status: parts[0] === "complete" ? "completed" : "pending", details: parts[0] === "reopen" ? "reopen by user" : parts.slice(2).join(" ") });
+      result = c.updateTasks("update", { id: parts[1], status: parts[0] === "complete" ? "completed" : "pending", details: parts[0] === "reopen" ? "reopen by user" : parts.slice(2).join(" ") });
     } else if (parts[0] === "remove") {
-      c.state.notice = c.updateTasks("remove", { id: parts[1] });
+      result = c.updateTasks("remove", { id: parts[1] });
     } else if (parts[0] === "clear" && parts[1] === "--confirm") {
-      c.state.notice = c.updateTasks("clear", {});
+      result = c.updateTasks("clear", {});
     } else {
-      c.state.notice = "usage: /tasks [list|add <title>|complete <id> <evidence>|reopen <id>|remove <id>|clear --confirm]";
+      result = "usage: /tasks [list|add <title>|complete <id> <evidence>|reopen <id>|remove <id>|clear --confirm]";
     }
+    appendChat(c.state, { kind: "assistant", content: formatTaskResult(result), command: `/tasks${arg ? ` ${arg}` : ""}` });
+    c.state.notice = "";
     c.bump();
   },
   "/model": (c) => c.openModelPicker(),
@@ -49,6 +55,21 @@ const commands: Record<string, SlashHandler> = {
     await c.submit(prompt || `Apply the ${name} skill now.`);
   },
 };
+
+function formatTaskResult(result: string): string {
+  try {
+    const tasks = JSON.parse(result) as Task[];
+    if (!Array.isArray(tasks)) return result;
+    if (tasks.length === 0) return "Tasks\n└─ no tasks";
+    return ["Tasks", ...tasks.map((task, index) => {
+      const marker = task.status === "completed" ? "✓" : task.status === "in_progress" ? "◌" : "·";
+      const branch = index === tasks.length - 1 ? "└─" : "├─";
+      return `${branch} ${marker} ${task.title} [${task.status}]`;
+    })].join("\n");
+  } catch {
+    return result;
+  }
+}
 
 export const commandNames = Object.keys(commands);
 

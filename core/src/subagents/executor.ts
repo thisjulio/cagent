@@ -5,7 +5,11 @@ import type { ToolAsk } from "../tools";
 import { splitRoute } from "../route";
 import type { Registry } from "../registry";
 
-export type SubagentExecutor = (name: string, task: string) => Promise<string>;
+export type SubagentRequest = { name: string; task: string; context: Message[] };
+export type SubagentExecutor = {
+  (request: SubagentRequest): Promise<string>;
+  (name: string, task: string): Promise<string>;
+};
 
 export type SubagentExecutionDeps = {
   find: (name: string) => { instructions: string; model?: string; tools?: string[] } | undefined;
@@ -18,7 +22,10 @@ export type SubagentExecutionDeps = {
 };
 
 export function createSubagentExecutor(deps: SubagentExecutionDeps): SubagentExecutor {
-  return async (name, task) => {
+  return async (request: SubagentRequest | string, legacyTask?: string) => {
+    const { name, task, context } = typeof request === "string"
+      ? { name: request, task: legacyTask ?? "", context: [] }
+      : request;
     const agent = deps.find(name);
     if (!agent) return `subagent not found: ${name}`;
     const available = deps.tools.filter((tool) => tool.name !== "subagent");
@@ -27,6 +34,7 @@ export function createSubagentExecutor(deps: SubagentExecutionDeps): SubagentExe
       : available;
     const messages: Message[] = [
       { role: "system", content: agent.instructions },
+      ...context,
       { role: "user", content: task },
     ];
     const route = agent.model ?? deps.model;

@@ -6,10 +6,13 @@ import type { SkillActivation } from "../skills/types";
 import type { ToolCategory } from "../tool-category";
 import type { Task } from "../tasks";
 import type { CustomCommand } from "../commands/types";
+import type { SubagentRequest } from "../subagents/executor";
 
 export type ChatItem = {
   kind: "user" | "assistant" | "tool" | "meta" | "thinking";
   content: string;
+  subagent?: string;
+  subagentHeader?: boolean;
   toolName?: string;
   toolCategory?: ToolCategory;
   cmd?: string;
@@ -18,6 +21,7 @@ export type ChatItem = {
   running?: boolean;
   expanded?: boolean;
   timestamp?: number;
+  command?: string;
   startedAt?: number;
   durationMs?: number;
 };
@@ -80,4 +84,5 @@ export interface ControllerDeps {
   invokeSkill?: (name: string, args: string) => Promise<SkillActivation | undefined>;
   skillNames?: () => string[];
   commands?: Map<string, CustomCommand>;
+  invokeSubagent?: (request: SubagentRequest) => Promise<string>;
 }

@@ -1,1 +1,9 @@
-{"name":"@cagent/claude-commands","private":true,"type":"module","dependencies":{"@cagent/sdk":"workspace:*"}}
+{
+  "name": "@cagent/claude-commands",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "dependencies": {
+    "@cagent/sdk": "workspace:*"
+  }
+}

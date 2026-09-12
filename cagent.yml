@@ -15,3 +15,11 @@ plugins:
     path: ./plugins/openai
   - name: code-tools
     path: ./plugins/code-tools
+  - name: claude-agents
+    path: ./plugins/claude-agents
+  - name: codex-agents
+    path: ./plugins/codex-agents
+  - name: claude-commands
+    path: ./plugins/claude-commands
+  - name: codex-prompts
+    path: ./plugins/codex-prompts

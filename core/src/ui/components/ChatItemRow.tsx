@@ -16,7 +16,7 @@ export function ChatItemRow({ it, index, controller, streaming, showAgentLabel }
 }
 
 function time(ts?: number): string {
-  return ts ? new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
+  return ts ? new Date(ts).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true }) : "";
 }
 
 function UserRow({ it }: { it: ChatItem }) {
@@ -31,9 +31,17 @@ function UserRow({ it }: { it: ChatItem }) {
 }
 
 function AssistantRow({ it, streaming, showAgentLabel }: { it: ChatItem; streaming: boolean; showAgentLabel: boolean }) {
+  const isSubagentHeader = Boolean(it.subagentHeader && it.subagent);
+  if (isSubagentHeader) {
+    return (
+      <box paddingX={2} marginBottom={1} width="100%" flexDirection="column" flexShrink={0}>
+        <text fg="#d97757">cagent → @{it.subagent} <span attributes={TextAttributes.DIM}>{time(it.timestamp)}</span></text>
+      </box>
+    );
+  }
   return (
     <box paddingX={2} marginBottom={1} width="100%" flexDirection="column" flexShrink={0}>
-      {showAgentLabel ? <text fg="#d97757">cagent <span attributes={TextAttributes.DIM}>{time(it.timestamp)}</span></text> : null}
+      {showAgentLabel ? <text fg="#d97757">cagent{it.subagent ? ` → @${it.subagent}` : ""} <span attributes={TextAttributes.DIM}>{time(it.timestamp)}</span></text> : null}
       <box paddingLeft={showAgentLabel ? 0 : 0} flexDirection="row">
         <text fg="#d97757">└─ </text>
         <box flexGrow={1} paddingLeft={1}>

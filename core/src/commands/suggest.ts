@@ -12,3 +12,19 @@ export function slashSuggestions(input: string, skillNames: string[] = [], custo
     .filter((name) => name.toLowerCase().startsWith(q))
     .sort();
 }
+
+export function subagentSuggestions(input: string, agentNames: string[] = []): string[] {
+  const match = input.match(/^@([a-z0-9-]*)$/i);
+  if (!match) return [];
+  const query = match[1].toLowerCase();
+  return agentNames
+    .map((name) => `@${name}`)
+    .filter((name) => name.slice(1).toLowerCase().startsWith(query))
+    .sort();
+}
+
+export function inputSuggestions(input: string, skillNames: string[] = [], customNames: string[] = [], agentNames: string[] = []): string[] {
+  return input.startsWith("@")
+    ? subagentSuggestions(input, agentNames)
+    : slashSuggestions(input, skillNames, customNames);
+}

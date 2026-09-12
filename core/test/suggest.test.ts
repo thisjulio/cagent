@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { slashSuggestions } from "../src/commands/suggest";
+import { slashSuggestions, subagentSuggestions, inputSuggestions } from "../src/commands/suggest";
 
 describe("slashSuggestions", () => {
   it("empty input returns empty", () => expect(slashSuggestions("")).toEqual([]));
@@ -11,4 +11,12 @@ describe("slashSuggestions", () => {
   it("no match returns empty", () => expect(slashSuggestions("/zz")).toEqual([]));
   it("suggests discovered skills after /skill", () =>
     expect(slashSuggestions("/skill gr", ["grill-me", "grilling", "deploy"])).toEqual(["/skill grill-me", "/skill grilling"]));
+});
+
+describe("subagent suggestions", () => {
+  it("suggests agents after @", () =>
+    expect(subagentSuggestions("@arch", ["architecture-reviewer", "security-reviewer"])).toEqual(["@architecture-reviewer"]));
+  it("does not suggest in a normal task", () => expect(subagentSuggestions("check @arch", ["architecture-reviewer"])).toEqual([]));
+  it("routes input completion by prefix", () =>
+    expect(inputSuggestions("@", [], [], ["reviewer"])).toEqual(["@reviewer"]));
 });

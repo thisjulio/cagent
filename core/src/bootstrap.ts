@@ -19,6 +19,7 @@ import { createCommandSource, discoverCommands } from "./commands/discovery";
 import { discoverSubagents } from "./subagents/discovery";
 import { createSubagentExecutor } from "./subagents/executor";
 import { createSubagentTool } from "./subagents/tool";
+import type { ToolAsk } from "./tools";
 
 export async function resolveRoute(config: AppConfig, registry: Registry): Promise<string> {
   if (config.model) {
@@ -67,6 +68,16 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
   }
   const adapter = registry.provider(splitRoute(route)[0])!;
   const contextWindow = await adapter.context_window?.(splitRoute(route)[1]);
+  let ask: ToolAsk = async () => true;
+  const executeSubagent = createSubagentExecutor({
+    find: (name) => registry.subagent(name),
+    registry,
+    model: route,
+    tools: registry.tools(),
+    allowlist: config.allowlist,
+    ask: (...args) => ask(...args),
+    bus,
+  });
   const c = new Controller({
     config,
     registry,
@@ -86,16 +97,9 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
     skillNames: () => [...(skills?.byName.keys() ?? [])]
       .filter((name) => skills?.byName.get(name)?.metadata.userInvocable !== false),
     commands: commands.byName,
+    invokeSubagent: registry.subagents().length ? executeSubagent : undefined,
   });
-  const executeSubagent = createSubagentExecutor({
-    find: (name) => registry.subagent(name),
-    registry,
-    model: splitRoute(route)[1],
-    tools: registry.tools(),
-    allowlist: config.allowlist,
-    ask: c.ask,
-    bus,
-  });
+  ask = c.ask;
   if (registry.subagents().length) {
     registry.registerTool(createSubagentTool(
       () => registry.subagents().map((agent) => agent.name),

@@ -1,6 +1,6 @@
 import type { Message, ToolArgs, ToolDefinition, ProviderAdapter } from "@cagent/sdk";
 import { runSlash } from "../commands/commands";
-import { slashSuggestions } from "../commands/suggest";
+import { inputSuggestions } from "../commands/suggest";
 import { Session, estimateTokens } from "../session";
 import { splitRoute } from "../route";
 import type { ToolAsk } from "../tools";
@@ -12,6 +12,7 @@ import type { ControllerDeps, InputKey, UIState } from "./state";
 import { invokeSkill as invokeSkillAction } from "./skill-actions";
 import { appendChat, MAX_CHAT_ITEMS } from "./chat-buffer";
 import { executeTurn } from "./turn";
+import { parseSubagentMention } from "../subagents/mention";
 import { mergeSystemMessages } from "../message-context";
 import { addEnvironmentContext } from "./environment";
 import { toggleToolExpand as toggleToolExpandAction } from "./chat-actions";
@@ -34,6 +35,10 @@ export class Controller {
   private skillCallId = 0;
   envStamp: number = Date.now();
   private askResolver: ((ok: boolean) => void) | null = null;
+
+  private agentNames(): string[] {
+    return this.deps.registry.subagents().map((agent) => agent.name);
+  }
 
   constructor(deps: ControllerDeps) {
     this.deps = deps;
@@ -83,6 +88,39 @@ export class Controller {
     }
   }
 
+  private async submitSubagent(name: string, task: string, original: string): Promise<void> {
+    const s = this.state;
+    s.input = "";
+    appendChat(s, { kind: "user", content: original });
+    this.session.append({ ts: Date.now(), type: "user", payload: { content: original } });
+    this.session.append({ ts: Date.now(), type: "meta", payload: { kind: "subagent-start", name } });
+    appendChat(s, { kind: "assistant", content: "", subagent: name, subagentHeader: true });
+    s.busy = true;
+    s.turnStartedAt = Date.now();
+    this.bump();
+    try {
+      if (!this.deps.invokeSubagent) throw new Error("subagent runtime is unavailable");
+      const result = await this.deps.invokeSubagent({
+        name,
+        task,
+        context: this.messages.slice(),
+      });
+      this.messages.push(
+        { role: "user", content: original },
+        { role: "assistant", content: result },
+      );
+      appendChat(s, { kind: "assistant", content: result, subagent: name });
+      this.session.append({ ts: Date.now(), type: "assistant", payload: { content: result, subagent: name } });
+    } catch (error) {
+      s.notice = `error: ${error instanceof Error ? error.message : String(error)}`;
+    } finally {
+      s.busy = false;
+      s.turnStartedAt = null;
+      s.elapsedMs = 0;
+      this.bump();
+    }
+  }
+
   updateTasks(operation: string, args: Record<string, unknown>): string {
     return updateTaskState(this, operation, args);
   }
@@ -90,7 +128,7 @@ export class Controller {
   reloadSkills(): boolean {
     if (!this.deps.reloadSkills) return false;
     this.deps.reloadSkills();
-    this.state.suggest = slashSuggestions(this.state.input, this.deps.skillNames?.() ?? [], [...(this.deps.commands?.keys() ?? [])]);
+    this.state.suggest = inputSuggestions(this.state.input, this.deps.skillNames?.() ?? [], [...(this.deps.commands?.keys() ?? [])], this.agentNames());
     this.state.suggestIdx = -1;
     return true;
   }
@@ -123,6 +161,11 @@ export class Controller {
     this.state.input = "";
     if (text.startsWith("/")) {
       await runSlash(this, text);
+      return;
+    }
+    const mention = parseSubagentMention(text);
+    if (mention && this.deps.registry.subagent(mention.name)) {
+      await this.submitSubagent(mention.name, mention.task, text);
       return;
     }
     const s = this.state;
@@ -234,7 +277,7 @@ export class Controller {
   setInput(v: string): void {
     const s = this.state;
     s.input = v;
-    s.suggest = slashSuggestions(v, this.deps.skillNames?.() ?? [], [...(this.deps.commands?.keys() ?? [])]);
+    s.suggest = inputSuggestions(v, this.deps.skillNames?.() ?? [], [...(this.deps.commands?.keys() ?? [])], this.agentNames());
     s.suggestIdx = -1;
     this.bump();
   }

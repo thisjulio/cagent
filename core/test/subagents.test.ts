@@ -4,6 +4,7 @@ import { EventBus } from "../src/events";
 import { Registry } from "../src/registry";
 import { createSubagentExecutor } from "../src/subagents/executor";
 import { createSubagentTool } from "../src/subagents/tool";
+import { parseSubagentMention } from "../src/subagents/mention";
 
 function adapter(text: string) {
   return {
@@ -23,6 +24,23 @@ test("subagent executes with isolated instructions and selected provider", async
   registry.registerSubagent({ name: "reviewer", description: "Reviews", instructions: "Review strictly.", model: "mock/model" });
   const execute = createSubagentExecutor({ find: (name) => registry.subagent(name), registry, model: "mock/model", tools: [], allowlist: [], ask: async () => true, bus: new EventBus() });
   await expect(execute("reviewer", "Inspect this")).resolves.toBe("delegated result");
+});
+
+test("subagent uses the configured provider when no model is specified", async () => {
+  const registry = new Registry();
+  registry.registerProvider("mock", adapter("fallback result"));
+  registry.registerSubagent({ name: "reviewer", description: "Reviews", instructions: "Review strictly." });
+  const execute = createSubagentExecutor({ find: (name) => registry.subagent(name), registry, model: "mock/model", tools: [], allowlist: [], ask: async () => true, bus: new EventBus() });
+  await expect(execute("reviewer", "Inspect this")).resolves.toBe("fallback result");
+});
+
+test("parses a direct subagent mention", () => {
+  expect(parseSubagentMention("@architecture-reviewer confira o projeto")).toEqual({
+    name: "architecture-reviewer",
+    task: "confira o projeto",
+  });
+  expect(parseSubagentMention(" confira o projeto")).toBeUndefined();
+  expect(parseSubagentMention("@unknown")).toBeUndefined();
 });
 
 test("subagent tool rejects unknown agents and empty tasks", async () => {

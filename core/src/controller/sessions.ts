@@ -16,7 +16,8 @@ export function toChatItems(records: LoadedRecord[]): ChatItem[] {
     if (r.type === "user") return [{ kind: "user", content: String(p.content ?? ""), timestamp: r.ts }];
     if (r.type === "assistant") {
       const content = String(p.content ?? "");
-      return content ? [{ kind: "assistant", content, timestamp: r.ts }] : [];
+      const subagent = typeof p.subagent === "string" ? p.subagent : undefined;
+      return content ? [{ kind: "assistant", content, subagent, timestamp: r.ts }] : [];
     }
     if (r.type === "thinking") {
       const content = String(p.content ?? "");
@@ -26,6 +27,7 @@ export function toChatItems(records: LoadedRecord[]): ChatItem[] {
       const toolName = p.toolName ? String(p.toolName) : String(p.tool_call_id ?? "");
       return [{ kind: "tool", content: String(p.content ?? ""), toolName, toolCategory: classifyTool(toolName) }];
     }
+    if (p.kind === "subagent-start") return [{ kind: "assistant", content: "", subagent: String(p.name ?? ""), subagentHeader: true, timestamp: r.ts }];
     if (p.kind === "skill-activated") return p.format === "tool-v1" ? [] : [{ kind: "meta", content: `skill activated: ${String(p.name ?? "")}` }];
     if (p.kind === "compacted") return [{ kind: "meta", content: "conversation compacted" }];
     return [];
