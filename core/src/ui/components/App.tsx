@@ -27,6 +27,11 @@ export function App({ c }: { c: Controller }) {
     const input = key.sequence || (key.name === "space" ? " " : "");
     const overlay = s.helpOpen || s.modelPicker || s.sessionList || s.pendingAsk;
 
+    if (key.ctrl && key.name === "c" && !key.shift && !overlay) {
+      c.setInput("");
+      key.preventDefault();
+      return;
+    }
     if (key.ctrl && key.shift && key.name === "c" && renderer.hasSelection) {
       const selected = renderer.getSelection()?.getSelectedText() ?? "";
       if (selected) renderer.copyToClipboardOSC52(selected);
