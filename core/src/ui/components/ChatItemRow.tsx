@@ -48,7 +48,7 @@ function ThinkingRow({ it, streaming, showAgentLabel }: { it: ChatItem; streamin
       {showAgentLabel ? <text fg="#d97757">cagent <span attributes={TextAttributes.DIM}>{time(it.timestamp)}</span></text> : null}
       <text attributes={TextAttributes.DIM}>
         <span fg="#d97757">├─ </span>
-        {streaming ? <span fg="#d97757">thinking ...</span> : "thinking"}
+        {streaming ? <strong><span fg="#d97757">thinking ...</span></strong> : <strong>thinking</strong>}
       </text>
       {lines.map((line, lineIndex) => (
         <text key={`thinking-line-${lineIndex}`} attributes={TextAttributes.DIM}>
