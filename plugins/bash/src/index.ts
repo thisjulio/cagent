@@ -30,10 +30,11 @@ function runCommand(opts: RunOptions): Promise<{ code: number; stdout: string; s
   const err: OutputBuffer = { parts: [], length: 0, truncated: false };
   return new Promise((resolve) => {
     let timedOut = false;
-    const child = spawn(opts.command, { shell: true, cwd: opts.workdir, env: process.env });
+    const child = spawn(opts.command, { shell: true, cwd: opts.workdir, env: process.env, detached: true });
     const timer = setTimeout(() => {
       timedOut = true;
-      child.kill("SIGTERM");
+      // Kill the shell's process group so descendants cannot keep stdout open.
+      if (child.pid) process.kill(-child.pid, "SIGKILL");
     }, opts.timeout);
     child.stdout.on("data", (chunk: Buffer) => {
       const text = capture(out, chunk.toString("utf8"));

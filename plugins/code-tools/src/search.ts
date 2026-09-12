@@ -23,7 +23,12 @@ async function rgSearch(pattern: string, abs: string, max: number): Promise<stri
 async function jsSearch(pattern: string, abs: string, max: number): Promise<string> {
   const ROOT = root();
   const re = new RegExp(pattern, "i");
-  const files = fg.sync(path.relative(ROOT, abs), { cwd: ROOT, ignore: gitignorePatterns(ROOT), onlyFiles: true });
+  const relative = path.relative(ROOT, abs) || ".";
+  const stat = fs.statSync(abs);
+  const glob = stat.isDirectory() ? (relative === "." ? "**/*" : `${relative}/**/*`) : relative;
+  const files = stat.isDirectory()
+    ? fg.sync(glob, { cwd: ROOT, ignore: gitignorePatterns(ROOT), onlyFiles: true })
+    : [relative];
   const matches: string[] = [];
   for (const file of files) {
     let text: string;
