@@ -5,7 +5,7 @@ export const CODE_TOOLS_OVERRIDES: ToolOverrides = {
   edit_file: {
     name: "apply_patch",
     description:
-      "Edits/creates/deletes files with a patch in the *** Begin patch / *** End patch format (*** Update/Add/Delete File: with a path and @@ hunks).",
+      "The apply_patch tool edits files. This is a FREEFORM tool, so do not wrap the patch in JSON. Use *** Begin Patch and *** End Patch.",
     parameters: {
       type: "object",
       properties: {

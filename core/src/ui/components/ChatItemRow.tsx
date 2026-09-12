@@ -1,12 +1,13 @@
 import { TextAttributes } from "@opentui/core";
 import type { ChatItem } from "../../controller/state";
 import { Markdown } from "../render/markdown";
+import type { Controller } from "../../controller/controller";
 
-export function ChatItemRow({ it, streaming }: { it: ChatItem; streaming: boolean }) {
+export function ChatItemRow({ it, index, controller, streaming }: { it: ChatItem; index: number; controller: Controller; streaming: boolean }) {
   if (it.kind === "user") return <UserRow it={it} />;
   if (it.kind === "assistant") return <AssistantRow it={it} streaming={streaming} />;
   if (it.kind === "thinking") return <ThinkingRow it={it} streaming={streaming} />;
-  if (it.kind === "tool") return <ToolRow it={it} />;
+  if (it.kind === "tool") return <ToolRow it={it} onClick={() => controller.toggleToolExpand(index)} />;
   return <text attributes={TextAttributes.DIM}>{it.content}</text>;
 }
 
@@ -41,12 +42,12 @@ function ThinkingRow({ it, streaming }: { it: ChatItem; streaming: boolean }) {
   );
 }
 
-function ToolRow({ it }: { it: ChatItem }) {
+function ToolRow({ it, onClick }: { it: ChatItem; onClick: () => void }) {
   const status = it.running ? "⋯" : it.isError ? "✗" : "⏺";
   const color = it.isError ? "red" : it.running ? "yellow" : "green";
   const lines = it.content ? it.content.split("\n").length : 0;
   return (
-    <box border borderStyle="single" borderColor={it.isError ? "red" : "#666666"} paddingX={1} width="100%" flexDirection="column" flexShrink={0}>
+    <box border borderStyle="single" borderColor={it.isError ? "red" : "#666666"} paddingX={1} width="100%" flexDirection="column" flexShrink={0} onMouseDown={(event) => { if (event.button === 0) { event.preventDefault(); event.stopPropagation(); onClick(); } }}>
       <text>
         <span fg={color}>{status} </span>
         <strong>{it.toolName ?? "?"}</strong>
@@ -56,7 +57,7 @@ function ToolRow({ it }: { it: ChatItem }) {
          {it.running ? <span fg="yellow"> (running...)</span> : null}
          {it.denied ? <span fg="yellow"> (denied)</span> : null}
         {!it.running && !it.denied && !it.expanded && lines > 0 && (
-           <span attributes={TextAttributes.DIM}> +{lines} line{lines === 1 ? "" : "s"} (ctrl+o)</span>
+           <span attributes={TextAttributes.DIM}> +{lines} line{lines === 1 ? "" : "s"} (click to expand; ctrl+o for last)</span>
         )}
       </text>
       {it.expanded && it.content ? (

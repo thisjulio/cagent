@@ -32,6 +32,10 @@ export class Controller {
     this.session = new Session(undefined, deps.sessionDir);
     const loaded = this.session.load();
     this.messages = [{ role: "system" as const, content: deps.systemPrompt }, ...loaded.messages];
+    const contextWindow = deps.contextWindow ?? 60_000;
+    const configuredPercent = deps.config.compact_threshold_percent ?? 85;
+    const percent = Math.min(100, Math.max(1, configuredPercent));
+    const threshold = deps.config.compact_threshold_tokens ?? Math.floor(contextWindow * percent / 100);
     const s: UIState = {
       chat: toChatItems(loaded.records).slice(-MAX_CHAT_ITEMS),
       chatVersion: 0,
@@ -39,8 +43,8 @@ export class Controller {
       title: toTitle(loaded.records),
       model: deps.model,
       tokens: this.estimateTokens(),
-      contextWindow: deps.contextWindow ?? deps.config.compact_threshold_tokens ?? 60_000,
-      threshold: deps.config.compact_threshold_tokens ?? 60_000,
+      contextWindow,
+      threshold,
       busy: false,
       input: "",
       notice: "",

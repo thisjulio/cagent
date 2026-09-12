@@ -16,6 +16,7 @@ export interface AppConfig {
   instructions?: string[];
   model?: string;
   compact_threshold_tokens?: number;
+  compact_threshold_percent?: number;
   retry_attempts?: number;
   permissions?: boolean;
 }
@@ -42,6 +43,7 @@ export function loadConfig(cwd: string): AppConfig {
     ],
     model: (local.model as string | undefined) ?? (global.model as string | undefined) ?? process.env.CAGENT_MODEL,
     compact_threshold_tokens: (local.compact_threshold_tokens as number | undefined) ?? (global.compact_threshold_tokens as number | undefined),
+    compact_threshold_percent: (local.compact_threshold_percent as number | undefined) ?? (global.compact_threshold_percent as number | undefined),
     retry_attempts: (local.retry_attempts as number | undefined) ?? (global.retry_attempts as number | undefined),
     permissions: (local.permissions as boolean | undefined) ?? (global.permissions as boolean | undefined) ?? true,
   };

@@ -1,5 +1,6 @@
 import type { LlmCallOptions, LlmChunk } from "@cagent/sdk";
 import { extractResidency, toInputItems } from "./codex";
+import { APPLY_PATCH_GRAMMAR } from "./apply-patch-grammar";
 
 const CODEX_RESPONSES_URL = "https://chatgpt.com/backend-api/codex/responses";
 
@@ -26,13 +27,14 @@ export async function* streamCodex(request: LlmCallOptions, access: string, acco
       reasoning: { effort: "low", summary: "detailed" },
       ...(request.tools.length
         ? {
-            tools: request.tools.map((t) => ({
-              type: "function",
-              name: t.name,
-              description: t.description,
-              parameters: t.parameters,
-              strict: false,
-            })),
+            tools: request.tools.map((t) => t.name === "apply_patch"
+              ? {
+                  type: "custom",
+                  name: t.name,
+                  description: t.description,
+                  format: { type: "grammar", syntax: "lark", definition: APPLY_PATCH_GRAMMAR },
+                }
+              : { type: "function", name: t.name, description: t.description, parameters: t.parameters, strict: false }),
           }
         : {}),
     }),
@@ -74,13 +76,13 @@ export async function* streamCodex(request: LlmCallOptions, access: string, acco
           yield { type: "reasoning", text: String(data.delta ?? "") };
         } else if (event === "response.output_item.done") {
           const item = data.item as Record<string, unknown> | undefined;
-          if (item && item.type === "function_call") {
+          if (item && (item.type === "function_call" || item.type === "custom_tool_call")) {
             yield {
               type: "tool-call",
               tool_call: {
                 id: String(item.call_id ?? item.id ?? ""),
                 name: String(item.name ?? ""),
-                arguments: String(item.arguments ?? ""),
+                arguments: String(item.arguments ?? item.input ?? ""),
               },
             };
           }

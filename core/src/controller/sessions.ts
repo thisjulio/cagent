@@ -116,6 +116,15 @@ export async function compact(c: Controller): Promise<void> {
     return;
   }
   const old = c.messages.slice(1, c.messages.length - keep);
+  s.notice = "compacting context... Esc interrupts";
+  c.bump();
+  // Let OpenTUI paint the progress state before serializing a large history.
+  await new Promise<void>((resolve) => setTimeout(resolve, 0));
+  if (c.interrupted) {
+    s.notice = "compaction interrupted";
+    c.bump();
+    return;
+  }
   const { text: summary } = await streamOnce({
     adapter: c.adapter,
     model: splitRoute(s.model)[1],
@@ -128,7 +137,13 @@ export async function compact(c: Controller): Promise<void> {
       { role: "user", content: serializeMessages(old) },
     ],
     tools: [],
+    interrupted: () => c.interrupted,
   });
+  if (c.interrupted) {
+    s.notice = "compaction interrupted";
+    c.bump();
+    return;
+  }
   const rest = c.messages.slice(c.messages.length - keep);
   c.messages.length = 1;
   c.messages.push({ role: "user", content: `[previous conversation summary]\n${summary}` }, ...rest);
