@@ -86,7 +86,7 @@ export class Session {
         }
         return { id: f.slice(0, -6), updated: stats.mtime.toISOString(), title: (title || firstUser || "(empty)").slice(0, 60) };
       })
-      .sort((a, b) => a.updated.localeCompare(b.updated));
+      .sort((a, b) => b.updated.localeCompare(a.updated));
   }
 }
 
