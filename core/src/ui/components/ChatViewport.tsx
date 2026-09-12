@@ -22,6 +22,7 @@ export function ChatViewport({
       scrollY
       stickyScroll
       stickyStart="bottom"
+      justifyContent="flex-end"
       verticalScrollbarOptions={{ visible: false }}
     >
       {chat.map((it, i) => {
