@@ -38,6 +38,7 @@ export async function loadPlugins(
       name: p.name,
       config: p.config ?? {},
       registerTool: (tool) => registry.registerTool(tool),
+      registerHook: (hook) => registry.registerHook(hook),
       registerProvider: (route, adapter) => registry.registerProvider(route, adapter),
       registerSubagent: (agent) => registry.registerSubagent(agent),
       emit: (event, payload) => bus.emit(event, payload),

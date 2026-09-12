@@ -16,6 +16,7 @@ export type TurnHost = {
   allowlist: string[];
   ask: ToolAsk;
   bus: EventBus;
+  hooks: { run(event: import("@cagent/sdk").HookEvent): Promise<import("@cagent/sdk").HookResponse[]> };
   session: Session;
   interrupted: () => boolean;
   bump: () => void;
@@ -33,6 +34,7 @@ export async function executeTurn(host: TurnHost): Promise<void> {
       allowlist: host.allowlist,
       ask: host.ask,
       bus: host.bus,
+      hooks: host.hooks,
       onText: (text) => appendText(host, text),
       onReasoning: (text) => {
         thinkingContent = appendCapped(thinkingContent, text, MAX_VISIBLE_STREAM_CHARS);

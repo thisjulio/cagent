@@ -203,6 +203,7 @@ export class Controller {
       allowlist: this.deps.config.allowlist,
       ask: this.ask,
       bus: this.deps.bus,
+      hooks: this.deps.registry.hooks,
       session: this.session,
       interrupted: () => this.interrupted,
       bump: () => this.bump(),

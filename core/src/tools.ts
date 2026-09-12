@@ -1,4 +1,4 @@
-import type { ToolArgs, ToolDefinition } from "@cagent/sdk";
+import type { HookResponse, ToolArgs, ToolDefinition } from "@cagent/sdk";
 import type { EventBus } from "./events";
 import { appendCapped, MAX_TOOL_OUTPUT_CHARS } from "./stream-buffer";
 
@@ -16,7 +16,18 @@ export async function runToolPipeline(
   allowlist: string[],
   ask: ToolAsk,
   bus: EventBus,
+  hooks?: { run(event: import("@cagent/sdk").HookEvent): Promise<HookResponse[]> },
 ): Promise<{ output: string; isError?: boolean }> {
+  const before = await hooks?.run({ phase: "before_tool", tool: tool.name, args }) ?? [];
+  const blocking = before.find((response) => response.action === "deny" || response.action === "ask");
+  if (blocking) {
+    if (blocking.action === "ask" && await ask(tool, args)) {
+      // Approval continues through the regular permission check below.
+    } else {
+      bus.emit("tools/denied", { tool: tool.name, args, reason: blocking.reason });
+      return { output: blocking.reason ?? `hook denied execution of ${tool.name}`, isError: true };
+    }
+  }
   if (permission(tool, args, allowlist) === "ask" && !(await ask(tool, args))) {
     bus.emit("tools/denied", { tool: tool.name, args });
     return { output: `user denied execution of ${tool.name}`, isError: true };
@@ -25,10 +36,12 @@ export async function runToolPipeline(
   try {
     const result = await tool.execute(args);
     bus.emit("tools/post", { tool: tool.name, result });
+    await hooks?.run({ phase: "after_tool", tool: tool.name, args, result });
     return { ...result, output: appendCapped("", result.output, MAX_TOOL_OUTPUT_CHARS) };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     bus.emit("tools/post", { tool: tool.name, error: msg });
+    await hooks?.run({ phase: "after_tool", tool: tool.name, args, error: msg });
     return { output: `error in tool ${tool.name}: ${msg}`, isError: true };
   }
 }

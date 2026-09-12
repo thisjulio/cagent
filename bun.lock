@@ -45,6 +45,12 @@
         "@cagent/sdk": "workspace:*",
       },
     },
+    "plugins/claude-hooks": {
+      "name": "@cagent/plugin-claude-hooks",
+      "dependencies": {
+        "@cagent/sdk": "workspace:*",
+      },
+    },
     "plugins/code-tools": {
       "name": "@cagent/plugin-code-tools",
       "version": "0.1.0",
@@ -145,6 +151,8 @@
     "@cagent/plugin-bash": ["@cagent/plugin-bash@workspace:plugins/bash"],
 
     "@cagent/plugin-claude-agents": ["@cagent/plugin-claude-agents@workspace:plugins/claude-agents"],
+
+    "@cagent/plugin-claude-hooks": ["@cagent/plugin-claude-hooks@workspace:plugins/claude-hooks"],
 
     "@cagent/plugin-code-tools": ["@cagent/plugin-code-tools@workspace:plugins/code-tools"],
 

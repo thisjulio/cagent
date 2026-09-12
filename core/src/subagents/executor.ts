@@ -48,7 +48,8 @@ export function createSubagentExecutor(deps: SubagentExecutionDeps): SubagentExe
       tools: allowed,
       allowlist: deps.allowlist,
       ask: deps.ask,
-      bus: deps.bus,
+    bus: deps.bus,
+    hooks: deps.registry.hooks,
     });
     return result.records
       .filter((record) => record.role === "assistant")

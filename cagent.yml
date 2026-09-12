@@ -21,5 +21,7 @@ plugins:
     path: ./plugins/codex-agents
   - name: claude-commands
     path: ./plugins/claude-commands
+  - name: claude-hooks
+    path: ./plugins/claude-hooks
   - name: codex-prompts
     path: ./plugins/codex-prompts

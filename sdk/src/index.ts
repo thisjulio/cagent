@@ -5,6 +5,31 @@ export interface ToolResult {
   isError?: boolean;
 }
 
+export type HookPhase = "before_tool" | "after_tool";
+export type HookAction = "allow" | "ask" | "deny" | "continue";
+
+export type HookEvent = {
+  phase: HookPhase;
+  tool: string;
+  args: ToolArgs;
+  result?: ToolResult;
+  error?: string;
+};
+
+export type HookResponse = {
+  action: HookAction;
+  reason?: string;
+  message?: string;
+};
+
+export type HookHandler = (event: HookEvent) => HookResponse | void | Promise<HookResponse | void>;
+
+export type HookDefinition = {
+  name: string;
+  phase: HookPhase;
+  handle: HookHandler;
+};
+
 export type SubagentDefinition = {
   name: string;
   description: string;
@@ -110,6 +135,7 @@ export interface PluginContext {
   name: string;
   config: Record<string, unknown>;
   registerTool(tool: ToolDefinition): void;
+  registerHook(hook: HookDefinition): void;
   registerProvider(route: string, adapter: ProviderAdapter): void;
   registerSubagent(agent: SubagentDefinition): void;
   emit(event: string, payload: unknown): void;

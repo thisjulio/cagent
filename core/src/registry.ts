@@ -1,14 +1,20 @@
-import type { ProviderAdapter, SubagentDefinition, ToolDefinition } from "@cagent/sdk";
+import type { HookDefinition, ProviderAdapter, SubagentDefinition, ToolDefinition } from "@cagent/sdk";
+import { HookRegistry } from "./hooks";
 
 export class Registry {
   private toolList = new Map<string, ToolDefinition>();
   private providerList = new Map<string, ProviderAdapter>();
   private serviceList = new Map<string, unknown>();
   private subagentList = new Map<string, SubagentDefinition>();
+  readonly hooks = new HookRegistry();
 
   registerTool(tool: ToolDefinition): void {
     if (this.toolList.has(tool.name)) throw new Error(`duplicate tool: ${tool.name}`);
     this.toolList.set(tool.name, tool);
+  }
+
+  registerHook(hook: HookDefinition): void {
+    this.hooks.register(hook);
   }
 
   subagent(name: string): SubagentDefinition | undefined { return this.subagentList.get(name); }
