@@ -6,14 +6,14 @@ const INVOCATION = /Call the Skill tool with ["']([a-z0-9]+(?:-[a-z0-9]+)*)["']/
 export async function composeSkill(
   catalog: SkillCatalog,
   name: string,
-  options: { userInvocable?: boolean } = {},
+  options: { userInvocable?: boolean; arguments?: string } = {},
 ): Promise<string | undefined> {
   const root = catalog.byName.get(name);
   if (!root || (options.userInvocable && root.metadata.userInvocable === false)) return undefined;
-  return expand(catalog, name, new Set<string>());
+  return expand(catalog, name, new Set<string>(), options.arguments ?? "");
 }
 
-async function expand(catalog: SkillCatalog, name: string, stack: Set<string>): Promise<string | undefined> {
+async function expand(catalog: SkillCatalog, name: string, stack: Set<string>, args: string): Promise<string | undefined> {
   if (stack.has(name)) throw new Error(`skill composition cycle: ${[...stack, name].join(" -> ")}`);
   const content = await readSkill(catalog, name);
   if (content === undefined) return undefined;
@@ -22,8 +22,8 @@ async function expand(catalog: SkillCatalog, name: string, stack: Set<string>): 
   const composed = [];
   for (const nestedName of nested) {
     if (!catalog.byName.has(nestedName)) throw new Error(`composed skill not found: ${nestedName}`);
-    const nestedContent = await expand(catalog, nestedName, nextStack);
+    const nestedContent = await expand(catalog, nestedName, nextStack, args);
     if (nestedContent) composed.push(`\n## Composed skill: ${nestedName}\n\n${nestedContent}`);
   }
-  return content + composed.join("");
+  return content.replace(/\$ARGUMENTS\b/g, args) + composed.join("");
 }

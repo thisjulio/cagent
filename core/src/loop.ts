@@ -96,7 +96,9 @@ async function runToolCall(ctx: ToolLoopCtx, tc: { id: string; name: string; arg
   });
 }
 
-export async function runTurn(opts: TurnOpts): Promise<{ records: TurnRecord[]; interrupted: boolean }> {
+export type TurnResult = { records: TurnRecord[]; interrupted: boolean; inputTokens?: number };
+
+export async function runTurn(opts: TurnOpts): Promise<TurnResult> {
   // ponytail: the override belongs to the provider surface; the registry keeps the canonical name.
   const overrides = opts.adapter.tool_overrides?.() ?? {};
   const nameToCanonical = overrideNameMap(overrides);

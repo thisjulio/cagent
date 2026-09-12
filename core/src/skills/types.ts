@@ -15,6 +15,11 @@ export interface SkillRecord {
   content?: string;
 }
 
+export type SkillActivation = {
+  content: string;
+  directory: string;
+};
+
 export interface SkillCatalog {
   skills: SkillRecord[];
   byName: Map<string, SkillRecord>;

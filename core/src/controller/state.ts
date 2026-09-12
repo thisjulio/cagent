@@ -2,6 +2,7 @@ import type { ProviderAdapter } from "@cagent/sdk";
 import type { AppConfig } from "../config";
 import type { EventBus } from "../events";
 import type { Registry } from "../registry";
+import type { SkillActivation } from "../skills/types";
 
 export type ChatItem = {
   kind: "user" | "assistant" | "tool" | "meta" | "thinking";
@@ -66,6 +67,6 @@ export interface ControllerDeps {
   systemPrompt: string;
   sessionDir?: string;
   reloadSkills?: () => void;
-  invokeSkill?: (name: string) => Promise<string | undefined>;
+  invokeSkill?: (name: string, args: string) => Promise<SkillActivation | undefined>;
   skillNames?: () => string[];
 }

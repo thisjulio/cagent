@@ -11,9 +11,9 @@ import { splitRoute } from "./route";
 import { Controller } from "./controller/controller";
 import { App } from "./ui/components/App";
 import { discoverSkills } from "./skills/discovery";
-import { createReadSkillTool } from "./skills/read-tool";
+import { createReadSkillTool, readSkill } from "./skills/read-tool";
 import { addBuiltinSkills } from "./skills/builtin";
-import { composeSkill } from "./skills/composition";
+import { applySkillArguments } from "./skills/arguments";
 
 export async function resolveRoute(config: AppConfig, registry: Registry): Promise<string> {
   if (config.model) {
@@ -69,10 +69,12 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
     contextWindow,
     systemPrompt: buildSystemPrompt(process.cwd(), promptSections, config.instructions, skills),
     reloadSkills,
-    invokeSkill: async (name) => {
+    invokeSkill: async (name, args) => {
       const record = skills?.byName.get(name);
       if (!record || record.metadata.userInvocable === false) return undefined;
-      return composeSkill(skills!, name, { userInvocable: true });
+      const content = await readSkill(skills!, name);
+      if (content === undefined) return undefined;
+      return { content: applySkillArguments(content, args), directory: record.directory };
     },
     skillNames: () => [...(skills?.byName.keys() ?? [])]
       .filter((name) => skills?.byName.get(name)?.metadata.userInvocable !== false),

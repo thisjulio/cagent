@@ -44,7 +44,9 @@ export class Session {
     const messages: Message[] = [];
     for (const r of effective) {
       const p = r.payload;
-      if (r.type === "meta" && p.kind === "compacted") {
+      if (r.type === "meta" && p.kind === "skill-activated") {
+        if (p.format !== "tool-v1") messages.push({ role: "system", content: skillMessage(p) });
+      } else if (r.type === "meta" && p.kind === "compacted") {
         messages.push({ role: "user", content: `[previous conversation summary]\n${String(p.summary ?? "")}` });
       } else if (r.type === "user") {
         messages.push({ role: "user", content: String(p.content ?? "") });
@@ -86,6 +88,27 @@ export class Session {
       })
       .sort((a, b) => a.updated.localeCompare(b.updated));
   }
+}
+
+function skillMessage(payload: Record<string, unknown>): string {
+  if (payload.format !== "skill-content-v1") {
+    return [
+      "<skill>",
+      `<name>${String(payload.name ?? "")}</name>`,
+      `<source>${String(payload.source ?? "user")}</source>`,
+      "</skill>",
+      "",
+      String(payload.content ?? ""),
+    ].join("\n");
+  }
+  return [
+    `<skill_content name="${String(payload.name ?? "")}" source="${String(payload.source ?? "user")}">`,
+    "Follow this explicitly activated skill before answering the user's task.",
+    "",
+    String(payload.content ?? "").trim(),
+    "",
+    "</skill_content>",
+  ].join("\n");
 }
 
 export function estimateTokens(messages: Message[]): number {

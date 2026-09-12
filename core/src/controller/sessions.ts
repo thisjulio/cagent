@@ -4,6 +4,7 @@ import { splitRoute } from "../route";
 import type { ChatItem } from "./state";
 import type { Controller } from "./controller";
 import { appendChat, MAX_CHAT_ITEMS } from "./chat-buffer";
+import { mergeSystemMessages } from "../message-context";
 
 type LoadedRecord = { type: "user" | "assistant" | "thinking" | "tool" | "meta"; payload: Record<string, unknown> };
 
@@ -20,6 +21,7 @@ export function toChatItems(records: LoadedRecord[]): ChatItem[] {
       return content ? [{ kind: "thinking", content }] : [];
     }
     if (r.type === "tool") return [{ kind: "tool", content: String(p.content ?? ""), toolName: p.toolName ? String(p.toolName) : String(p.tool_call_id ?? "") }];
+    if (p.kind === "skill-activated") return [{ kind: "meta", content: `skill activated: ${String(p.name ?? "")}` }];
     if (p.kind === "compacted") return [{ kind: "meta", content: "conversation compacted" }];
     return [];
   });
@@ -55,7 +57,7 @@ export function restoreSession(c: Controller, id: string): void {
   const session = new Session(id, c.deps.sessionDir);
   const loaded = session.load();
   c.session = session;
-  c.messages = [{ role: "system" as const, content: c.deps.systemPrompt }, ...loaded.messages];
+  c.messages = mergeSystemMessages(c.deps.systemPrompt, loaded.messages);
   c.state.chat = toChatItems(loaded.records).slice(-MAX_CHAT_ITEMS);
   c.state.chatVersion += 1;
   c.state.title = toTitle(loaded.records);

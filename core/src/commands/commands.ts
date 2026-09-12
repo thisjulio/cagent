@@ -20,11 +20,15 @@ const commands: Record<string, SlashHandler> = {
     c.bump();
   },
   "/skill": async (c, arg) => {
-    const name = arg.trim();
-    if (!name || !(await c.invokeSkill(name))) {
+    const match = arg.trim().match(/^([a-z0-9]+(?:-[a-z0-9]+)*)(?:\s+([\s\S]*))?$/);
+    const name = match?.[1] ?? "";
+    const prompt = match?.[2]?.trim() ?? "";
+    if (!name || !(await c.invokeSkill(name, prompt))) {
       c.state.notice = `skill not found or unavailable: ${name || "(missing name)"}`;
       c.bump();
+      return;
     }
+    await c.submit(prompt || `Apply the ${name} skill now.`);
   },
 };
 

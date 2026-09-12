@@ -1,7 +1,6 @@
 import type { Message, ToolArgs, ToolDefinition, ProviderAdapter } from "@cagent/sdk";
 import { runSlash } from "../commands/commands";
 import { slashSuggestions } from "../commands/suggest";
-import { runTurn } from "../loop";
 import { Session, estimateTokens } from "../session";
 import { splitRoute } from "../route";
 import type { ToolAsk } from "../tools";
@@ -10,9 +9,13 @@ import { openModelPicker, pickModel } from "./models";
 import { toolDenied, toolPost, toolPre, toolStream } from "./tool-events";
 import { onKey } from "./keys";
 import type { ControllerDeps, InputKey, UIState } from "./state";
+import type { SkillActivation } from "../skills/types";
+import { formatSkillToolOutput } from "../skills/tool-result";
 import { appendChat, MAX_CHAT_ITEMS } from "./chat-buffer";
-import { appendCapped, MAX_RESPONSE_CHARS, MAX_VISIBLE_STREAM_CHARS } from "../stream-buffer";
-
+import { executeTurn } from "./turn";
+import { mergeSystemMessages } from "../message-context";
+import { addEnvironmentContext } from "./environment";
+import { toggleToolExpand as toggleToolExpandAction } from "./chat-actions";
 export class Controller {
   state: UIState;
   messages: Message[];
@@ -23,6 +26,7 @@ export class Controller {
   private deps: ControllerDeps;
   private interrupted = false;
   private lastStreamBump = 0;
+  private skillCallId = 0;
   envStamp: number = Date.now();
   private askResolver: ((ok: boolean) => void) | null = null;
 
@@ -31,7 +35,7 @@ export class Controller {
     this.adapter = deps.adapter;
     this.session = new Session(undefined, deps.sessionDir);
     const loaded = this.session.load();
-    this.messages = [{ role: "system" as const, content: deps.systemPrompt }, ...loaded.messages];
+    this.messages = mergeSystemMessages(deps.systemPrompt, loaded.messages);
     const contextWindow = deps.contextWindow ?? 60_000;
     const configuredPercent = deps.config.compact_threshold_percent ?? 85;
     const percent = Math.min(100, Math.max(1, configuredPercent));
@@ -58,20 +62,42 @@ export class Controller {
     };
     if (loaded.records.length) appendChat(s, { kind: "meta", content: `resuming session ${this.session.id} (${loaded.messages.length} messages)` });
     this.state = s;
-  }
-
-  async invokeSkill(name: string): Promise<boolean> {
+}
+  async invokeSkill(name: string, args = ""): Promise<boolean> {
     if (!this.deps.invokeSkill) return false;
-    let content: string | undefined;
+    let activation: SkillActivation | undefined;
     try {
-      content = await this.deps.invokeSkill(name);
+      activation = await this.deps.invokeSkill(name, args);
     } catch (error) {
       this.state.notice = error instanceof Error ? error.message : String(error);
       this.bump();
       return false;
     }
-    if (content === undefined) return false;
-    this.messages.push({ role: "system", content: `## Skill: ${name}\n\n${content}` });
+    if (activation === undefined) return false;
+    const activated = this.messages.some((message) => message.content.includes(`<skill_content name="${name}"`) || message.content.includes(`<name>${name}</name>`));
+    if (!activated) {
+      const id = `skill-${this.session.id}-${this.skillCallId++}`;
+      const toolCall = { id, name: "skill", arguments: JSON.stringify({ name }) };
+      const output = formatSkillToolOutput(name, activation.directory, activation.content);
+      this.messages.push({ role: "assistant", content: "", tool_calls: [toolCall] });
+      this.messages.push({ role: "tool", tool_call_id: id, content: output });
+      appendChat(this.state, { kind: "meta", content: `skill activated: ${name}` });
+      this.session.append({
+        ts: Date.now(),
+        type: "meta",
+        payload: { kind: "skill-activated", format: "tool-v1", name, source: "user" },
+      });
+      this.session.append({
+        ts: Date.now(),
+        type: "assistant",
+        payload: { content: "", tool_calls: [toolCall] },
+      });
+      this.session.append({
+        ts: Date.now(),
+        type: "tool",
+        payload: { tool_call_id: id, content: output, toolName: "skill" },
+      });
+    }
     this.state.notice = `skill loaded: ${name}`;
     this.bump();
     return true;
@@ -89,41 +115,19 @@ export class Controller {
     return this.adapter.estimate_tokens?.(splitRoute(this.deps.model)[1], this.messages) ?? estimateTokens(this.messages);
   }
 
-  onToolPre(p: unknown): void {
-    toolPre(this.state, p);
-    this.bump();
-  }
+  onToolPre(p: unknown): void { toolPre(this.state, p); this.bump(); }
 
-  onToolPost(p: unknown): void {
-    toolPost(this.state, p);
-    this.bump();
-  }
+  onToolPost(p: unknown): void { toolPost(this.state, p); this.bump(); }
 
-  onToolDenied(p: unknown): void {
-    toolDenied(this.state, p);
-    this.bump();
-  }
+  onToolDenied(p: unknown): void { toolDenied(this.state, p); this.bump(); }
 
-  onToolStream(p: unknown, prefix = ""): void {
-    toolStream(this.state, p, prefix);
-    this.bumpStream();
-  }
+  onToolStream(p: unknown, prefix = ""): void { toolStream(this.state, p, prefix); this.bumpStream(); }
 
   private bumpStream(): void {
     const now = Date.now();
     if (now - this.lastStreamBump < 33) return;
     this.lastStreamBump = now;
     this.bump();
-  }
-
-  private maybeEnvContext(): void {
-    if (Date.now() - this.envStamp < 30 * 60_000) return;
-    // ponytail: 30 minutes between reinjections; lower the interval if multi-hour sessions show staleness.
-    this.messages.push({
-      role: "user" as const,
-      content: `[context] Date/time: ${new Date().toISOString()} (UTC); timezone: ${Intl.DateTimeFormat().resolvedOptions().timeZone}`,
-    });
-    this.envStamp = Date.now();
   }
 
   interrupt(): void {
@@ -143,7 +147,7 @@ export class Controller {
     this.interrupted = false;
     this.session.append({ ts: Date.now(), type: "user", payload: { content: text } });
     this.messages.push({ role: "user", content: text });
-    this.maybeEnvContext();
+    this.envStamp = addEnvironmentContext(this.messages, this.envStamp);
     s.tokens = this.estimateTokens();
     if (estimateTokens(this.messages) >= s.threshold) {
       try { await compact(this); } catch (e) { s.notice = `compaction failed: ${e instanceof Error ? e.message : String(e)}`; }
@@ -156,64 +160,20 @@ export class Controller {
           this.session.append({ ts: Date.now(), type: "meta", payload: { kind: "title", title: t } });
           this.bump();
         });
-    await Promise.all([this.executeTurn(s), titlePromise]);
-  }
-
-  private updateStreamingTokens(s: UIState): void {
-    const last = s.chat[s.chat.length - 1];
-    const content = last.kind === "assistant" || last.kind === "thinking" ? last.content : "";
-    s.tokens = estimateTokens([...this.messages, { role: "assistant", content }]);
-  }
-
-  private async executeTurn(s: UIState): Promise<void> {
-    try {
-      let thinkingContent = "";
-      const turn = await runTurn({
-        adapter: this.adapter,
-        model: splitRoute(s.model)[1],
-        messages: this.messages,
-        tools: this.deps.registry.tools(),
-        allowlist: this.deps.config.allowlist,
-        ask: this.ask,
-        bus: this.deps.bus,
-        onText: (t) => {
-          const last = s.chat[s.chat.length - 1];
-          if (last.kind === "assistant") last.content = appendCapped(last.content, t, MAX_VISIBLE_STREAM_CHARS);
-          else appendChat(s, { kind: "assistant", content: appendCapped("", t, MAX_VISIBLE_STREAM_CHARS) });
-          this.updateStreamingTokens(s);
-          this.bumpStream();
-        },
-        onReasoning: (t) => {
-          thinkingContent = appendCapped(thinkingContent, t, MAX_VISIBLE_STREAM_CHARS);
-          const last = s.chat[s.chat.length - 1];
-          if (last.kind === "thinking") last.content = appendCapped(last.content, t, MAX_VISIBLE_STREAM_CHARS);
-          else appendChat(s, { kind: "thinking", content: appendCapped("", t, MAX_VISIBLE_STREAM_CHARS) });
-          this.updateStreamingTokens(s);
-          this.bumpStream();
-        },
-        interrupted: () => this.interrupted,
-      });
-      if (thinkingContent) this.session.append({ ts: Date.now(), type: "thinking", payload: { content: thinkingContent } });
-      for (const r of turn.records) {
-        if (r.role === "assistant") {
-          this.session.append({
-            ts: Date.now(),
-            type: "assistant",
-            payload: { content: r.content, ...(r.tool_calls ? { tool_calls: r.tool_calls } : {}) },
-          });
-        } else {
-          this.session.append({ ts: Date.now(), type: "tool", payload: { tool_call_id: r.tool_call_id, content: r.content, isError: r.isError, toolName: r.toolName } });
-        }
-      }
-      for (const it of s.chat) if (it.kind === "tool" && it.running) it.running = false;
-      if (turn.inputTokens !== undefined) s.tokens = turn.inputTokens;
-      s.notice = turn.interrupted ? "[interrupted - type to steer]" : "";
-    } catch (e) {
-      s.notice = `error: ${e instanceof Error ? e.message : String(e)}`;
-    }
-    s.busy = false;
-    s.tokens = estimateTokens(this.messages);
-    this.bump();
+    await Promise.all([executeTurn({
+      state: s,
+      adapter: this.adapter,
+      model: splitRoute(s.model)[1],
+      messages: this.messages,
+      tools: this.deps.registry.tools(),
+      allowlist: this.deps.config.allowlist,
+      ask: this.ask,
+      bus: this.deps.bus,
+      session: this.session,
+      interrupted: () => this.interrupted,
+      bump: () => this.bump(),
+      bumpStream: () => this.bumpStream(),
+    }), titlePromise]);
   }
 
   ask: ToolAsk = async (tool: ToolDefinition, args: ToolArgs) => {
@@ -245,20 +205,7 @@ export class Controller {
   }
 
   toggleToolExpand(index?: number): void {
-    const chat = this.state.chat;
-    if (index !== undefined) {
-      if (chat[index]?.kind !== "tool") return;
-      chat[index] = { ...chat[index], expanded: !chat[index].expanded };
-      this.bump();
-      return;
-    }
-    for (let i = chat.length - 1; i >= 0; i--) {
-      if (chat[i].kind === "tool") {
-        chat[i] = { ...chat[i], expanded: !chat[i].expanded };
-        this.bump();
-        return;
-      }
-    }
+    toggleToolExpandAction(this.state, index, () => this.bump());
   }
 
   newSession(): void {

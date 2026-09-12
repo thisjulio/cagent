@@ -26,6 +26,65 @@ function deps(permissions = false, configOverrides: Record<string, unknown> = {}
 }
 
 describe("controller", () => {
+  it("/skill activates the skill before submitting its prompt", async () => {
+    const d = deps();
+    const events: string[] = [];
+    d.invokeSkill = async (name, args) => {
+      events.push(`activate:${name}:${args}`);
+      return { content: "Interview the user before implementation.\nTask: $ARGUMENTS".replace("$ARGUMENTS", args), directory: "/tmp/grill-me" };
+    };
+    const c = new Controller(d);
+    const originalSubmit = c.submit.bind(c);
+    d.adapter.stream = async function* ({ messages }) {
+      events.push(`messages:${messages.map((message) => message.content).join("|")}`);
+      yield { type: "text", text: "question" };
+    };
+
+    await originalSubmit("/skill grill-me implement clipboard support");
+
+    expect(events[0]).toBe("activate:grill-me:implement clipboard support");
+    expect(events.some((event) => event.includes("Interview the user before implementation."))).toBe(true);
+    expect(events.some((event) => event.includes("implement clipboard support"))).toBe(true);
+    expect(c.messages.some((message) => message.role === "tool" && message.content.includes("<skill_content name=\"grill-me\">"))).toBe(true);
+    expect(c.state.chat.some((item) => item.content === "skill activated: grill-me")).toBe(true);
+  });
+
+  it("does not duplicate an explicitly activated skill", async () => {
+    const d = deps();
+    d.invokeSkill = async () => ({ content: "Ask one question at a time.", directory: "/tmp/grill-me" });
+    const c = new Controller(d);
+
+    expect(await c.invokeSkill("grill-me", "first task")).toBe(true);
+    expect(await c.invokeSkill("grill-me", "second task")).toBe(true);
+
+    expect(c.messages.filter((message) => message.role === "tool" && message.content.includes("<skill_content name=\"grill-me\">"))).toHaveLength(1);
+  });
+
+  it("runs an explicitly invoked skill without arguments", async () => {
+    const d = deps();
+    d.invokeSkill = async () => ({ content: "Start the workflow now.", directory: "/tmp/grill-me" });
+    const c = new Controller(d);
+
+    await c.submit("/skill grill-me");
+
+    expect(c.messages.some((message) => message.role === "user" && message.content === "Apply the grill-me skill now.")).toBe(true);
+  });
+
+  it("/skill rejects malformed names instead of invoking a partial skill", async () => {
+    const d = deps();
+    let invoked = false;
+    d.invokeSkill = async () => {
+      invoked = true;
+      return "skill";
+    };
+    const c = new Controller(d);
+
+    await c.submit("/skill grill-me/extra prompt");
+
+    expect(invoked).toBe(false);
+    expect(c.state.notice).toContain("skill not found");
+  });
+
   it("types and submits a message (user enters the context)", async () => {
     const c = new Controller(deps());
     c.setInput("hi");
