@@ -74,8 +74,14 @@ function ToolRow({ it, onClick, showAgentLabel }: { it: ChatItem; onClick: () =>
         )}
       </text>
       {it.expanded && it.content ? (
-        <text fg={it.isError ? "red" : undefined} attributes={it.isError ? TextAttributes.NONE : TextAttributes.DIM}>
-          {"│  " + it.content.replace(/\n/g, "\n│  ")}
+        <text attributes={it.isError ? TextAttributes.NONE : TextAttributes.DIM}>
+          {it.content.split("\n").map((line, lineIndex) => (
+            <span key={`tool-line-${lineIndex}`}>
+              {lineIndex > 0 ? "\n" : null}
+              <span fg="#d97757">│  </span>
+              <span fg={it.isError ? "red" : undefined}>{line}</span>
+            </span>
+          ))}
         </text>
       ) : null}
     </box>
