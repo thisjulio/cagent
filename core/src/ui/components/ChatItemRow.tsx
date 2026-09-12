@@ -62,7 +62,7 @@ function ToolRow({ it, onClick, showAgentLabel }: { it: ChatItem; onClick: () =>
     <box paddingX={2} width="100%" flexDirection="column" flexShrink={0} onMouseDown={(event) => { if (event.button === 0) { event.preventDefault(); event.stopPropagation(); onClick(); } }}>
       {showAgentLabel ? <text fg="#d97757">cagent <span attributes={TextAttributes.DIM}>{time(it.timestamp)}</span></text> : null}
       <text>
-        <span fg={color}>├─ {status} </span>
+        <span fg="#d97757">├─ </span><span fg={color}>{status}</span><span fg="#d97757"> </span>
         <strong>{categoryLabel(it.toolCategory ?? "generic")}</strong>
         {it.cmd ? (
           <span attributes={TextAttributes.DIM}> · {it.expanded ? it.cmd : it.cmd.length > 40 ? it.cmd.slice(0, 40) + "..." : it.cmd}</span>
