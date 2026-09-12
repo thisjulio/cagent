@@ -43,6 +43,9 @@ export function startNewSession(c: Controller): void {
   s.title = "";
   s.busy = false;
   s.input = "";
+  s.inputKey += 1;
+  s.suggest = [];
+  s.suggestIdx = -1;
   s.notice = "";
   s.pendingAsk = null;
   s.modelPicker = null;
@@ -63,6 +66,10 @@ export function restoreSession(c: Controller, id: string): void {
   c.state.title = toTitle(loaded.records);
   c.state.notice = `restaurado ${id}`;
   c.state.sessionList = null;
+  c.state.input = "";
+  c.state.inputKey += 1;
+  c.state.suggest = [];
+  c.state.suggestIdx = -1;
   c.state.tokens = estimateTokens(c.messages);
   c.bump();
 }
