@@ -27,8 +27,12 @@ export function App({ c }: { c: Controller }) {
     const input = key.sequence || (key.name === "space" ? " " : "");
     const overlay = s.helpOpen || s.modelPicker || s.sessionList || s.pendingAsk;
 
-    if (key.ctrl && key.name === "c" && !key.shift && !overlay && s.input.length > 0) {
-      c.setInput("");
+    if (key.ctrl && key.name === "c" && !key.shift && !overlay) {
+      if (s.input.length > 0) c.setInput("");
+      else {
+        renderer.destroy();
+        process.exit(0);
+      }
       key.preventDefault();
       return;
     }

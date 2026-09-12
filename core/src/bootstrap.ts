@@ -84,6 +84,6 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
   bus.on("tools/denied", (p) => c.onToolDenied(p));
   bus.on("tools/stdout", (p) => c.onToolStream(p));
   bus.on("tools/stderr", (p) => c.onToolStream(p, "[stderr] "));
-  const renderer = await createCliRenderer({ exitOnCtrlC: true });
+  const renderer = await createCliRenderer({ exitOnCtrlC: false });
   createRoot(renderer).render(React.createElement(App, { c }));
 }
