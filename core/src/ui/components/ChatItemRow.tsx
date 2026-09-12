@@ -2,6 +2,7 @@ import { TextAttributes } from "@opentui/core";
 import type { ChatItem } from "../../controller/state";
 import { Markdown } from "../render/markdown";
 import type { Controller } from "../../controller/controller";
+import { categoryLabel } from "../../tool-category";
 
 export function ChatItemRow({ it, index, controller, streaming, showAgentLabel }: { it: ChatItem; index: number; controller: Controller; streaming: boolean; showAgentLabel: boolean }) {
   if (it.kind === "user") return <UserRow it={it} />;
@@ -58,7 +59,7 @@ function ToolRow({ it, onClick, showAgentLabel }: { it: ChatItem; onClick: () =>
       {showAgentLabel ? <text fg="#d97757">cagent</text> : null}
       <text>
         <span fg={color}>├─ {status} </span>
-        <strong>{it.toolName ?? "?"}</strong>
+        <strong>{categoryLabel(it.toolCategory ?? "generic")}</strong>
         {it.cmd ? (
           <span attributes={TextAttributes.DIM}> · {it.expanded ? it.cmd : it.cmd.length > 40 ? it.cmd.slice(0, 40) + "..." : it.cmd}</span>
         ) : null}

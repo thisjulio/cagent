@@ -3,11 +3,13 @@ import type { AppConfig } from "../config";
 import type { EventBus } from "../events";
 import type { Registry } from "../registry";
 import type { SkillActivation } from "../skills/types";
+import type { ToolCategory } from "../tool-category";
 
 export type ChatItem = {
   kind: "user" | "assistant" | "tool" | "meta" | "thinking";
   content: string;
   toolName?: string;
+  toolCategory?: ToolCategory;
   cmd?: string;
   isError?: boolean;
   denied?: boolean;

@@ -1,6 +1,7 @@
 import type { ChatItem, UIState } from "./state";
 import { appendChat, appendToolLog } from "./chat-buffer";
 import { appendCapped, MAX_VISIBLE_STREAM_CHARS } from "../stream-buffer";
+import { classifyTool } from "../tool-category";
 
 function lastRunningChat(chat: ChatItem[], tool: string): ChatItem | undefined {
   for (let i = chat.length - 1; i >= 0; i--) {
@@ -12,7 +13,7 @@ function lastRunningChat(chat: ChatItem[], tool: string): ChatItem | undefined {
 export function toolPre(state: UIState, p: unknown): void {
   const { tool, args } = p as { tool: string; args: Record<string, unknown> };
   const cmd = typeof args.command === "string" ? args.command : JSON.stringify(args);
-  appendChat(state, { kind: "tool", toolName: tool, cmd, running: true, content: "" });
+  appendChat(state, { kind: "tool", toolName: tool, toolCategory: classifyTool(tool), cmd, running: true, content: "" });
   appendToolLog(state, { tool, cmd, running: true });
 }
 
@@ -35,6 +36,6 @@ export function toolPost(state: UIState, p: unknown): void {
 export function toolDenied(state: UIState, p: unknown): void {
   const { tool, args } = p as { tool: string; args: Record<string, unknown> };
   const cmd = typeof args.command === "string" ? args.command : JSON.stringify(args);
-  appendChat(state, { kind: "tool", toolName: tool, cmd, denied: true, isError: true, running: false, content: "user denied" });
+  appendChat(state, { kind: "tool", toolName: tool, toolCategory: classifyTool(tool), cmd, denied: true, isError: true, running: false, content: "user denied" });
   appendToolLog(state, { tool, cmd, denied: true });
 }
