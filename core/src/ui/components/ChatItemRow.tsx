@@ -34,7 +34,7 @@ function AssistantRow({ it, streaming, showAgentLabel }: { it: ChatItem; streami
       <box paddingLeft={showAgentLabel ? 0 : 0} flexDirection="row">
         <text fg="#d97757">└─ </text>
         <box flexGrow={1} paddingLeft={1}>
-          {!streaming && it.content ? <Markdown content={it.content} /> : streaming ? <text>{it.content || "..."}</text> : null}
+          {it.content ? <Markdown content={it.content} streaming={streaming} /> : <text>...</text>}
         </box>
       </box>
     </box>

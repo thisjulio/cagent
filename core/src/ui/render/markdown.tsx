@@ -13,20 +13,20 @@ export function plainLine(line: string): string {
     .replace(/_([^_]+)_/g, "$1");
 }
 
-export function Markdown({ content }: { content: string }) {
+export function Markdown({ content, streaming = false }: { content: string; streaming?: boolean }) {
   const lines = content.split("\n");
   const children: React.ReactNode[] = [];
   let code: string[] = [];
   let language = "";
 
-  const flushCode = () => {
+  const flushCode = (complete: boolean) => {
     if (!code.length) return;
     children.push(
       <code
         key={`code-${children.length}`}
         content={code.join("\n")}
         filetype={language || undefined}
-        syntaxStyle={syntaxStyle}
+        syntaxStyle={complete || !streaming ? syntaxStyle : undefined}
         width="100%"
       />,
     );
@@ -37,7 +37,7 @@ export function Markdown({ content }: { content: string }) {
   for (const [i, line] of lines.entries()) {
     const fence = line.match(/^\s*```(\S*)?\s*$/);
     if (fence) {
-      if (code.length) flushCode();
+      if (code.length) flushCode(true);
       else language = fence[1] ?? "";
       continue;
     }
@@ -50,7 +50,7 @@ export function Markdown({ content }: { content: string }) {
       <text key={`line-${i}`} attributes={heading ? TextAttributes.BOLD : TextAttributes.NONE} content={plainLine(line) || " "} />,
     );
   }
-  flushCode();
+  flushCode(false);
 
   return <box flexDirection="column" width="100%">{children}</box>;
 }
