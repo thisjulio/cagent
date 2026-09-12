@@ -119,6 +119,7 @@ export class Controller {
     this.session.append({ ts: Date.now(), type: "user", payload: { content: text } });
     this.messages.push({ role: "user", content: text });
     this.maybeEnvContext();
+    s.tokens = this.estimateTokens();
     if (estimateTokens(this.messages) >= s.threshold) {
       try { await compact(this); } catch (e) { s.notice = `compaction failed: ${e instanceof Error ? e.message : String(e)}`; }
     }
@@ -131,6 +132,12 @@ export class Controller {
           this.bump();
         });
     await Promise.all([this.executeTurn(s), titlePromise]);
+  }
+
+  private updateStreamingTokens(s: UIState): void {
+    const last = s.chat[s.chat.length - 1];
+    const content = last.kind === "assistant" || last.kind === "thinking" ? last.content : "";
+    s.tokens = estimateTokens([...this.messages, { role: "assistant", content }]);
   }
 
   private async executeTurn(s: UIState): Promise<void> {
@@ -147,12 +154,14 @@ export class Controller {
           const last = s.chat[s.chat.length - 1];
           if (last.kind === "assistant") last.content = appendCapped(last.content, t, MAX_VISIBLE_STREAM_CHARS);
           else appendChat(s, { kind: "assistant", content: appendCapped("", t, MAX_VISIBLE_STREAM_CHARS) });
+          this.updateStreamingTokens(s);
           this.bumpStream();
         },
         onReasoning: (t) => {
           const last = s.chat[s.chat.length - 1];
           if (last.kind === "thinking") last.content = appendCapped(last.content, t, MAX_VISIBLE_STREAM_CHARS);
           else appendChat(s, { kind: "thinking", content: appendCapped("", t, MAX_VISIBLE_STREAM_CHARS) });
+          this.updateStreamingTokens(s);
           this.bumpStream();
         },
         interrupted: () => this.interrupted,
