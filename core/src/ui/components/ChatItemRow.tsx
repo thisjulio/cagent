@@ -56,7 +56,7 @@ function ThinkingRow({ it, streaming, showAgentLabel }: { it: ChatItem; streamin
 
 function ToolRow({ it, onClick, showAgentLabel }: { it: ChatItem; onClick: () => void; showAgentLabel: boolean }) {
   const status = it.running ? "⋯" : it.isError ? "✗" : "⏺";
-  const color = it.isError ? "#ef4444" : "#d97757";
+  const color = it.running ? "#eab308" : it.isError ? "#ef4444" : "#22c55e";
   const lines = it.content ? it.content.split("\n").length : 0;
   return (
     <box paddingX={2} width="100%" flexDirection="column" flexShrink={0} onMouseDown={(event) => { if (event.button === 0) { event.preventDefault(); event.stopPropagation(); onClick(); } }}>
