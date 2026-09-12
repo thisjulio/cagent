@@ -42,14 +42,15 @@ function AssistantRow({ it, streaming, showAgentLabel }: { it: ChatItem; streami
 }
 
 function ThinkingRow({ it, streaming, showAgentLabel }: { it: ChatItem; streaming: boolean; showAgentLabel: boolean }) {
+  const content = it.content.replace(/(?<!^)(?=\*\*)/g, "\n");
   return (
-    <box paddingX={2} marginBottom={0} width="100%" flexDirection="column" flexShrink={0}>
+    <box paddingX={2} marginBottom={1} width="100%" flexDirection="column" flexShrink={0}>
       {showAgentLabel ? <text fg="#d97757">cagent <span attributes={TextAttributes.DIM}>{time(it.timestamp)}</span></text> : null}
       <text attributes={TextAttributes.DIM}>
         <span fg="#d97757">├─ </span>
         {streaming ? <span fg="#d97757">thinking ...</span> : "thinking"}
       </text>
-      {it.content ? <text attributes={TextAttributes.DIM}>{"│  "}{it.content}</text> : null}
+      {it.content ? <text attributes={TextAttributes.DIM}>{"│  "}{content}</text> : null}
     </box>
   );
 }
@@ -62,9 +63,10 @@ function ToolRow({ it, onClick, showAgentLabel }: { it: ChatItem; onClick: () =>
     ? `(running ${it.startedAt ? ((Date.now() - it.startedAt) / 1000).toFixed(1) : "0.0"}s)`
     : it.durationMs !== undefined ? `(${(it.durationMs / 1000).toFixed(1)}s)` : it.denied ? "(denied)" : "";
   const lineHint = !it.running && !it.denied && !it.expanded && lines > 0
-    ? `+${lines} line${lines === 1 ? "" : "s"} (click to expand; ctrl+o for last)`
+    ? `+${lines} line${lines === 1 ? "" : "s"} (ctrl+o)`
     : "";
-      return (
+  const details = [duration, lineHint].filter(Boolean).join(" ");
+  return (
     <box paddingX={2} width="100%" flexDirection="column" flexShrink={0} onMouseDown={(event) => { if (event.button === 0) { event.preventDefault(); event.stopPropagation(); onClick(); } }}>
       {showAgentLabel ? <text fg="#d97757">cagent <span attributes={TextAttributes.DIM}>{time(it.timestamp)}</span></text> : null}
       <box flexDirection="row" width="100%">
@@ -75,11 +77,10 @@ function ToolRow({ it, onClick, showAgentLabel }: { it: ChatItem; onClick: () =>
           <span attributes={TextAttributes.DIM}> · {it.expanded ? it.cmd : it.cmd.length > 40 ? it.cmd.slice(0, 40) + "..." : it.cmd}</span>
         ) : null}
       </text>
-      <box width={24} marginRight={2} flexShrink={0} justifyContent="flex-end">
-        {duration ? <text attributes={TextAttributes.DIM}>{duration}</text> : null}
+      <box width={24} marginRight={0} flexShrink={0} justifyContent="flex-end">
+        {details ? <text attributes={TextAttributes.DIM}>{details}</text> : null}
       </box>
       </box>
-      {lineHint ? <text attributes={TextAttributes.DIM}>{"│  "}{lineHint}</text> : null}
       {it.expanded && it.content ? (
         <text attributes={it.isError ? TextAttributes.NONE : TextAttributes.DIM}>
           {it.content.split("\n").map((line, lineIndex) => (

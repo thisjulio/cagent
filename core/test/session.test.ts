@@ -91,7 +91,7 @@ describe("JSONL sessions", () => {
       { role: "tool", tool_call_id: "skill-1", content: "<skill_content name=\"grill-me\">" },
     ]);
     expect(toChatItems(new Session(s.id, dir).load().records)).toEqual([
-      { kind: "tool", toolName: "skill", content: "<skill_content name=\"grill-me\">" },
+      { kind: "tool", toolName: "skill", toolCategory: "skill", content: "<skill_content name=\"grill-me\">" },
     ]);
   });
 });
