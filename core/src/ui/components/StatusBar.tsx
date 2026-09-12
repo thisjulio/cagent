@@ -5,7 +5,7 @@ export function StatusBar({ title, model, tokens, contextWindow }: { title: stri
   return (
     <box border={["top"]} borderColor="#666666" height={2} flexShrink={0}>
       <text fg="#666666">
-        {(title || "new").slice(0, 24)} | {model} | {tokens} tok · ctx {tokens}/{contextWindow} [{meter}] {pct}% · /help
+        {(title || "new").slice(0, 24)} | {model} | {tokens} tok [{meter}] {pct}% · /help
       </text>
     </box>
   );
