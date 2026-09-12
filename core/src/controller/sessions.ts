@@ -44,7 +44,7 @@ export function startNewSession(c: Controller): void {
 export function restoreSession(c: Controller, id: string): void {
   const entry = c.state.sessionList?.find((x) => x.id === id);
   if (!entry) return;
-  const session = new Session(id);
+  const session = new Session(id, c.deps.sessionDir);
   const loaded = session.load();
   c.session = session;
   c.messages = [{ role: "system" as const, content: c.deps.systemPrompt }, ...loaded.messages];
