@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import type { KeyEvent, TextareaRenderable } from "@opentui/core";
 import { useRenderer } from "@opentui/react";
 import { readClipboard } from "../../clipboard/clipboard";
+import { ActivitySpinner } from "./ActivitySpinner";
 
 export function InputArea({
   input,
@@ -31,10 +32,12 @@ export function InputArea({
   }, [input, inputKey]);
 
   return (
-    <box height={7} flexDirection="column" flexShrink={0} border={["top"]} borderColor="#666666" justifyContent="flex-start">
-      <text height={1} fg="#666666">{busy ? `... ${running ? `running ${running}` : "thinking"}` : ""}</text>
-      <box border borderStyle="single" borderColor="cyan" paddingX={1} width="100%" height={4} flexDirection="row">
-        <text fg="cyan" width={2} flexShrink={0}>{"> "}</text>
+    <box height={7} flexDirection="column" flexShrink={0} border={["top"]} borderColor="#444444" justifyContent="flex-start" paddingX={1}>
+      <box height={1}>
+        {busy ? <ActivitySpinner label={running ? `prompt · running ${running}` : "prompt · processing"} /> : null}
+      </box>
+      <box border borderStyle="rounded" borderColor="#d97757" paddingX={1} width="100%" height={4} flexDirection="row">
+        <text fg="#d97757" width={2} flexShrink={0}>{"> "}</text>
         <textarea
           ref={textarea}
           initialValue={input}

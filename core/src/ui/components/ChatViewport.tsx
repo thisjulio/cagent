@@ -17,12 +17,28 @@ export function ChatViewport({
       flexGrow={1}
       minHeight={0}
       width="100%"
+      border={["top"]}
+      borderColor="#444444"
       scrollY
       stickyScroll
       stickyStart="bottom"
       verticalScrollbarOptions={{ visible: false }}
     >
-      {chat.map((it, i) => <ChatItemRow key={i} it={it} index={i} controller={controller} streaming={busy && i === chat.length - 1} />)}
+      {chat.map((it, i) => {
+        const previous = chat[i - 1]?.kind;
+        const showAgentLabel = it.kind !== "user" && it.kind !== "meta" &&
+          previous !== "assistant" && previous !== "thinking" && previous !== "tool";
+        return (
+          <ChatItemRow
+            key={i}
+            it={it}
+            index={i}
+            controller={controller}
+            streaming={busy && i === chat.length - 1}
+            showAgentLabel={showAgentLabel}
+          />
+        );
+      })}
     </scrollbox>
   );
 }
