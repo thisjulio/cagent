@@ -43,6 +43,21 @@ cagent reads the global configuration from `~/.cagent/config.yml` and the
 project configuration from `cagent.yml`. The project configuration takes
 precedence.
 
+### Scoped rules
+
+cagent loads the Codex-compatible `AGENTS.md` hierarchy and Markdown rules
+below `.cagent/rules/` or Claude-compatible `.claude/rules/`. Claude rule
+files may use YAML frontmatter to scope them to paths:
+
+```markdown
+---
+paths: ["src/**/*.ts"]
+---
+Keep TypeScript changes covered by tests.
+```
+
+`AGENTS.md` wins over `CLAUDE.md` in the same directory.
+
 A minimal example using the OpenAI API:
 
 ```bash

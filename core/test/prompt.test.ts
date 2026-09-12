@@ -3,6 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "bun:test";
 import { buildSystemPrompt } from "../src/prompt";
 import { envFacts } from "../src/envinfo";
+import { loadAgentsMd } from "../src/agentsmd";
 
 describe("buildSystemPrompt", () => {
   const base = fs.mkdtempSync("/tmp/cagent-prompt-");
@@ -13,6 +14,23 @@ describe("buildSystemPrompt", () => {
   expect(p).toContain("## Environment");
   expect(p).toContain("parent rule");
   expect(p).toContain("## Tools");
+});
+
+describe("scoped rules", () => {
+  it("loads native and Claude rules with matching paths", () => {
+    const root = fs.mkdtempSync("/tmp/cagent-rules-");
+    const target = path.join(root, "src");
+    fs.mkdirSync(path.join(target, "nested"), { recursive: true });
+    fs.mkdirSync(path.join(root, ".cagent/rules"), { recursive: true });
+    fs.mkdirSync(path.join(root, ".claude/rules"), { recursive: true });
+    fs.writeFileSync(path.join(root, ".cagent/rules/base.md"), "native rule");
+    fs.writeFileSync(path.join(root, ".claude/rules/ts.md"), "---\npaths: [src/**]\n---\nClaude rule");
+    fs.writeFileSync(path.join(root, ".claude/rules/docs.md"), "---\npaths: [docs/**]\n---\nWrong rule");
+    const loaded = loadAgentsMd(path.join(target, "nested"))!;
+    expect(loaded).toContain("native rule");
+    expect(loaded).toContain("Claude rule");
+    expect(loaded).not.toContain("Wrong rule");
+  });
 });
 
 describe("AGENTS.md: CLAUDE.md fallback + config instructions", () => {
