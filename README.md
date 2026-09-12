@@ -1,5 +1,11 @@
 # cagent
 
+[![CI](https://github.com/thisjulio/cagent/actions/workflows/ci.yml/badge.svg)](https://github.com/thisjulio/cagent/actions/workflows/ci.yml)
+[![Release](https://github.com/thisjulio/cagent/actions/workflows/release.yml/badge.svg)](https://github.com/thisjulio/cagent/actions/workflows/release.yml)
+[![GitHub release](https://img.shields.io/github/v/release/thisjulio/cagent)](https://github.com/thisjulio/cagent/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/thisjulio/cagent/latest/total)](https://github.com/thisjulio/cagent/releases/latest)
+[![License: MIT](https://img.shields.io/github/license/thisjulio/cagent)](LICENSE)
+
 Terminal coding agent written in Bun/TypeScript. The core coordinates
 conversations, sessions, tools, and the UI; providers and tools are plugins.
 
