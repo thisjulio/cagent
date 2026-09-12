@@ -64,8 +64,7 @@ function ToolRow({ it, onClick, showAgentLabel }: { it: ChatItem; onClick: () =>
   const lineHint = !it.running && !it.denied && !it.expanded && lines > 0
     ? `+${lines} line${lines === 1 ? "" : "s"} (click to expand; ctrl+o for last)`
     : "";
-  const details = [duration, lineHint].filter(Boolean).join(" ");
-  return (
+      return (
     <box paddingX={2} width="100%" flexDirection="column" flexShrink={0} onMouseDown={(event) => { if (event.button === 0) { event.preventDefault(); event.stopPropagation(); onClick(); } }}>
       {showAgentLabel ? <text fg="#d97757">cagent <span attributes={TextAttributes.DIM}>{time(it.timestamp)}</span></text> : null}
       <box flexDirection="row" width="100%">
@@ -76,10 +75,11 @@ function ToolRow({ it, onClick, showAgentLabel }: { it: ChatItem; onClick: () =>
           <span attributes={TextAttributes.DIM}> · {it.expanded ? it.cmd : it.cmd.length > 40 ? it.cmd.slice(0, 40) + "..." : it.cmd}</span>
         ) : null}
       </text>
-      <box width={40} flexShrink={0} justifyContent="flex-end">
-        {details ? <text attributes={TextAttributes.DIM}>{details}</text> : null}
+      <box width={24} marginRight={2} flexShrink={0} justifyContent="flex-end">
+        {duration ? <text attributes={TextAttributes.DIM}>{duration}</text> : null}
       </box>
       </box>
+      {lineHint ? <text attributes={TextAttributes.DIM}>{"│  "}{lineHint}</text> : null}
       {it.expanded && it.content ? (
         <text attributes={it.isError ? TextAttributes.NONE : TextAttributes.DIM}>
           {it.content.split("\n").map((line, lineIndex) => (
