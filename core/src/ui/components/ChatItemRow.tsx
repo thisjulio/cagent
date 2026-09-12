@@ -42,7 +42,6 @@ function AssistantRow({ it, streaming, showAgentLabel }: { it: ChatItem; streami
 }
 
 function ThinkingRow({ it, streaming, showAgentLabel }: { it: ChatItem; streaming: boolean; showAgentLabel: boolean }) {
-  const content = it.content.replace(/(?<!^)(?=\*\*)/g, "\n");
   return (
     <box paddingX={2} marginBottom={1} width="100%" flexDirection="column" flexShrink={0}>
       {showAgentLabel ? <text fg="#d97757">cagent <span attributes={TextAttributes.DIM}>{time(it.timestamp)}</span></text> : null}
@@ -50,7 +49,7 @@ function ThinkingRow({ it, streaming, showAgentLabel }: { it: ChatItem; streamin
         <span fg="#d97757">├─ </span>
         {streaming ? <span fg="#d97757">thinking ...</span> : "thinking"}
       </text>
-      {it.content ? <text attributes={TextAttributes.DIM}>{"│  "}{content}</text> : null}
+      {it.content ? <text attributes={TextAttributes.DIM}>{"│  "}{it.content}</text> : null}
     </box>
   );
 }
