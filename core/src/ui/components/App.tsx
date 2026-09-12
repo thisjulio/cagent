@@ -81,7 +81,7 @@ export function App({ c }: { c: Controller }) {
         justifyContent="space-between"
       >
         <text fg="#d97757">cagent</text>
-        <text fg={s.busy ? "#d97757" : "#777777"}>{s.busy ? "◌ working" : status}</text>
+        <text fg={s.busy ? "#d97757" : "#777777"}>{s.busy ? `◌ working ${(s.elapsedMs / 1000).toFixed(1)}s` : status}</text>
       </box>
       <ChatViewport chat={s.chat} busy={s.busy} controller={c} />
       {s.helpOpen ? (

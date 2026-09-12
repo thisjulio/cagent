@@ -15,6 +15,9 @@ export type ChatItem = {
   denied?: boolean;
   running?: boolean;
   expanded?: boolean;
+  timestamp?: number;
+  startedAt?: number;
+  durationMs?: number;
 };
 
 export type ToolLogEntry = {
@@ -44,6 +47,8 @@ export type UIState = {
   suggest: string[];
   suggestIdx: number;
   inputKey: number;
+  turnStartedAt: number | null;
+  elapsedMs: number;
 }
 
 export type InputKey = {

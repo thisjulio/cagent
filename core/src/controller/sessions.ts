@@ -6,19 +6,19 @@ import type { Controller } from "./controller";
 import { appendChat, MAX_CHAT_ITEMS } from "./chat-buffer";
 import { mergeSystemMessages } from "../message-context";
 
-type LoadedRecord = { type: "user" | "assistant" | "thinking" | "tool" | "meta"; payload: Record<string, unknown> };
+type LoadedRecord = { ts: number; type: "user" | "assistant" | "thinking" | "tool" | "meta"; payload: Record<string, unknown> };
 
 export function toChatItems(records: LoadedRecord[]): ChatItem[] {
   return records.flatMap((r) => {
     const p = r.payload as Record<string, unknown>;
-    if (r.type === "user") return [{ kind: "user", content: String(p.content ?? "") }];
+    if (r.type === "user") return [{ kind: "user", content: String(p.content ?? ""), timestamp: r.ts }];
     if (r.type === "assistant") {
       const content = String(p.content ?? "");
-      return content ? [{ kind: "assistant", content }] : [];
+      return content ? [{ kind: "assistant", content, timestamp: r.ts }] : [];
     }
     if (r.type === "thinking") {
       const content = String(p.content ?? "");
-      return content ? [{ kind: "thinking", content }] : [];
+      return content ? [{ kind: "thinking", content, timestamp: r.ts }] : [];
     }
     if (r.type === "tool") return [{ kind: "tool", content: String(p.content ?? ""), toolName: p.toolName ? String(p.toolName) : String(p.tool_call_id ?? "") }];
     if (p.kind === "skill-activated") return p.format === "tool-v1" ? [] : [{ kind: "meta", content: `skill activated: ${String(p.name ?? "")}` }];
@@ -42,6 +42,8 @@ export function startNewSession(c: Controller): void {
   s.toolLog = [];
   s.title = "";
   s.busy = false;
+  s.turnStartedAt = null;
+  s.elapsedMs = 0;
   s.input = "";
   s.inputKey += 1;
   s.suggest = [];

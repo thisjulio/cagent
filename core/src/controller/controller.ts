@@ -59,6 +59,8 @@ export class Controller {
       suggest: [],
       suggestIdx: -1,
       inputKey: 0,
+      turnStartedAt: null,
+      elapsedMs: 0,
     };
     if (loaded.records.length) appendChat(s, { kind: "meta", content: `resuming session ${this.session.id} (${loaded.messages.length} messages)` });
     this.state = s;
@@ -145,6 +147,8 @@ export class Controller {
     const s = this.state;
     appendChat(s, { kind: "user", content: text });
     s.busy = true;
+    s.turnStartedAt = Date.now();
+    s.elapsedMs = 0;
     this.interrupted = false;
     this.session.append({ ts: Date.now(), type: "user", payload: { content: text } });
     this.messages.push({ role: "user", content: text });
@@ -161,6 +165,11 @@ export class Controller {
           this.session.append({ ts: Date.now(), type: "meta", payload: { kind: "title", title: t } });
           this.bump();
         });
+    const timer = setInterval(() => {
+      if (!s.turnStartedAt) return;
+      s.elapsedMs = Date.now() - s.turnStartedAt;
+      this.bump();
+    }, 500);
     await Promise.all([executeTurn({
       state: s,
       adapter: this.adapter,
@@ -174,7 +183,7 @@ export class Controller {
       interrupted: () => this.interrupted,
       bump: () => this.bump(),
       bumpStream: () => this.bumpStream(),
-    }), titlePromise]);
+    }), titlePromise]).finally(() => clearInterval(timer));
   }
 
   ask: ToolAsk = async (tool: ToolDefinition, args: ToolArgs) => {

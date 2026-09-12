@@ -48,6 +48,8 @@ export async function executeTurn(host: TurnHost): Promise<void> {
     host.state.notice = `error: ${error instanceof Error ? error.message : String(error)}`;
   }
   host.state.busy = false;
+  host.state.elapsedMs = host.state.turnStartedAt ? Date.now() - host.state.turnStartedAt : 0;
+  host.state.turnStartedAt = null;
   host.state.tokens = estimateTokens(host.messages);
   host.bump();
 }

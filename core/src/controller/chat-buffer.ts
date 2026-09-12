@@ -7,6 +7,7 @@ export function clearScrollback(): void {
 }
 
 export function appendChat(state: UIState, item: ChatItem): void {
+  if (item.timestamp === undefined) item.timestamp = Date.now();
   state.chat.push(item);
   if (state.chat.length <= MAX_CHAT_ITEMS) return;
   state.chat.splice(0, state.chat.length - MAX_CHAT_ITEMS);
