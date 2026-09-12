@@ -38,7 +38,7 @@ function AssistantRow({ it, streaming, showAgentLabel }: { it: ChatItem; streami
 
 function ThinkingRow({ it, streaming, showAgentLabel }: { it: ChatItem; streaming: boolean; showAgentLabel: boolean }) {
   return (
-    <box paddingX={2} marginBottom={1} width="100%" flexDirection="column" flexShrink={0}>
+    <box paddingX={2} marginBottom={0} width="100%" flexDirection="column" flexShrink={0}>
       {showAgentLabel ? <text fg="#999999">cagent</text> : null}
       <text attributes={TextAttributes.DIM}>
         <span fg="#d97757">{showAgentLabel ? "└─ " : "├─ "}</span>
