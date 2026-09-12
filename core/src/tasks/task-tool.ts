@@ -3,7 +3,7 @@ import { defineTool, type ToolDefinition } from "@cagent/sdk";
 export function createTaskTool(update: (operation: string, args: Record<string, unknown>) => string): ToolDefinition {
   return defineTool(
     "tasks",
-    "Create, list, or update the session task checklist.",
+    "Manage the checklist. For coding work, create a plan first, then mark exactly one task in_progress before using any other tool. Complete only that task with verification evidence.",
     { type: "object", properties: {
       operation: { type: "string", enum: ["create", "list", "update", "remove", "clear"] },
       titles: { type: "array", items: { type: "string" } },

@@ -16,7 +16,7 @@ const commands: Record<string, SlashHandler> = {
     } else if (parts[0] === "add") {
       c.state.notice = c.updateTasks("create", { titles: [parts.slice(1).join(" ")] });
     } else if (parts[0] === "complete" || parts[0] === "reopen") {
-      c.state.notice = c.updateTasks("update", { id: parts[1], status: parts[0] === "complete" ? "completed" : "pending", details: parts.slice(2).join(" ") });
+      c.state.notice = c.updateTasks("update", { id: parts[1], status: parts[0] === "complete" ? "completed" : "pending", details: parts[0] === "reopen" ? "reopen by user" : parts.slice(2).join(" ") });
     } else if (parts[0] === "remove") {
       c.state.notice = c.updateTasks("remove", { id: parts[1] });
     } else if (parts[0] === "clear" && parts[1] === "--confirm") {

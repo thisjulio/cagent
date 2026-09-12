@@ -31,6 +31,18 @@ export class Controller {
   envStamp: number = Date.now();
   private askResolver: ((ok: boolean) => void) | null = null;
 
+  private taskAwareTools(): ToolDefinition[] {
+    return this.deps.registry.tools().map((tool) => tool.name === "tasks" ? tool : {
+      ...tool,
+      execute: async (args) => {
+        if (!this.state.tasks.some((task) => task.status === "in_progress")) {
+          return { output: "blocked: mark exactly one task in_progress before using other tools", isError: true };
+        }
+        return tool.execute(args);
+      },
+    });
+  }
+
   constructor(deps: ControllerDeps) {
     this.deps = deps;
     this.adapter = deps.adapter;
@@ -191,7 +203,7 @@ export class Controller {
       adapter: this.adapter,
       model: splitRoute(s.model)[1],
       messages: this.messages,
-      tools: this.deps.registry.tools(),
+      tools: this.taskAwareTools(),
       allowlist: this.deps.config.allowlist,
       ask: this.ask,
       bus: this.deps.bus,

@@ -6,12 +6,19 @@ export function taskProgress(tasks: Task[]): string {
 }
 
 export function updateTask(tasks: Task[], id: string, status: TaskStatus, details?: string): Task[] {
-  if (!tasks.some((task) => task.id === id)) throw new Error(`task not found: ${id}`);
+  const task = tasks.find((item) => item.id === id);
+  if (!task) throw new Error(`task not found: ${id}`);
   if (status === "in_progress") {
     const current = tasks.find((task) => task.status === "in_progress" && task.id !== id);
     if (current) throw new Error(`task already in progress: ${current.id}`);
   }
   if (status === "completed" && !details?.trim()) throw new Error("task completion requires evidence");
+  if (status === "completed" && task.status !== "in_progress") {
+    throw new Error(`task must be in_progress before completion: ${id}`);
+  }
+  if (status === "pending" && task.status === "completed" && !details?.includes("reopen")) {
+    throw new Error(`reopening a completed task requires explicit confirmation: ${id}`);
+  }
   return tasks.map((task) => task.id === id ? {
     ...task,
     status,
