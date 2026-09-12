@@ -61,10 +61,11 @@ function appendText(host: TurnHost, text: string): void {
 }
 
 function appendReasoning(host: TurnHost, text: string): void {
-  const last = host.state.chat[host.state.chat.length - 1];
-  if (last.kind === "thinking") last.content = appendCapped(last.content, text, MAX_VISIBLE_STREAM_CHARS);
-  else appendChat(host.state, { kind: "thinking", content: appendCapped("", text, MAX_VISIBLE_STREAM_CHARS) });
-  host.state.tokens = estimateTokens([...host.messages, { role: "assistant", content: last.kind === "thinking" ? last.content : text }]);
+  appendChat(host.state, {
+    kind: "thinking",
+    content: appendCapped("", text, MAX_VISIBLE_STREAM_CHARS),
+  });
+  host.state.tokens = estimateTokens([...host.messages, { role: "assistant", content: text }]);
   host.bumpStream();
 }
 

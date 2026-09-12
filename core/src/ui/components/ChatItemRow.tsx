@@ -25,7 +25,7 @@ function UserRow({ it }: { it: ChatItem }) {
 function AssistantRow({ it, streaming, showAgentLabel }: { it: ChatItem; streaming: boolean; showAgentLabel: boolean }) {
   return (
     <box paddingX={2} marginBottom={1} width="100%" flexDirection="column" flexShrink={0}>
-      {showAgentLabel ? <text fg="#999999">cagent</text> : null}
+      {showAgentLabel ? <text fg="#d97757">cagent</text> : null}
       <box paddingLeft={showAgentLabel ? 0 : 0} flexDirection="row">
         <text fg="#d97757">└─ </text>
         <box flexGrow={1} paddingLeft={1}>
@@ -39,10 +39,10 @@ function AssistantRow({ it, streaming, showAgentLabel }: { it: ChatItem; streami
 function ThinkingRow({ it, streaming, showAgentLabel }: { it: ChatItem; streaming: boolean; showAgentLabel: boolean }) {
   return (
     <box paddingX={2} marginBottom={0} width="100%" flexDirection="column" flexShrink={0}>
-      {showAgentLabel ? <text fg="#999999">cagent</text> : null}
+      {showAgentLabel ? <text fg="#d97757">cagent</text> : null}
       <text attributes={TextAttributes.DIM}>
         <span fg="#d97757">├─ </span>
-        {streaming ? <span fg="yellow">thinking ...</span> : "thinking"}
+        {streaming ? <span fg="#d97757">thinking ...</span> : "thinking"}
       </text>
       {it.content ? <text attributes={TextAttributes.DIM}>{"│  "}{it.content}</text> : null}
     </box>
@@ -51,19 +51,19 @@ function ThinkingRow({ it, streaming, showAgentLabel }: { it: ChatItem; streamin
 
 function ToolRow({ it, onClick, showAgentLabel }: { it: ChatItem; onClick: () => void; showAgentLabel: boolean }) {
   const status = it.running ? "⋯" : it.isError ? "✗" : "⏺";
-  const color = it.isError ? "red" : it.running ? "yellow" : "green";
+  const color = it.isError ? "#ef4444" : "#d97757";
   const lines = it.content ? it.content.split("\n").length : 0;
   return (
     <box paddingX={2} width="100%" flexDirection="column" flexShrink={0} onMouseDown={(event) => { if (event.button === 0) { event.preventDefault(); event.stopPropagation(); onClick(); } }}>
-      {showAgentLabel ? <text fg="#999999">cagent</text> : null}
+      {showAgentLabel ? <text fg="#d97757">cagent</text> : null}
       <text>
         <span fg={color}>├─ {status} </span>
         <strong>{it.toolName ?? "?"}</strong>
         {it.cmd ? (
           <span attributes={TextAttributes.DIM}> · {it.expanded ? it.cmd : it.cmd.length > 40 ? it.cmd.slice(0, 40) + "..." : it.cmd}</span>
         ) : null}
-         {it.running ? <span fg="yellow"> (running...)</span> : null}
-         {it.denied ? <span fg="yellow"> (denied)</span> : null}
+         {it.running ? <span fg="#d97757"> (running...)</span> : null}
+         {it.denied ? <span fg="#d97757"> (denied)</span> : null}
         {!it.running && !it.denied && !it.expanded && lines > 0 && (
            <span attributes={TextAttributes.DIM}> +{lines} line{lines === 1 ? "" : "s"} (click to expand; ctrl+o for last)</span>
         )}

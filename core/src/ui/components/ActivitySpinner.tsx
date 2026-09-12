@@ -10,5 +10,5 @@ export function ActivitySpinner({ label }: { label: string }) {
     return () => clearInterval(timer);
   }, []);
 
-  return <text fg="cyan">{FRAMES[frame]} {label}</text>;
+  return <text fg="#d97757">{FRAMES[frame]} {label}</text>;
 }
