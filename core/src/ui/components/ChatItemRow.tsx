@@ -1,6 +1,6 @@
 import { TextAttributes } from "@opentui/core";
 import type { ChatItem } from "../../controller/state";
-import { Markdown } from "../render/markdown";
+import { Markdown, plainLine } from "../render/markdown";
 import type { Controller } from "../../controller/controller";
 import { categoryLabel } from "../../tool-category";
 
@@ -42,6 +42,7 @@ function AssistantRow({ it, streaming, showAgentLabel }: { it: ChatItem; streami
 }
 
 function ThinkingRow({ it, streaming, showAgentLabel }: { it: ChatItem; streaming: boolean; showAgentLabel: boolean }) {
+  const lines = it.content?.split("\n") ?? [];
   return (
     <box paddingX={2} width="100%" flexDirection="column" flexShrink={0}>
       {showAgentLabel ? <text fg="#d97757">cagent <span attributes={TextAttributes.DIM}>{time(it.timestamp)}</span></text> : null}
@@ -49,7 +50,11 @@ function ThinkingRow({ it, streaming, showAgentLabel }: { it: ChatItem; streamin
         <span fg="#d97757">├─ </span>
         {streaming ? <span fg="#d97757">thinking ...</span> : "thinking"}
       </text>
-      {it.content ? <text attributes={TextAttributes.DIM}>{"│  "}{it.content}</text> : null}
+      {lines.map((line, lineIndex) => (
+        <text key={`thinking-line-${lineIndex}`} attributes={TextAttributes.DIM}>
+          {"│  "}{plainLine(line) || " "}
+        </text>
+      ))}
     </box>
   );
 }

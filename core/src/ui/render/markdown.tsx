@@ -3,7 +3,7 @@ import type React from "react";
 
 const syntaxStyle = SyntaxStyle.create();
 
-function plainLine(line: string): string {
+export function plainLine(line: string): string {
   return line
     .replace(/^#{1,6}\s+/, "")
     .replace(/`([^`]+)`/g, "$1")
