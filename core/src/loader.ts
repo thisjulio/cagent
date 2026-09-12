@@ -8,6 +8,7 @@ import { Registry } from "./registry";
 export interface LoadResult {
   contexts: PluginContext[];
   promptSections: Map<string, string>;
+  commandSources: import("@cagent/sdk").CommandSource[];
 }
 
 export interface LoadOptions {
@@ -22,6 +23,7 @@ export async function loadPlugins(
 ): Promise<LoadResult> {
   const contexts: PluginContext[] = [];
   const promptSections = new Map<string, string>();
+  const commandSources: import("@cagent/sdk").CommandSource[] = [];
 
   for (const p of config.plugins) {
     if (p.enabled === false) continue;
@@ -37,13 +39,15 @@ export async function loadPlugins(
       config: p.config ?? {},
       registerTool: (tool) => registry.registerTool(tool),
       registerProvider: (route, adapter) => registry.registerProvider(route, adapter),
+      registerSubagent: (agent) => registry.registerSubagent(agent),
       emit: (event, payload) => bus.emit(event, payload),
       on: (event, handler) => bus.on(event, handler),
       promptSection: (name, content) => promptSections.set(name, content),
+      registerCommandSource: (source) => commandSources.push(source),
     };
     await plugin(ctx);
     contexts.push(ctx);
   }
 
-  return { contexts, promptSections };
+  return { contexts, promptSections, commandSources };
 }

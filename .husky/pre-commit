@@ -1,0 +1,2 @@
+ bunx biome check --staged
+ bun test

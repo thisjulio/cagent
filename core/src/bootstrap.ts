@@ -15,6 +15,10 @@ import { createReadSkillTool, readSkill } from "./skills/read-tool";
 import { addBuiltinSkills } from "./skills/builtin";
 import { applySkillArguments } from "./skills/arguments";
 import { createTaskTool } from "./tasks/task-tool";
+import { createCommandSource, discoverCommands } from "./commands/discovery";
+import { discoverSubagents } from "./subagents/discovery";
+import { createSubagentExecutor } from "./subagents/executor";
+import { createSubagentTool } from "./subagents/tool";
 
 export async function resolveRoute(config: AppConfig, registry: Registry): Promise<string> {
   if (config.model) {
@@ -42,10 +46,12 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
   const config = loaded.plugins.length || !options.defaultPlugins ? loaded : { ...loaded, plugins: options.defaultPlugins };
   const registry = new Registry();
   const bus = new EventBus();
-  const { promptSections } = await loadPlugins(config, registry, bus, { loaders: options.pluginLoaders });
+  const loadedPlugins = await loadPlugins(config, registry, bus, { loaders: options.pluginLoaders });
+  for (const agent of discoverSubagents(process.cwd()).agents) registry.registerSubagent(agent);
   const skills = config.skills?.enabled === false ? undefined : addBuiltinSkills(
     discoverSkills(process.cwd(), config.skills?.roots),
   );
+  const commands = discoverCommands(process.cwd(), [createCommandSource(), ...loadedPlugins.commandSources]);
   const reloadSkills = skills ? () => {
     const refreshed = addBuiltinSkills(discoverSkills(process.cwd(), config.skills?.roots));
     skills.skills = refreshed.skills;
@@ -68,7 +74,7 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
     adapter,
     model: route,
     contextWindow,
-    systemPrompt: buildSystemPrompt(process.cwd(), promptSections, config.instructions, skills),
+    systemPrompt: buildSystemPrompt(process.cwd(), loadedPlugins.promptSections, config.instructions, skills),
     reloadSkills,
     invokeSkill: async (name, args) => {
       const record = skills?.byName.get(name);
@@ -79,7 +85,23 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
     },
     skillNames: () => [...(skills?.byName.keys() ?? [])]
       .filter((name) => skills?.byName.get(name)?.metadata.userInvocable !== false),
+    commands: commands.byName,
   });
+  const executeSubagent = createSubagentExecutor({
+    find: (name) => registry.subagent(name),
+    registry,
+    model: splitRoute(route)[1],
+    tools: registry.tools(),
+    allowlist: config.allowlist,
+    ask: c.ask,
+    bus,
+  });
+  if (registry.subagents().length) {
+    registry.registerTool(createSubagentTool(
+      () => registry.subagents().map((agent) => agent.name),
+      executeSubagent,
+    ));
+  }
   registry.registerTool(createTaskTool((operation, args) => c.updateTasks(operation, args)));
   bus.on("tools/pre", (p) => c.onToolPre(p));
   bus.on("tools/post", (p) => c.onToolPost(p));

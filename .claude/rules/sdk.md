@@ -1,7 +1,6 @@
 ---
 description: Apply stable interface rules when editing SDK contracts.
-paths:
-  - "sdk/**/*"
+paths: ["sdk/src/**/*.ts", "sdk/test/**/*.ts"]
 ---
 
 # SDK rules

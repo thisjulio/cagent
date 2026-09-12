@@ -1,0 +1,1 @@
+{"name":"@cagent/claude-commands","private":true,"type":"module","dependencies":{"@cagent/sdk":"workspace:*"}}

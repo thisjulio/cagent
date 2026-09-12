@@ -11,13 +11,16 @@
     "typecheck": "tsc --noEmit --noCheck",
     "lint": "biome check --linter-enabled=true --formatter-enabled=false .",
     "format": "biome format --write .",
-    "build:release": "bun build release.ts --compile --outfile dist/cagent"
+    "graph:update": "graphify update .",
+    "build:release": "bun build release.ts --compile --outfile dist/cagent",
+    "prepare": "husky"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.13",
     "@types/js-yaml": "^4.0.9",
     "@types/react": "^19.3.0",
     "bun-types": "^1.4.2",
+    "husky": "^9.1.7",
     "typescript": "^7.0.2"
   }
 }

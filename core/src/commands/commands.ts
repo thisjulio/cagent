@@ -1,4 +1,5 @@
 import type { Controller } from "../controller/controller";
+import { expandCommand } from "./discovery";
 
 type SlashHandler = (c: Controller, arg: string) => void | Promise<void>;
 
@@ -56,6 +57,10 @@ export function runSlash(c: Controller, text: string): void | Promise<void> {
   const name = space === -1 ? text : text.slice(0, space);
   const arg = space === -1 ? "" : text.slice(space + 1);
   const handler = commands[name];
+  const custom = c.customCommand(name);
+  if (!handler && custom) {
+    return c.submit(expandCommand(custom, arg));
+  }
   if (!handler) {
     c.state.notice = `unknown command: ${text}`;
     c.bump();

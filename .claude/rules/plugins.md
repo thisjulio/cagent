@@ -1,7 +1,6 @@
 ---
 description: Apply plugin architecture and safety rules when editing plugins.
-paths:
-  - "plugins/**/*"
+paths: ["plugins/*/src/**/*.ts", "plugins/*/test/**/*.ts"]
 ---
 
 # Plugin rules

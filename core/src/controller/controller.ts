@@ -17,6 +17,7 @@ import { addEnvironmentContext } from "./environment";
 import { toggleToolExpand as toggleToolExpandAction } from "./chat-actions";
 import { restoreTasks } from "../tasks";
 import { taskAwareTools, updateTasks as updateTaskState } from "./task-actions";
+import type { CustomCommand } from "../commands/types";
 export class Controller {
   state: UIState;
   messages: Message[];
@@ -24,6 +25,7 @@ export class Controller {
   adapter: ProviderAdapter;
   bump: () => void = () => {};
   get registry(): ControllerDeps["registry"] { return this.deps.registry; }
+  customCommand(name: string): CustomCommand | undefined { return this.deps.commands?.get(name.slice(1)); }
   nextSkillCallId(): number { return this.skillCallId++; }
 
   private deps: ControllerDeps;
@@ -88,7 +90,7 @@ export class Controller {
   reloadSkills(): boolean {
     if (!this.deps.reloadSkills) return false;
     this.deps.reloadSkills();
-    this.state.suggest = slashSuggestions(this.state.input, this.deps.skillNames?.() ?? []);
+    this.state.suggest = slashSuggestions(this.state.input, this.deps.skillNames?.() ?? [], [...(this.deps.commands?.keys() ?? [])]);
     this.state.suggestIdx = -1;
     return true;
   }
@@ -232,7 +234,7 @@ export class Controller {
   setInput(v: string): void {
     const s = this.state;
     s.input = v;
-    s.suggest = slashSuggestions(v, this.deps.skillNames?.() ?? []);
+    s.suggest = slashSuggestions(v, this.deps.skillNames?.() ?? [], [...(this.deps.commands?.keys() ?? [])]);
     s.suggestIdx = -1;
     this.bump();
   }

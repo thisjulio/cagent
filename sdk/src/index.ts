@@ -5,6 +5,14 @@ export interface ToolResult {
   isError?: boolean;
 }
 
+export type SubagentDefinition = {
+  name: string;
+  description: string;
+  instructions: string;
+  model?: string;
+  tools?: string[];
+};
+
 export interface ToolDefinition {
   name: string;
   description: string;
@@ -103,9 +111,16 @@ export interface PluginContext {
   config: Record<string, unknown>;
   registerTool(tool: ToolDefinition): void;
   registerProvider(route: string, adapter: ProviderAdapter): void;
+  registerSubagent(agent: SubagentDefinition): void;
   emit(event: string, payload: unknown): void;
   on(event: string, handler: (payload: unknown) => unknown): void;
   promptSection(name: string, content: string): void;
+  registerCommandSource(source: CommandSource): void;
 }
 
 export type Plugin = (ctx: PluginContext) => void | Promise<void>;
+
+export type CommandDefinition = { name: string; content: string; file: string };
+export interface CommandSource {
+  discover(cwd: string): CommandDefinition[];
+}

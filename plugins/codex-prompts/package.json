@@ -1,0 +1,1 @@
+{"name":"@cagent/codex-prompts","private":true,"type":"module","dependencies":{"@cagent/sdk":"workspace:*"}}

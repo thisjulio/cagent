@@ -5,6 +5,7 @@ import type { Registry } from "../registry";
 import type { SkillActivation } from "../skills/types";
 import type { ToolCategory } from "../tool-category";
 import type { Task } from "../tasks";
+import type { CustomCommand } from "../commands/types";
 
 export type ChatItem = {
   kind: "user" | "assistant" | "tool" | "meta" | "thinking";
@@ -78,4 +79,5 @@ export interface ControllerDeps {
   reloadSkills?: () => void;
   invokeSkill?: (name: string, args: string) => Promise<SkillActivation | undefined>;
   skillNames?: () => string[];
+  commands?: Map<string, CustomCommand>;
 }
