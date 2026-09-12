@@ -1,8 +1,14 @@
 import { commandNames } from "./commands";
 
 // ponytail: alphabetical order (not Object.keys) keeps suggestions predictable - "/session" before "/sessions".
-export function slashSuggestions(input: string): string[] {
+export function slashSuggestions(input: string, skillNames: string[] = []): string[] {
   if (!input.startsWith("/")) return [];
   const q = input.toLowerCase();
-  return commandNames.filter((n) => n.startsWith(q)).sort();
+  const commandMatches = commandNames.filter((n) => n.startsWith(q));
+  const skillPrefix = q.startsWith("/skill ") ? q.slice("/skill ".length) : null;
+  if (skillPrefix === null) return commandMatches.sort();
+  return skillNames
+    .map((name) => `/skill ${name}`)
+    .filter((name) => name.toLowerCase().startsWith(q))
+    .sort();
 }

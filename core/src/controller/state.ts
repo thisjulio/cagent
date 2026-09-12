@@ -66,4 +66,6 @@ export interface ControllerDeps {
   systemPrompt: string;
   sessionDir?: string;
   reloadSkills?: () => void;
+  invokeSkill?: (name: string) => Promise<string | undefined>;
+  skillNames?: () => string[];
 }

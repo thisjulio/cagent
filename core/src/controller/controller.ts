@@ -60,9 +60,28 @@ export class Controller {
     this.state = s;
   }
 
+  async invokeSkill(name: string): Promise<boolean> {
+    if (!this.deps.invokeSkill) return false;
+    let content: string | undefined;
+    try {
+      content = await this.deps.invokeSkill(name);
+    } catch (error) {
+      this.state.notice = error instanceof Error ? error.message : String(error);
+      this.bump();
+      return false;
+    }
+    if (content === undefined) return false;
+    this.messages.push({ role: "system", content: `## Skill: ${name}\n\n${content}` });
+    this.state.notice = `skill loaded: ${name}`;
+    this.bump();
+    return true;
+  }
+
   reloadSkills(): boolean {
     if (!this.deps.reloadSkills) return false;
     this.deps.reloadSkills();
+    this.state.suggest = slashSuggestions(this.state.input, this.deps.skillNames?.() ?? []);
+    this.state.suggestIdx = -1;
     return true;
   }
 
@@ -277,7 +296,7 @@ export class Controller {
   setInput(v: string): void {
     const s = this.state;
     s.input = v;
-    s.suggest = slashSuggestions(v);
+    s.suggest = slashSuggestions(v, this.deps.skillNames?.() ?? []);
     s.suggestIdx = -1;
     this.bump();
   }

@@ -13,6 +13,7 @@ import { App } from "./ui/components/App";
 import { discoverSkills } from "./skills/discovery";
 import { createReadSkillTool } from "./skills/read-tool";
 import { addBuiltinSkills } from "./skills/builtin";
+import { composeSkill } from "./skills/composition";
 
 export async function resolveRoute(config: AppConfig, registry: Registry): Promise<string> {
   if (config.model) {
@@ -68,6 +69,13 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
     contextWindow,
     systemPrompt: buildSystemPrompt(process.cwd(), promptSections, config.instructions, skills),
     reloadSkills,
+    invokeSkill: async (name) => {
+      const record = skills?.byName.get(name);
+      if (!record || record.metadata.userInvocable === false) return undefined;
+      return composeSkill(skills!, name, { userInvocable: true });
+    },
+    skillNames: () => [...(skills?.byName.keys() ?? [])]
+      .filter((name) => skills?.byName.get(name)?.metadata.userInvocable !== false),
   });
   bus.on("tools/pre", (p) => c.onToolPre(p));
   bus.on("tools/post", (p) => c.onToolPost(p));

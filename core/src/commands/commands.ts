@@ -19,6 +19,13 @@ const commands: Record<string, SlashHandler> = {
     c.state.notice = "skills reloaded";
     c.bump();
   },
+  "/skill": async (c, arg) => {
+    const name = arg.trim();
+    if (!name || !(await c.invokeSkill(name))) {
+      c.state.notice = `skill not found or unavailable: ${name || "(missing name)"}`;
+      c.bump();
+    }
+  },
 };
 
 export const commandNames = Object.keys(commands);
