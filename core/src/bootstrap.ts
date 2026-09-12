@@ -46,12 +46,14 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
     process.exit(1);
   }
   const adapter = registry.provider(splitRoute(route)[0])!;
+  const contextWindow = await adapter.context_window?.(splitRoute(route)[1]);
   const c = new Controller({
     config,
     registry,
     bus,
     adapter,
     model: route,
+    contextWindow,
     systemPrompt: buildSystemPrompt(process.cwd(), promptSections, config.instructions),
   });
   bus.on("tools/pre", (p) => c.onToolPre(p));

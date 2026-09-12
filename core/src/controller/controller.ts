@@ -38,7 +38,8 @@ export class Controller {
       toolLog: [],
       title: toTitle(loaded.records),
       model: deps.model,
-      tokens: estimateTokens(this.messages),
+      tokens: this.estimateTokens(),
+      contextWindow: deps.contextWindow ?? deps.config.compact_threshold_tokens ?? 60_000,
       threshold: deps.config.compact_threshold_tokens ?? 60_000,
       busy: false,
       input: "",
@@ -53,6 +54,10 @@ export class Controller {
     };
     if (loaded.records.length) appendChat(s, { kind: "meta", content: `resuming session ${this.session.id} (${loaded.messages.length} messages)` });
     this.state = s;
+  }
+
+  private estimateTokens(): number {
+    return this.adapter.estimate_tokens?.(splitRoute(this.deps.model)[1], this.messages) ?? estimateTokens(this.messages);
   }
 
   onToolPre(p: unknown): void {
@@ -160,6 +165,7 @@ export class Controller {
         }
       }
       for (const it of s.chat) if (it.kind === "tool" && it.running) it.running = false;
+      if (turn.inputTokens !== undefined) s.tokens = turn.inputTokens;
       s.notice = turn.interrupted ? "[interrupted - type to steer]" : "";
     } catch (e) {
       s.notice = `error: ${e instanceof Error ? e.message : String(e)}`;
@@ -197,8 +203,14 @@ export class Controller {
     this.answerAsk(true);
   }
 
-  toggleToolExpand(): void {
+  toggleToolExpand(index?: number): void {
     const chat = this.state.chat;
+    if (index !== undefined) {
+      if (chat[index]?.kind !== "tool") return;
+      chat[index] = { ...chat[index], expanded: !chat[index].expanded };
+      this.bump();
+      return;
+    }
     for (let i = chat.length - 1; i >= 0; i--) {
       if (chat[i].kind === "tool") {
         chat[i] = { ...chat[i], expanded: !chat[i].expanded };

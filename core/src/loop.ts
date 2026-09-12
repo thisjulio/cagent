@@ -16,7 +16,7 @@ export interface StreamOpts {
 
 export async function streamOnce(
   opts: StreamOpts,
-): Promise<{ text: string; toolCalls: { id: string; name: string; arguments: string }[] }> {
+): Promise<{ text: string; toolCalls: { id: string; name: string; arguments: string }[]; inputTokens?: number }> {
   const attempts = opts.attempts ?? 3;
   let lastErr: unknown;
   for (let i = 0; i < attempts; i++) {
@@ -27,8 +27,10 @@ export async function streamOnce(
         tools: opts.tools,
       });
       let text = "";
+      let inputTokens: number | undefined;
       const toolCalls: { id: string; name: string; arguments: string }[] = [];
       for await (const chunk of opts.adapter.stream(request)) {
+        if (chunk.type === "finish") inputTokens = chunk.usage?.input_tokens;
         if (opts.interrupted?.()) break;
         if (chunk.type === "text") {
           text = appendCapped(text, chunk.text, MAX_RESPONSE_CHARS);
@@ -39,7 +41,7 @@ export async function streamOnce(
           toolCalls.push(chunk.tool_call);
         }
       }
-      return { text, toolCalls };
+      return { text, toolCalls, inputTokens };
     } catch (e) {
       lastErr = e;
       if (i < attempts - 1) await new Promise((r) => setTimeout(r, 1000 * 2 ** i));
@@ -99,9 +101,12 @@ export async function runTurn(opts: TurnOpts): Promise<{ records: TurnRecord[]; 
   const nameToCanonical = overrideNameMap(overrides);
   const streamOpts: StreamOpts = { ...opts, tools: applyToolOverrides(opts.tools, overrides) };
   const records: TurnRecord[] = [];
+  let inputTokens: number | undefined;
   const ctx: ToolLoopCtx = { opts, nameToCanonical, records };
   for (;;) {
-    const { text, toolCalls } = await streamOnce(streamOpts);
+    const result = await streamOnce(streamOpts);
+    const { text, toolCalls } = result;
+    inputTokens = result.inputTokens ?? inputTokens;
     const assistant: Message = {
       role: "assistant",
       content: text,
@@ -115,5 +120,5 @@ export async function runTurn(opts: TurnOpts): Promise<{ records: TurnRecord[]; 
       if (opts.interrupted?.()) break;
     }
   }
-  return { records, interrupted: opts.interrupted?.() ?? false };
+  return { records, interrupted: opts.interrupted?.() ?? false, inputTokens };
 }

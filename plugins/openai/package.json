@@ -5,6 +5,7 @@
   "main": "src/index.ts",
   "dependencies": {
     "@cagent/sdk": "workspace:*",
+    "js-tiktoken": "1.0.21",
     "js-yaml": "^4.1.0",
     "openai": "^4.85.0"
   }

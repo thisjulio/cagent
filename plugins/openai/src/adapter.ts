@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { encodingForModel, getEncoding } from "js-tiktoken";
 import type { LlmCallOptions, LlmChunk, ProviderAdapter } from "@cagent/sdk";
 import { fetchCodexModels } from "./codex";
 import { pkceLogin, persistCreds, readCreds, refreshCreds, type AuthState } from "./oauth";
@@ -53,6 +54,12 @@ export function createAdapter(opts: AdapterOptions): ProviderAdapter {
   };
 
   return {
+    estimate_tokens(model: string, messages) {
+      try { const encoder = (() => { try { return encodingForModel(model as never); } catch { return getEncoding("o200k_base"); } })(); return messages.reduce((n, m) => n + encoder.encode(m.content).length, 0); } catch { return undefined; }
+    },
+    async context_window(model: string): Promise<number | undefined> {
+      return ({ "gpt-5.6-luna": 1_000_000, "gpt-5": 400_000, "gpt-5-mini": 400_000, "gpt-4.1": 1_047_576, "gpt-4o": 128_000 } as Record<string, number>)[model];
+    },
     async list_models(): Promise<string[]> {
       const auth = await getAuth();
       if (auth.kind === "api") {

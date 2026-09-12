@@ -56,7 +56,7 @@ export function App({ c }: { c: Controller }) {
   const overlay = s.helpOpen || s.modelPicker || s.sessionList || s.pendingAsk;
   return (
     <box flexDirection="column" width="100%" height="100%">
-      <ChatViewport chat={s.chat} busy={s.busy} />
+      <ChatViewport chat={s.chat} busy={s.busy} controller={c} />
       {s.helpOpen ? (
         <HelpBox />
       ) : s.modelPicker ? (
@@ -84,7 +84,7 @@ export function App({ c }: { c: Controller }) {
       <box height={1} flexShrink={0}>
         <text attributes={TextAttributes.DIM}>{s.notice}</text>
       </box>
-      <StatusBar title={s.title} model={s.model} tokens={s.tokens} threshold={s.threshold} />
+      <StatusBar title={s.title} model={s.model} tokens={s.tokens} contextWindow={s.contextWindow ?? s.threshold} />
     </box>
   );
 }

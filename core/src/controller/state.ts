@@ -28,6 +28,7 @@ export type UIState = {
   toolLog: ToolLogEntry[];
   model: string;
   tokens: number;
+  contextWindow: number;
   threshold: number;
   busy: boolean;
   input: string;
@@ -61,6 +62,7 @@ export interface ControllerDeps {
   bus: EventBus;
   adapter: ProviderAdapter;
   model: string;
+  contextWindow?: number;
   systemPrompt: string;
   sessionDir?: string;
 }
