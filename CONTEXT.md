@@ -5,7 +5,7 @@ Code agent com arquitetura de plugins: o núcleo (loop de agente + terminal UI) 
 ## Núcleo
 
 **Núcleo**:
-Parte não-plugin do cagent: loop de agente (mensagem → LLM → tool call → resultado), gerenciamento de contexto, persistência de sessões e a terminal UI (ink).
+Parte não-plugin do cagent: loop de agente (mensagem → LLM → tool call → resultado), gerenciamento de contexto, persistência de sessões e a terminal UI (OpenTUI).
 _Avoid_: harness, engine, "caixa" (coloquial)
 
 **Plugin**:

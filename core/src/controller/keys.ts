@@ -7,8 +7,7 @@ export function onKey(c: Controller, key: InputKey, input: string): void {
   const s = c.state;
   if (key.tab) {
     // ponytail: suggestIdx inicia em -1; o 1o tab cai na 1a sugestao (0).
-    // inputKey++ remonta o TextInput (key) para levar o cursor ao fim do valor —
-    // o ink-text-input só clampa o cursor quando o valor encolhe, não quando cresce.
+    // inputKey++ sinaliza à UI que o valor foi completado externamente.
     if (s.suggest.length) {
       s.suggestIdx = (s.suggestIdx + 1) % s.suggest.length;
       s.input = s.suggest[s.suggestIdx];

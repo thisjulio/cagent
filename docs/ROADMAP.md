@@ -1,6 +1,6 @@
 # Roadmap — cagent v1
 
-Stack: Bun/TypeScript (ADR-0004). UI: ink. Cada fase termina num estado demoável. Ordem segue `docs/adr/` e `CONTEXT.md`.
+Stack: Bun/TypeScript (ADR-0004/ADR-0006). UI: OpenTUI. Cada fase termina num estado demoável. Ordem segue `docs/adr/` e `CONTEXT.md`.
 
 ## Fase 1 — Workspace e esqueleto do núcleo
 
@@ -22,7 +22,7 @@ Stack: Bun/TypeScript (ADR-0004). UI: ink. Cada fase termina num estado demoáve
 
 - SDK `openai` (npm) + auth OAuth PKCE no browser; token persistido na config YAML
 - `list_models()`, `prepare_call()`, `stream()` (chunks de token)
-- Verificação temporária: modo de chat por linhas em terminal (substituído pela UI ink na Fase 6)
+- Verificação temporária: modo de chat por linhas em terminal (substituído pela UI OpenTUI na Fase 6)
 - **Critério de saída:** conversa real com streaming usando OpenAI.
 
 ## Fase 4 — Loop de agente (núcleo)
@@ -42,7 +42,7 @@ Stack: Bun/TypeScript (ADR-0004). UI: ink. Cada fase termina num estado demoáve
 - Templates de código (boilerplate por linguagem) + templates de prompt
 - **Critério de saída:** o agente busca e edita arquivos numa conversa real.
 
-## Fase 6 — Terminal UI (ink)
+## Fase 6 — Terminal UI (OpenTUI)
 
 - Multi-pane: chat (principal) + tool log (lateral) + status bar (modelo, provedor, tokens, % do contexto)
 - Render em streaming; `/model` (picker fuzzy), `/sessions`, `/compact`, `/help`

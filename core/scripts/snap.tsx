@@ -1,6 +1,5 @@
-import React from "react";
-import { renderToString } from "ink";
-import stripAnsi from "strip-ansi";
+import React, { act } from "react";
+import { testRender } from "@opentui/react/test-utils";
 import type { ProviderAdapter } from "@cagent/sdk";
 import { App } from "../src/ui/components/App.js";
 import { Controller } from "../src/controller/controller.js";
@@ -27,16 +26,18 @@ controller.state.chat = []; // estado vazio e determinístico (a ctor cria uma s
 controller.state.toolLog = [];
 controller.state.tokens = 0;
 
-function frame(w: number): void {
-  process.stdout.columns = w; // App lê process.stdout.columns para a largura do Static
-  const lines = stripAnsi(renderToString(<App c={controller} />, { columns: w })).split("\n");
+async function frame(w: number): Promise<void> {
+  const setup = await testRender(<App c={controller} />, { width: w, height: 24 });
+  await act(async () => { await setup.flush(); });
+  const lines = setup.captureCharFrame().split("\n");
   console.log(`\n=== ${w} cols ===`);
   console.log("┌" + "─".repeat(w) + "┐");
   console.log(lines.map((l) => "│" + l.padEnd(w)).join("\n"));
   console.log("└" + "─".repeat(w) + "┘");
+  act(() => setup.renderer.destroy());
 }
 
-for (const w of [60, 80, 120]) frame(w);
+for (const w of [60, 80, 120]) await frame(w);
 
 // estado semeado: os 3 blocos (usuário / agente / tool)
 controller.state.chat = [
@@ -48,4 +49,4 @@ controller.state.chat = [
 ];
 controller.state.tokens = 1200;
 controller.state.title = "snapshot";
-frame(80);
+await frame(80);

@@ -1,14 +1,8 @@
-import { Box, Text } from "ink";
-
 export function HelpBox() {
   return (
-    <Box borderStyle="round" borderColor="gray" paddingX={1} flexDirection="column">
-      <Text>
-        comandos: <Text bold>/model</Text> · <Text bold>/sessions</Text> · <Text bold>/compact</Text> · <Text bold>/new</Text> · <Text bold>/rename</Text> · <Text bold>/help</Text>
-      </Text>
-      <Text>
-        teclas: <Text bold>Esc</Text> interrompe/fecha · <Text bold>ctrl+o</Text> expande o último tool · <Text bold>y/n/a</Text> permite/nega/sempre
-      </Text>
-    </Box>
+    <box border borderStyle="single" borderColor="#666666" paddingX={1} flexDirection="column" flexShrink={0}>
+      <text>comandos: <strong>/model</strong> <strong>/sessions</strong> <strong>/compact</strong> <strong>/new</strong> <strong>/rename</strong> <strong>/help</strong></text>
+      <text>teclas: <strong>Esc</strong> interrompe/fecha <strong>ctrl+o</strong> expande o ultimo tool <strong>y/n/a</strong> permite/nega/sempre</text>
+    </box>
   );
 }

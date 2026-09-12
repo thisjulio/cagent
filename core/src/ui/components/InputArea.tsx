@@ -1,21 +1,12 @@
-import { useEffect, useState } from "react";
-import { Box, Text, useInput } from "ink";
-import Spinner from "ink-spinner";
-import { wrap } from "../wrap";
-import { H_INPUT_BOX, H_INPUT_BLOCK, isMouseInput } from "../mouse";
+import { useEffect, useRef } from "react";
+import type { TextareaRenderable } from "@opentui/core";
 
-// ponytail: input multi-linha com viewport. O cursor é estado local (como no
-// TextInput, só que com wrap em várias linhas). `offset` controla a janela
-// visível (a roda do mouse muda no App); edição que sai da janela auto-rola.
-// O bloco externo tem altura fixa (H_INPUT_BLOCK) para o hit-test de região.
 export function InputArea({
   input,
   inputKey,
   busy,
   running,
   suggest,
-  offset,
-  setOffset,
   active,
   onChange,
   onSubmit,
@@ -25,90 +16,47 @@ export function InputArea({
   busy: boolean;
   running?: string;
   suggest?: string[];
-  offset: number;
-  setOffset: (n: number) => void;
   active: boolean;
   onChange: (v: string) => void;
   onSubmit: (v: string) => void;
 }) {
-  const [cursor, setCursor] = useState(input.length);
-  // tab (via inputKey) reposiciona o cursor no fim, como no TextInput original.
-  useEffect(() => setCursor(input.length), [inputKey]);
+  const textarea = useRef<TextareaRenderable>(null);
+
   useEffect(() => {
-    if (cursor > input.length) setCursor(input.length);
-  }, [input, cursor]);
-
-  const contentW = Math.max(1, process.stdout.columns - 4);
-  const innerW = Math.max(1, contentW - 2);
-  const wrapped = wrap(input, innerW);
-  const lines = wrapped.length ? wrapped : [{ text: "", start: 0, end: 0 }];
-  const vis = Math.max(1, H_INPUT_BOX - 2);
-  const maxOff = Math.max(0, lines.length - vis);
-  const start = Math.min(Math.max(0, offset), maxOff);
-  const shown = lines.slice(start, start + vis);
-
-  // linha visual (após wrap) do cursor em um dado texto/cursor
-  function cursorLine(text: string, cur: number): number {
-    const ls = wrap(text, innerW);
-    if (!ls.length) return 0;
-    for (let i = 0; i < ls.length; i++) if (cur >= ls[i].start && cur < ls[i].end) return i;
-    return ls.length - 1;
-  }
-
-  const edit = (value: string, cur: number) => {
-    setCursor(cur);
-    if (value !== input) onChange(value);
-    const lineIdx = cursorLine(value, cur);
-    if (lineIdx < start) setOffset(lineIdx);
-    else if (lineIdx >= start + vis) setOffset(lineIdx - vis + 1);
-  };
-
-  useInput(
-    (inp, key) => {
-      if (isMouseInput(inp)) return;
-      if (key.tab || key.upArrow || key.downArrow || (key.ctrl && inp === "c")) return;
-      if (key.return) return;
-      if (key.leftArrow) edit(input, Math.max(0, cursor - 1));
-      else if (key.rightArrow) edit(input, Math.min(input.length, cursor + 1));
-      else if (key.backspace || key.delete) {
-        if (cursor > 0) edit(input.slice(0, cursor - 1) + input.slice(cursor), cursor - 1);
-        return;
-      } else {
-        edit(input.slice(0, cursor) + inp + input.slice(cursor), cursor + inp.length);
-      }
-    },
-    { isActive: active },
-  );
-
-  function renderLine(line: { text: string; start: number; end: number }): string {
-    if (cursor >= line.start && (cursor < line.end || (cursor === line.end && line.end === input.length))) {
-      const pre = input.slice(line.start, cursor);
-      const mid = input[cursor] ?? " ";
-      const post = input.slice(cursor + 1, line.end);
-      return `${pre}\x1b[7m${mid}\x1b[27m${post}`;
-    }
-    return line.text;
-  }
+    const current = textarea.current;
+    if (current && current.plainText !== input) current.setText(input);
+  }, [input, inputKey]);
 
   return (
-    <Box height={H_INPUT_BLOCK} flexDirection="column">
-      <Text dimColor>{"─".repeat(Math.max(1, process.stdout.columns - 2))}</Text>
-      {busy ? (
-        <Text dimColor>
-          <Spinner type="dots" /> {running ? `usando ${running}…` : "pensando…"}
-        </Text>
-      ) : null}
-      <Box borderStyle="round" borderColor="cyan" paddingX={1} width="100%" height={H_INPUT_BOX} flexDirection="column">
-        {shown.map((l, i) => (
-          <Text key={i}>
-            <Text color="cyan">{i === 0 ? "❯ " : "  "}</Text>
-            {renderLine(l)}
-          </Text>
-        ))}
-      </Box>
+    <box height={7} flexDirection="column" flexShrink={0} border={["top"]} borderColor="#666666" justifyContent="flex-start">
+      <text height={1} fg="#666666">{busy ? `... ${running ? `usando ${running}` : "pensando"}` : ""}</text>
+      <box border borderStyle="single" borderColor="cyan" paddingX={1} width="100%" height={4} flexDirection="row">
+        <text fg="cyan" width={2} flexShrink={0}>{"> "}</text>
+        <textarea
+          ref={textarea}
+          initialValue={input}
+          focused={active}
+          flexGrow={1}
+          height={2}
+          wrapMode="word"
+          keyBindings={[
+            { name: "return", action: "submit" },
+            { name: "linefeed", action: "submit" },
+            { name: "kpenter", action: "submit" },
+            { name: "return", shift: true, action: "newline" },
+          ]}
+          placeholder="escreva sua proxima instrucao"
+          placeholderColor="#666666"
+          onContentChange={() => {
+            const value = textarea.current?.plainText ?? "";
+            if (value !== input) onChange(value);
+          }}
+          onSubmit={() => onSubmit(textarea.current?.plainText ?? input)}
+        />
+      </box>
       {suggest && suggest.length > 0 ? (
-        <Text dimColor>{"  tab: " + suggest.join("  ")}</Text>
+        <text fg="#666666">{"  tab: " + suggest.join("  ")}</text>
       ) : null}
-    </Box>
+    </box>
   );
 }

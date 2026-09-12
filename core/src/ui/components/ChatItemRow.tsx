@@ -1,4 +1,4 @@
-import { Box, Text } from "ink";
+import { TextAttributes } from "@opentui/core";
 import type { ChatItem } from "../../controller/state";
 import { Markdown } from "../render/markdown";
 
@@ -7,37 +7,37 @@ export function ChatItemRow({ it, streaming }: { it: ChatItem; streaming: boolea
   if (it.kind === "assistant") return <AssistantRow it={it} streaming={streaming} />;
   if (it.kind === "thinking") return <ThinkingRow it={it} streaming={streaming} />;
   if (it.kind === "tool") return <ToolRow it={it} />;
-  return <Text dimColor>{it.content}</Text>;
+  return <text attributes={TextAttributes.DIM}>{it.content}</text>;
 }
 
 function UserRow({ it }: { it: ChatItem }) {
   return (
-    <Box borderStyle="round" borderColor="cyan" paddingX={1} width="100%" flexDirection="column" flexShrink={0}>
-      <Text>
-        <Text color="cyan">❯ </Text>
+    <box border borderStyle="single" borderColor="cyan" paddingX={1} width="100%" flexDirection="column" flexShrink={0}>
+      <text>
+        <span fg="cyan">&gt; </span>
         {it.content}
-      </Text>
-    </Box>
+      </text>
+    </box>
   );
 }
 
 function AssistantRow({ it, streaming }: { it: ChatItem; streaming: boolean }) {
   return (
-    <Box borderStyle="round" borderColor="gray" paddingX={1} width="100%" flexDirection="column" flexShrink={0}>
-      {!streaming && it.content ? <Markdown content={it.content} /> : <Text>{it.content || "…"}</Text>}
-    </Box>
+    <box border borderStyle="single" borderColor="#666666" paddingX={1} width="100%" flexDirection="column" flexShrink={0}>
+      {!streaming && it.content ? <Markdown content={it.content} /> : <text>{it.content || "..."}</text>}
+    </box>
   );
 }
 
 function ThinkingRow({ it, streaming }: { it: ChatItem; streaming: boolean }) {
   return (
-    <Box borderStyle="round" borderColor="gray" paddingX={1} width="100%" flexDirection="column" flexShrink={0}>
-      <Text dimColor>
-        <Text color="cyan">⌁ </Text>
-        {streaming ? <Text color="yellow">thinking ⋯</Text> : <Text>thinking</Text>}
-      </Text>
-      {it.content ? <Text dimColor>{it.content}</Text> : null}
-    </Box>
+    <box border borderStyle="single" borderColor="#666666" paddingX={1} width="100%" flexDirection="column" flexShrink={0}>
+      <text attributes={TextAttributes.DIM}>
+        <span fg="cyan">~ </span>
+        {streaming ? <span fg="yellow">thinking ...</span> : "thinking"}
+      </text>
+      {it.content ? <text attributes={TextAttributes.DIM}>{it.content}</text> : null}
+    </box>
   );
 }
 
@@ -46,24 +46,24 @@ function ToolRow({ it }: { it: ChatItem }) {
   const color = it.isError ? "red" : it.running ? "yellow" : "green";
   const lines = it.content ? it.content.split("\n").length : 0;
   return (
-    <Box borderStyle="round" borderColor={it.isError ? "red" : "gray"} paddingX={1} width="100%" flexDirection="column" flexShrink={0}>
-      <Text>
-        <Text color={color}>{status} </Text>
-        <Text bold>{it.toolName ?? "?"}</Text>
+    <box border borderStyle="single" borderColor={it.isError ? "red" : "#666666"} paddingX={1} width="100%" flexDirection="column" flexShrink={0}>
+      <text>
+        <span fg={color}>{status} </span>
+        <strong>{it.toolName ?? "?"}</strong>
         {it.cmd ? (
-          <Text dimColor> · {it.expanded ? it.cmd : it.cmd.length > 40 ? it.cmd.slice(0, 40) + "…" : it.cmd}</Text>
+          <span attributes={TextAttributes.DIM}> · {it.expanded ? it.cmd : it.cmd.length > 40 ? it.cmd.slice(0, 40) + "..." : it.cmd}</span>
         ) : null}
-        {it.running ? <Text color="yellow"> (executando…)</Text> : null}
-        {it.denied ? <Text color="yellow"> (negado)</Text> : null}
+        {it.running ? <span fg="yellow"> (executando...)</span> : null}
+        {it.denied ? <span fg="yellow"> (negado)</span> : null}
         {!it.running && !it.denied && !it.expanded && lines > 0 && (
-          <Text dimColor> +{lines} linha{lines === 1 ? "" : "s"} (ctrl+o)</Text>
+          <span attributes={TextAttributes.DIM}> +{lines} linha{lines === 1 ? "" : "s"} (ctrl+o)</span>
         )}
-      </Text>
+      </text>
       {it.expanded && it.content ? (
-        <Text color={it.isError ? "red" : undefined} dimColor={!it.isError}>
+        <text fg={it.isError ? "red" : undefined} attributes={it.isError ? TextAttributes.NONE : TextAttributes.DIM}>
           {"  " + it.content.replace(/\n/g, "\n  ")}
-        </Text>
+        </text>
       ) : null}
-    </Box>
+    </box>
   );
 }

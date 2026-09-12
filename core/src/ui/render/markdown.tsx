@@ -1,49 +1,56 @@
-import React from "react";
-import { Text } from "ink";
-import ReactMarkdown from "react-markdown";
-import { HighlightedCode, decodeHtml } from "./highlight";
+import { SyntaxStyle, TextAttributes } from "@opentui/core";
+import type React from "react";
 
-type MDProps = { children?: unknown; inline?: boolean; className?: string; number?: number; alt?: string };
+const syntaxStyle = SyntaxStyle.create();
 
-const MD_COMPONENTS = {
-  code: ({ inline, className, children }: MDProps) => {
-    const code = decodeHtml(String(children ?? "")).replace(/\n$/, "");
-    if (inline) return <Text color="yellow">{code}</Text>;
-    const language = (className ?? "").replace("language-", "").trim();
-    return <HighlightedCode code={code} language={language || undefined} />;
-  },
-  a: ({ children }: MDProps) => <Text color="cyan" underline>{children}</Text>,
-  strong: ({ children }: MDProps) => <Text bold>{children}</Text>,
-  em: ({ children }: MDProps) => <Text italic>{children}</Text>,
-  del: ({ children }: MDProps) => <Text dimColor>{children}</Text>,
-  h1: ({ children }: MDProps) => <Text bold>{children}</Text>,
-  h2: ({ children }: MDProps) => <Text bold>{children}</Text>,
-  h3: ({ children }: MDProps) => <Text bold>{children}</Text>,
-  ul: ({ children }: MDProps) => <Text>{children}</Text>,
-  // ponytail: children do ol vem como ["\n", <li>, "\n", <li>, ...] — filtra elementos antes do cloneElement
-  ol: ({ children }: MDProps) => (
-    <Text>
-      {React.Children.toArray(children)
-        .filter((c) => React.isValidElement(c))
-        .map((child, i) =>
-          React.cloneElement(child as React.ReactElement<Record<string, unknown>>, { number: i + 1 })
-        )}
-    </Text>
-  ),
-  li: ({ children, number }: MDProps) => (
-    <Text>{number ? `  ${number}. ` : "  • "}{children}</Text>
-  ),
-  blockquote: ({ children }: MDProps) => <Text dimColor>{"  "}{children}</Text>,
-  p: ({ children }: MDProps) => <Text>{children}</Text>,
-  pre: ({ children }: MDProps) => <Text>{children}</Text>,
-  br: () => <Text>{"\n"}</Text>,
-  img: ({ alt }: MDProps) => <Text dimColor>{`[imagem: ${alt ?? ""}]`}</Text>,
-};
+function plainLine(line: string): string {
+  return line
+    .replace(/^#{1,6}\s+/, "")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/__([^_]+)__/g, "$1")
+    .replace(/\*([^*]+)\*/g, "$1")
+    .replace(/_([^_]+)_/g, "$1");
+}
 
 export function Markdown({ content }: { content: string }) {
-  return (
-    <Text>
-      <ReactMarkdown components={MD_COMPONENTS}>{content}</ReactMarkdown>
-    </Text>
-  );
+  const lines = content.split("\n");
+  const children: React.ReactNode[] = [];
+  let code: string[] = [];
+  let language = "";
+
+  const flushCode = () => {
+    if (!code.length) return;
+    children.push(
+      <code
+        key={`code-${children.length}`}
+        content={code.join("\n")}
+        filetype={language || undefined}
+        syntaxStyle={syntaxStyle}
+        width="100%"
+      />,
+    );
+    code = [];
+    language = "";
+  };
+
+  for (const [i, line] of lines.entries()) {
+    const fence = line.match(/^\s*```(\S*)?\s*$/);
+    if (fence) {
+      if (code.length) flushCode();
+      else language = fence[1] ?? "";
+      continue;
+    }
+    if (code.length || language) {
+      code.push(line);
+      continue;
+    }
+    const heading = /^#{1,6}\s+/.test(line);
+    children.push(
+      <text key={`line-${i}`} attributes={heading ? TextAttributes.BOLD : TextAttributes.NONE} content={plainLine(line) || " "} />,
+    );
+  }
+  flushCode();
+
+  return <box flexDirection="column" width="100%">{children}</box>;
 }

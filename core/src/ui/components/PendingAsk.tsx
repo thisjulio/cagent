@@ -1,10 +1,8 @@
-import { Box, Text } from "ink";
-
 export function PendingAsk({ ask }: { ask: { tool: string; cmd: string } }) {
   return (
-    <Box flexDirection="column">
-      <Text color="yellow">⚠ {ask.tool}: {ask.cmd}</Text>
-      <Text color="yellow">permitir?  y = agora · n = negar · a = sempre este comando</Text>
-    </Box>
+    <box flexDirection="column" flexShrink={0}>
+      <text fg="yellow">! {ask.tool}: {ask.cmd}</text>
+      <text fg="yellow">permitir?  y = agora | n = negar | a = sempre este comando</text>
+    </box>
   );
 }

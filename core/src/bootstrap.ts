@@ -1,5 +1,6 @@
 import React from "react";
-import { render } from "ink";
+import { createCliRenderer } from "@opentui/core";
+import { createRoot } from "@opentui/react";
 import type { Plugin } from "@cagent/sdk";
 import { loadConfig, type AppConfig } from "./config";
 import { loadPlugins } from "./loader";
@@ -58,5 +59,6 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
   bus.on("tools/denied", (p) => c.onToolDenied(p));
   bus.on("tools/stdout", (p) => c.onToolStream(p));
   bus.on("tools/stderr", (p) => c.onToolStream(p, "[stderr] "));
-  render(React.createElement(App, { c }));
+  const renderer = await createCliRenderer({ exitOnCtrlC: true });
+  createRoot(renderer).render(React.createElement(App, { c }));
 }

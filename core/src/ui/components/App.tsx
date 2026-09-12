@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
-import { Box, Text, useInput, useStdin } from "ink";
+import { TextAttributes, type KeyEvent } from "@opentui/core";
+import { useKeyboard } from "@opentui/react";
 import type { Controller } from "../../controller/controller";
-import type { InputKey } from "../../controller/state";
 import { filterModels } from "../../fuzzy";
-import { regionAt, parseMouse, isMouseInput, ENABLE_MOUSE, DISABLE_MOUSE } from "../mouse";
 import { ChatViewport } from "./ChatViewport";
 import { HelpBox } from "./HelpBox";
 import { ModelPicker } from "./ModelPicker";
@@ -14,52 +13,50 @@ import { InputArea } from "./InputArea";
 
 export function App({ c }: { c: Controller }) {
   const [, setV] = useState(0);
-  const [chatOffset, setChatOffset] = useState(0);
-  const [inputOffset, setInputOffset] = useState(0);
-  const { internal_eventEmitter } = useStdin();
 
   useEffect(() => {
     c.bump = () => setV((v) => v + 1);
-    const onResize = () => c.bump();
-    process.stdout.on("resize", onResize);
-    // habilita mouse tracking; disable no teardown (terminais sem suporte ignoram)
-    process.stdout.write(ENABLE_MOUSE);
-    const onInput = (data: string) => {
-      const m = parseMouse(data);
-      if (!m || !m.wheel) return;
-      const region = regionAt(m.y);
-      if (!region) return;
-      if (region === "chat") {
-        setChatOffset((o) => Math.max(0, o + (m.wheel === "up" ? 1 : -1)));
-      } else if (region === "input") {
-        setInputOffset((o) => Math.max(0, o + (m.wheel === "up" ? 1 : -1)));
-      }
-    };
-    internal_eventEmitter.on("input", onInput);
     return () => {
-      internal_eventEmitter.off("input", onInput);
-      process.stdout.off("resize", onResize);
-      process.stdout.write(DISABLE_MOUSE);
+      c.bump = () => {};
     };
-  }, [c, internal_eventEmitter]);
+  }, [c]);
 
-  useInput((input, key) => {
-    if (isMouseInput(input)) return;
-    if (key.return && !c.state.helpOpen && !c.state.busy) {
-      // InputArea handles normal submits; slash commands are routed here too,
-      // because Ink can deliver Enter before the child hook after a rerender.
-      void c.submit(c.state.input);
+  useKeyboard((key: KeyEvent) => {
+    const s = c.state;
+    const input = key.sequence || (key.name === "space" ? " " : "");
+    const overlay = s.helpOpen || s.modelPicker || s.sessionList || s.pendingAsk;
+
+    if (key.name === "tab") {
+      c.handleKey({ tab: true }, "\t");
+      key.preventDefault();
       return;
     }
-    c.handleKey(key as InputKey, input);
+    if (key.ctrl && key.name === "o") {
+      c.handleKey({ ctrl: true }, "o");
+      key.preventDefault();
+      return;
+    }
+    if (key.name === "escape" || (overlay && (s.pendingAsk || s.helpOpen))) {
+      c.handleKey({ escape: key.name === "escape", return: key.name === "enter" }, input);
+      key.preventDefault();
+      return;
+    }
+    if (s.pendingAsk) {
+      c.handleKey({}, input);
+      key.preventDefault();
+      return;
+    }
+    if (s.modelPicker && isPrintable(input) && !key.ctrl && !key.meta) {
+      c.handleKey({}, input);
+    }
   });
   const s = c.state;
   const lastLog = s.toolLog[s.toolLog.length - 1];
   const running = lastLog?.running ? lastLog.tool : undefined;
   const overlay = s.helpOpen || s.modelPicker || s.sessionList || s.pendingAsk;
   return (
-    <Box flexDirection="column">
-      <ChatViewport chat={s.chat} offset={chatOffset} busy={s.busy} />
+    <box flexDirection="column" width="100%" height="100%">
+      <ChatViewport chat={s.chat} busy={s.busy} />
       {s.helpOpen ? (
         <HelpBox />
       ) : s.modelPicker ? (
@@ -79,18 +76,19 @@ export function App({ c }: { c: Controller }) {
           busy={s.busy}
           running={running}
           suggest={s.suggest}
-          offset={inputOffset}
-          setOffset={setInputOffset}
           active={!overlay}
           onChange={(v) => c.setInput(v)}
           onSubmit={(v) => c.submit(v)}
         />
       )}
-      {/* linha reservada para notice (altura fixa para o hit-test) */}
-      <Box height={1}>
-        {s.notice ? <Text dimColor>{s.notice}</Text> : null}
-      </Box>
+      <box height={1} flexShrink={0}>
+        <text attributes={TextAttributes.DIM}>{s.notice}</text>
+      </box>
       <StatusBar title={s.title} model={s.model} tokens={s.tokens} threshold={s.threshold} />
-    </Box>
+    </box>
   );
+}
+
+function isPrintable(input: string): boolean {
+  return input.length > 0 && !/[\x00-\x1f\x7f]/.test(input) && !input.startsWith("\x1b");
 }
