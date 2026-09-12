@@ -93,9 +93,10 @@ jobs:
             )
             declare -A grouped
             other=""
+            conventional_commit='^([a-z]+)(\([^)]*\))?!:[[:space:]]+(.*)$'
             while IFS=$'\t' read -r subject hash; do
               [ -z "$subject" ] && continue
-              if [[ "$subject" =~ ^([a-z]+)(\([^)]*\))?!:[[:space:]]+(.*)$ ]]; then
+              if [[ "$subject" =~ $conventional_commit ]]; then
                 type="${BASH_REMATCH[1]}"
                 message="${BASH_REMATCH[3]}"
                 if [ -n "${sections[$type]:-}" ]; then
