@@ -6,7 +6,7 @@ import type { Message } from "@cagent/sdk";
 
 export type SessionRecord = {
   ts: number;
-  type: "user" | "assistant" | "tool" | "meta";
+  type: "user" | "assistant" | "thinking" | "tool" | "meta";
   payload: Record<string, unknown>;
 };
 

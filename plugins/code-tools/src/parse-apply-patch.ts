@@ -52,10 +52,23 @@ export function parseApplyPatch(patch: string): PatchFile[] {
     const body = part.split(/\*\*\* End patch/i)[0];
     const lines = body.split("\n");
     if (lines[lines.length - 1] === "") lines.pop(); // Final newline artifact, not a hunk line.
-    const fileIdx = lines.findIndex((l) => !l.startsWith("@@") && l.trim().length > 0);
-    if (fileIdx < 0) throw new Error("patch has no file path");
-    const { path, op } = parsePathLine(lines[fileIdx]);
-    files.push({ path, op, hunks: op === "add" ? addHunks(lines.slice(fileIdx + 1)) : op === "delete" ? [] : updateHunks(lines.slice(fileIdx + 1)) });
+    const fileIndexes = lines
+      .map((line, index) => (/^\*\*\* (Update|Add|Delete) File:/.test(line.trim()) ? index : -1))
+      .filter((index) => index >= 0);
+    if (!fileIndexes.length) {
+      const fileIdx = lines.findIndex((line) => !line.startsWith("@@") && line.trim().length > 0);
+      if (fileIdx < 0) throw new Error("patch has no file path");
+      const { path, op } = parsePathLine(lines[fileIdx]);
+      files.push({ path, op, hunks: updateHunks(lines.slice(fileIdx + 1)) });
+      continue;
+    }
+    for (let i = 0; i < fileIndexes.length; i++) {
+      const fileIdx = fileIndexes[i];
+      const end = fileIndexes[i + 1] ?? lines.length;
+      const { path, op } = parsePathLine(lines[fileIdx]);
+      const content = lines.slice(fileIdx + 1, end);
+      files.push({ path, op, hunks: op === "add" ? addHunks(content) : op === "delete" ? [] : updateHunks(content) });
+    }
   }
   if (!files.length) throw new Error("no *** Begin patch block found");
   return files;

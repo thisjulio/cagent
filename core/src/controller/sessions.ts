@@ -5,7 +5,7 @@ import type { ChatItem } from "./state";
 import type { Controller } from "./controller";
 import { appendChat, MAX_CHAT_ITEMS } from "./chat-buffer";
 
-type LoadedRecord = { type: "user" | "assistant" | "tool" | "meta"; payload: Record<string, unknown> };
+type LoadedRecord = { type: "user" | "assistant" | "thinking" | "tool" | "meta"; payload: Record<string, unknown> };
 
 export function toChatItems(records: LoadedRecord[]): ChatItem[] {
   return records.flatMap((r) => {
@@ -15,8 +15,13 @@ export function toChatItems(records: LoadedRecord[]): ChatItem[] {
       const content = String(p.content ?? "");
       return content ? [{ kind: "assistant", content }] : [];
     }
+    if (r.type === "thinking") {
+      const content = String(p.content ?? "");
+      return content ? [{ kind: "thinking", content }] : [];
+    }
     if (r.type === "tool") return [{ kind: "tool", content: String(p.content ?? ""), toolName: p.toolName ? String(p.toolName) : String(p.tool_call_id ?? "") }];
-    return [{ kind: "meta", content: "meta" }];
+    if (p.kind === "compacted") return [{ kind: "meta", content: "conversation compacted" }];
+    return [];
   });
 }
 
@@ -54,7 +59,7 @@ export function restoreSession(c: Controller, id: string): void {
   c.state.chat = toChatItems(loaded.records).slice(-MAX_CHAT_ITEMS);
   c.state.chatVersion += 1;
   c.state.title = toTitle(loaded.records);
-  appendChat(c.state, { kind: "meta", content: `restaurado ${id}` });
+  c.state.notice = `restaurado ${id}`;
   c.state.sessionList = null;
   c.state.tokens = estimateTokens(c.messages);
   c.bump();

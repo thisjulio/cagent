@@ -142,6 +142,7 @@ export class Controller {
 
   private async executeTurn(s: UIState): Promise<void> {
     try {
+      let thinkingContent = "";
       const turn = await runTurn({
         adapter: this.adapter,
         model: splitRoute(s.model)[1],
@@ -158,6 +159,7 @@ export class Controller {
           this.bumpStream();
         },
         onReasoning: (t) => {
+          thinkingContent = appendCapped(thinkingContent, t, MAX_VISIBLE_STREAM_CHARS);
           const last = s.chat[s.chat.length - 1];
           if (last.kind === "thinking") last.content = appendCapped(last.content, t, MAX_VISIBLE_STREAM_CHARS);
           else appendChat(s, { kind: "thinking", content: appendCapped("", t, MAX_VISIBLE_STREAM_CHARS) });
@@ -177,6 +179,7 @@ export class Controller {
           this.session.append({ ts: Date.now(), type: "tool", payload: { tool_call_id: r.tool_call_id, content: r.content, isError: r.isError, toolName: r.toolName } });
         }
       }
+      if (thinkingContent) this.session.append({ ts: Date.now(), type: "thinking", payload: { content: thinkingContent } });
       for (const it of s.chat) if (it.kind === "tool" && it.running) it.running = false;
       if (turn.inputTokens !== undefined) s.tokens = turn.inputTokens;
       s.notice = turn.interrupted ? "[interrupted - type to steer]" : "";

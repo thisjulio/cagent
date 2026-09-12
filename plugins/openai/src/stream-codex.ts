@@ -73,7 +73,8 @@ export async function* streamCodex(request: LlmCallOptions, access: string, acco
           event === "response.reasoning_summary_text.delta" ||
           event === "response.reasoning_summary.delta"
         ) {
-          yield { type: "reasoning", text: String(data.delta ?? "") };
+          const text = data.delta ?? data.text ?? data.part;
+          if (typeof text === "string" && text) yield { type: "reasoning", text };
         } else if (event === "response.output_item.done") {
           const item = data.item as Record<string, unknown> | undefined;
           if (item && (item.type === "function_call" || item.type === "custom_tool_call")) {
