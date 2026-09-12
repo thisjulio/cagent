@@ -27,7 +27,7 @@ export function App({ c }: { c: Controller }) {
     const input = key.sequence || (key.name === "space" ? " " : "");
     const overlay = s.helpOpen || s.modelPicker || s.sessionList || s.pendingAsk;
 
-    if (key.ctrl && key.name === "c" && !key.shift && !overlay) {
+    if (key.ctrl && key.name === "c" && !key.shift && !overlay && s.input.length > 0) {
       c.setInput("");
       key.preventDefault();
       return;

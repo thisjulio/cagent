@@ -49,11 +49,6 @@ export function InputArea({
             { name: "return", shift: true, action: "newline" },
           ]}
           onKeyDown={(key: KeyEvent) => {
-            if (key.ctrl && key.name === "c" && !key.shift) {
-              textarea.current?.setText("");
-              onChange("");
-              return;
-            }
             if (key.ctrl && key.name === "c" && key.shift) {
               const selected = textarea.current?.getSelectedText() ?? "";
               if (selected) renderer.copyToClipboardOSC52(selected);
