@@ -65,4 +65,5 @@ export interface ControllerDeps {
   contextWindow?: number;
   systemPrompt: string;
   sessionDir?: string;
+  reloadSkills?: () => void;
 }

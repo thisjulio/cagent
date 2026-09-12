@@ -10,6 +10,9 @@ import { buildSystemPrompt } from "./prompt";
 import { splitRoute } from "./route";
 import { Controller } from "./controller/controller";
 import { App } from "./ui/components/App";
+import { discoverSkills } from "./skills/discovery";
+import { createReadSkillTool } from "./skills/read-tool";
+import { addBuiltinSkills } from "./skills/builtin";
 
 export async function resolveRoute(config: AppConfig, registry: Registry): Promise<string> {
   if (config.model) {
@@ -38,6 +41,15 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
   const registry = new Registry();
   const bus = new EventBus();
   const { promptSections } = await loadPlugins(config, registry, bus, { loaders: options.pluginLoaders });
+  const skills = config.skills?.enabled === false ? undefined : addBuiltinSkills(
+    discoverSkills(process.cwd(), config.skills?.roots),
+  );
+  const reloadSkills = skills ? () => {
+    const refreshed = addBuiltinSkills(discoverSkills(process.cwd(), config.skills?.roots));
+    skills.skills = refreshed.skills;
+    skills.byName = refreshed.byName;
+  } : undefined;
+  if (skills) registry.registerTool(createReadSkillTool(skills));
   let route: string;
   try {
     route = await resolveRoute(config, registry);
@@ -54,7 +66,8 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
     adapter,
     model: route,
     contextWindow,
-    systemPrompt: buildSystemPrompt(process.cwd(), promptSections, config.instructions),
+    systemPrompt: buildSystemPrompt(process.cwd(), promptSections, config.instructions, skills),
+    reloadSkills,
   });
   bus.on("tools/pre", (p) => c.onToolPre(p));
   bus.on("tools/post", (p) => c.onToolPost(p));

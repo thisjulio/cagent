@@ -4,6 +4,12 @@ Code agent with a plugin architecture: the core (agent loop, context, sessions, 
 
 Read before working: `CONTEXT.md` (glossary) and `docs/adr/` (decisions). ADRs are law while they are current: to change a decision, write a new ADR; never write code against an active ADR.
 
+## Repository Language
+
+- English is the required language for all repository artifacts: source code, identifiers, comments, tests, documentation, configuration, skill files, commit-facing text, and generated text checked into the repository.
+- Keep user-facing conversational replies in the user's language when appropriate, but write anything saved to the repository in English.
+- When modifying existing non-English repository text, translate the touched material to English unless the text is an intentional fixture or external content.
+
 ## Commands
 
 - `bun install` - workspace dependencies

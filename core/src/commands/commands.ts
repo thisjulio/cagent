@@ -14,6 +14,11 @@ const commands: Record<string, SlashHandler> = {
     c.state.helpOpen = true;
     c.bump();
   },
+  "/reload-skills": (c) => {
+    if (!c.reloadSkills()) return;
+    c.state.notice = "skills reloaded";
+    c.bump();
+  },
 };
 
 export const commandNames = Object.keys(commands);

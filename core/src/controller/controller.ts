@@ -60,6 +60,12 @@ export class Controller {
     this.state = s;
   }
 
+  reloadSkills(): boolean {
+    if (!this.deps.reloadSkills) return false;
+    this.deps.reloadSkills();
+    return true;
+  }
+
   private estimateTokens(): number {
     return this.adapter.estimate_tokens?.(splitRoute(this.deps.model)[1], this.messages) ?? estimateTokens(this.messages);
   }

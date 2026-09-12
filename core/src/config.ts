@@ -19,6 +19,7 @@ export interface AppConfig {
   compact_threshold_percent?: number;
   retry_attempts?: number;
   permissions?: boolean;
+  skills?: { enabled?: boolean; roots?: string[] };
 }
 
 function readYaml(file: string): Record<string, unknown> {
@@ -46,5 +47,11 @@ export function loadConfig(cwd: string): AppConfig {
     compact_threshold_percent: (local.compact_threshold_percent as number | undefined) ?? (global.compact_threshold_percent as number | undefined),
     retry_attempts: (local.retry_attempts as number | undefined) ?? (global.retry_attempts as number | undefined),
     permissions: (local.permissions as boolean | undefined) ?? (global.permissions as boolean | undefined) ?? true,
+    skills: {
+      enabled: (local.skills as { enabled?: boolean } | undefined)?.enabled
+        ?? (global.skills as { enabled?: boolean } | undefined)?.enabled ?? true,
+      roots: (local.skills as { roots?: string[] } | undefined)?.roots
+        ?? (global.skills as { roots?: string[] } | undefined)?.roots,
+    },
   };
 }
