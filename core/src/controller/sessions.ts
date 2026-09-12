@@ -8,12 +8,15 @@ import { appendChat, MAX_CHAT_ITEMS } from "./chat-buffer";
 type LoadedRecord = { type: "user" | "assistant" | "tool" | "meta"; payload: Record<string, unknown> };
 
 export function toChatItems(records: LoadedRecord[]): ChatItem[] {
-  return records.map((r) => {
+  return records.flatMap((r) => {
     const p = r.payload as Record<string, unknown>;
-    if (r.type === "user") return { kind: "user", content: String(p.content ?? "") };
-    if (r.type === "assistant") return { kind: "assistant", content: String(p.content ?? "") };
-    if (r.type === "tool") return { kind: "tool", content: String(p.content ?? ""), toolName: p.toolName ? String(p.toolName) : String(p.tool_call_id ?? "") };
-    return { kind: "meta", content: "meta" };
+    if (r.type === "user") return [{ kind: "user", content: String(p.content ?? "") }];
+    if (r.type === "assistant") {
+      const content = String(p.content ?? "");
+      return content ? [{ kind: "assistant", content }] : [];
+    }
+    if (r.type === "tool") return [{ kind: "tool", content: String(p.content ?? ""), toolName: p.toolName ? String(p.toolName) : String(p.tool_call_id ?? "") }];
+    return [{ kind: "meta", content: "meta" }];
   });
 }
 
