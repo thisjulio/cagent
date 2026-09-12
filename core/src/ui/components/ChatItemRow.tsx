@@ -43,7 +43,7 @@ function AssistantRow({ it, streaming, showAgentLabel }: { it: ChatItem; streami
 
 function ThinkingRow({ it, streaming, showAgentLabel }: { it: ChatItem; streaming: boolean; showAgentLabel: boolean }) {
   return (
-    <box paddingX={2} marginBottom={1} width="100%" flexDirection="column" flexShrink={0}>
+    <box paddingX={2} width="100%" flexDirection="column" flexShrink={0}>
       {showAgentLabel ? <text fg="#d97757">cagent <span attributes={TextAttributes.DIM}>{time(it.timestamp)}</span></text> : null}
       <text attributes={TextAttributes.DIM}>
         <span fg="#d97757">├─ </span>
@@ -68,18 +68,14 @@ function ToolRow({ it, onClick, showAgentLabel }: { it: ChatItem; onClick: () =>
   return (
     <box paddingX={2} width="100%" flexDirection="column" flexShrink={0} onMouseDown={(event) => { if (event.button === 0) { event.preventDefault(); event.stopPropagation(); onClick(); } }}>
       {showAgentLabel ? <text fg="#d97757">cagent <span attributes={TextAttributes.DIM}>{time(it.timestamp)}</span></text> : null}
-      <box flexDirection="row" width="100%">
-      <text flexGrow={1}>
+      <text>
         <span fg="#d97757">├─ </span><span fg={color}>{status}</span><span fg="#d97757"> </span>
         <strong>{categoryLabel(it.toolCategory ?? "generic")}</strong>
         {it.cmd ? (
           <span attributes={TextAttributes.DIM}> · {it.expanded ? it.cmd : it.cmd.length > 40 ? it.cmd.slice(0, 40) + "..." : it.cmd}</span>
         ) : null}
+        {details ? <span attributes={TextAttributes.DIM}> {details}</span> : null}
       </text>
-      <box width={24} marginRight={0} flexShrink={0} justifyContent="flex-end">
-        {details ? <text attributes={TextAttributes.DIM}>{details}</text> : null}
-      </box>
-      </box>
       {it.expanded && it.content ? (
         <text attributes={it.isError ? TextAttributes.NONE : TextAttributes.DIM}>
           {it.content.split("\n").map((line, lineIndex) => (
