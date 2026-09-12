@@ -4,6 +4,8 @@ export interface SkillMetadata {
   license?: string;
   compatibility?: string;
   allowedTools?: string[];
+  userInvocable?: boolean;
+  disableModelInvocation?: boolean;
 }
 
 export interface SkillRecord {
