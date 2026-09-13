@@ -158,16 +158,17 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
   bus.on("tools/stdout", (p) => c.onToolStream(p));
   bus.on("tools/stderr", (p) => c.onToolStream(p, "[stderr] "));
   bus.on("plugin/activity", (p) => {
-    const event = p as { plugin?: string; content?: string; memory?: { id?: string; content?: string; scope?: string; kind?: string } };
+    const event = p as { plugin?: string; content?: string; attributes?: { memory?: { id?: string; content?: string; scope?: string; kind?: string } } };
+    const memory = event.attributes?.memory;
     if (event.content) {
       c.state.chat.push({
-        kind: event.plugin === "memory-local" && event.memory ? "memory" : "meta",
-        content: event.memory?.content ?? event.content,
+        kind: event.plugin === "memory-local" && memory ? "memory" : "meta",
+        content: memory?.content ?? event.content,
         timestamp: Date.now(),
         memoryStatus: "pending",
-        memoryScope: event.memory?.scope,
-        memoryKind: event.memory?.kind,
-        memoryId: event.memory?.id,
+        memoryScope: memory?.scope,
+        memoryKind: memory?.kind,
+        memoryId: memory?.id,
       });
       c.state.chatVersion++;
       c.bump();
