@@ -20,6 +20,7 @@ export interface AppConfig {
   retry_attempts?: number;
   permissions?: boolean;
   log_level?: "silent" | "error" | "warn" | "info" | "debug";
+  observability?: { enabled?: boolean; file?: string };
   skills?: { enabled?: boolean; roots?: string[] };
 }
 
@@ -49,6 +50,12 @@ export function loadConfig(cwd: string): AppConfig {
     retry_attempts: (local.retry_attempts as number | undefined) ?? (global.retry_attempts as number | undefined),
     permissions: (local.permissions as boolean | undefined) ?? (global.permissions as boolean | undefined) ?? true,
     log_level: (local.log_level as AppConfig["log_level"]) ?? (global.log_level as AppConfig["log_level"]) ?? "silent",
+    observability: {
+      enabled: (local.observability as AppConfig["observability"] | undefined)?.enabled
+        ?? (global.observability as AppConfig["observability"] | undefined)?.enabled ?? false,
+      file: (local.observability as AppConfig["observability"] | undefined)?.file
+        ?? (global.observability as AppConfig["observability"] | undefined)?.file,
+    },
     skills: {
       enabled: (local.skills as { enabled?: boolean } | undefined)?.enabled
         ?? (global.skills as { enabled?: boolean } | undefined)?.enabled ?? true,

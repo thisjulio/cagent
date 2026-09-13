@@ -2,6 +2,7 @@ import type { Controller } from "./controller";
 import { appendChat } from "./chat-buffer";
 
 export async function submitSubagent(controller: Controller, name: string, task: string, original: string): Promise<void> {
+  controller.observability?.recordEvent("subagent.started", { "subagent.name": name, "task.length": task.length });
   const s = controller.state;
   s.input = "";
   appendChat(s, { kind: "user", content: original });
@@ -18,6 +19,7 @@ export async function submitSubagent(controller: Controller, name: string, task:
       task,
       context: controller.messages.slice(),
     });
+    controller.observability?.recordEvent("subagent.completed", { "subagent.name": name, "result.length": result.length });
     controller.messages.push(
       { role: "user", content: original },
       { role: "assistant", content: result },
@@ -25,6 +27,7 @@ export async function submitSubagent(controller: Controller, name: string, task:
     appendChat(s, { kind: "assistant", content: result, subagent: name });
     controller.session.append({ ts: Date.now(), type: "assistant", payload: { content: result, subagent: name } });
   } catch (error) {
+    controller.observability?.recordEvent("subagent.failed", { "subagent.name": name, "error.type": error instanceof Error ? error.name : "unknown" });
     s.notice = `error: ${error instanceof Error ? error.message : String(error)}`;
   } finally {
     s.busy = false;

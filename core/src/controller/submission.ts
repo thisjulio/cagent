@@ -1,13 +1,16 @@
+import crypto from "node:crypto";
 import { appendChat } from "./chat-buffer";
 import { addEnvironmentContext } from "./environment";
 import { executeTurn } from "./turn";
 import { splitRoute } from "../route";
-import { taskAwareTools } from "./task-actions";
+import { resetCompletedTasks, taskAwareTools } from "./task-actions";
 import { compact, generateTitle } from "./sessions";
 import type { Controller } from "./controller";
 
 export async function submitMessage(controller: Controller, text: string): Promise<void> {
   const state = controller.state;
+  const turnId = crypto.randomUUID();
+  resetCompletedTasks(controller);
   appendChat(state, { kind: "user", content: text });
   state.busy = true;
   state.turnStartedAt = Date.now();
@@ -27,5 +30,5 @@ export async function submitMessage(controller: Controller, text: string): Promi
     controller.bump();
   });
   const timer = setInterval(() => { if (state.turnStartedAt) { state.elapsedMs = Date.now() - state.turnStartedAt; controller.bump(); } }, 500);
-  await Promise.all([executeTurn({ state, adapter: controller.adapter, model: splitRoute(state.model)[1], messages: controller.messages, tools: taskAwareTools(controller), allowlist: controller.config.allowlist, ask: controller.ask, bus: controller.bus, hooks: controller.registry.hooks, session: controller.session, interrupted: () => controller.isInterrupted(), signal: controller.signal, maxTurns: controller.maxTurns, maxToolCalls: controller.maxToolCalls, onText: controller.onText, onReasoning: controller.onReasoning, bump: controller.bump, bumpStream: () => controller.bumpStreamNow() }), titlePromise]).finally(() => clearInterval(timer));
+  await Promise.all([executeTurn({ state, adapter: controller.adapter, model: splitRoute(state.model)[1], messages: controller.messages, tools: taskAwareTools(controller), allowlist: controller.config.allowlist, ask: controller.ask, bus: controller.bus, hooks: controller.registry.hooks, session: controller.session, interrupted: () => controller.isInterrupted(), signal: controller.signal, maxTurns: controller.maxTurns, maxToolCalls: controller.maxToolCalls, onText: controller.onText, onReasoning: controller.onReasoning, bump: controller.bump, bumpStream: () => controller.bumpStreamNow(), observability: controller.observability, traceAttributes: { "turn.id": turnId } }), titlePromise]).finally(() => clearInterval(timer));
 }

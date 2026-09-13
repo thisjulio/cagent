@@ -1,7 +1,7 @@
 import React from "react";
 import { createCliRenderer } from "@opentui/core";
 import { createRoot } from "@opentui/react";
-import type { Plugin } from "@cagent/sdk";
+import type { Observability, Plugin } from "@cagent/sdk";
 import { loadConfig, type AppConfig } from "./config";
 import { loadPlugins } from "./loader";
 import { EventBus } from "./events";
@@ -23,6 +23,7 @@ import type { ToolAsk } from "./tools";
 import type { CliOptions } from "./cli-args";
 import fs from "node:fs";
 import path from "node:path";
+import { createLocalObservability } from "./local-telemetry";
 
 export async function resolveRoute(config: AppConfig, registry: Registry): Promise<string> {
   if (config.model) {
@@ -60,17 +61,32 @@ function contextFiles(options: CliOptions): string {
 export interface BootstrapOptions {
   defaultPlugins?: AppConfig["plugins"];
   pluginLoaders?: Record<string, Plugin>;
+  observability?: Observability;
+  cli?: CliOptions;
   headless?: CliOptions;
 }
 
 export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
+  const started = performance.now();
   const loaded = loadConfig(process.cwd());
+  const telemetry = options.observability ?? createLocalObservability(
+    (options.headless?.telemetry ?? options.cli?.telemetry ?? loaded.observability?.enabled) === true,
+    loaded.observability?.file,
+  );
+  telemetry.recordEvent("app.start", { interactive: !options.headless });
   const config = loaded.plugins.length || !options.defaultPlugins ? loaded : { ...loaded, plugins: options.defaultPlugins };
   if (options.headless?.model) config.model = options.headless.model;
   if (options.headless?.logLevel) config.log_level = options.headless.logLevel;
+  const telemetryOverride = options.headless?.telemetry ?? options.cli?.telemetry;
+  if (telemetryOverride !== undefined) {
+    config.observability = { ...config.observability, enabled: telemetryOverride };
+  }
   const registry = new Registry();
   const bus = new EventBus();
-  const loadedPlugins = await loadPlugins(config, registry, bus, { loaders: options.pluginLoaders });
+  const loadedPlugins = await loadPlugins(config, registry, bus, {
+    loaders: options.pluginLoaders,
+    observability: telemetry,
+  });
   for (const agent of discoverSubagents(process.cwd()).agents) registry.registerSubagent(agent);
   const skills = config.skills?.enabled === false ? undefined : addBuiltinSkills(
     discoverSkills(process.cwd(), config.skills?.roots),
@@ -90,6 +106,7 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
     process.exit(1);
   }
   const adapter = registry.provider(splitRoute(route)[0])!;
+  telemetry.recordEvent("route.resolved", { "model.route": route });
   const contextWindow = await adapter.context_window?.(splitRoute(route)[1]);
   let ask: ToolAsk = async () => true;
   const executeSubagent = createSubagentExecutor({
@@ -124,7 +141,9 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
       .filter((name) => skills?.byName.get(name)?.metadata.userInvocable !== false),
     commands: commands.byName,
     invokeSubagent: registry.subagents().length ? executeSubagent : undefined,
+    observability: telemetry,
   });
+  telemetry.recordMetric("app.startup_ms", performance.now() - started, { "plugin.count": loadedPlugins.commandSources.length });
   ask = c.ask;
   if (registry.subagents().length) {
     registry.registerTool(createSubagentTool(
@@ -171,7 +190,10 @@ async function runHeadless(c: Controller, options: CliOptions): Promise<void> {
     return false;
   };
   const abort = new AbortController();
-  const onSignal = () => c.interrupt();
+  const onSignal = (signal: NodeJS.Signals) => {
+    c.observability?.recordEvent("process.signal", { signal });
+    c.interrupt();
+  };
   process.once("SIGINT", onSignal);
   process.once("SIGTERM", onSignal);
   const timeout = setTimeout(() => c.interrupt(), options.timeoutMs);

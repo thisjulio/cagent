@@ -7,7 +7,12 @@ describe("CLI arguments", () => {
     expect(result.prompt).toBe("from pipe\n\nsecond\n\nfirst");
   });
 
-  test("parses automation options", () => {
+  test("parses telemetry overrides", () => {
+    expect(parseCliArgs(["--telemetry"]).telemetry).toBe(true);
+    expect(parseCliArgs(["--no-telemetry"]).telemetry).toBe(false);
+  });
+
+  test("parses common options", () => {
     const result = parseCliArgs(["--yes", "--output", "jsonl", "--timeout", "2m", "task"]);
     expect(result.permissionMode).toBe("auto");
     expect(result.output).toBe("jsonl");

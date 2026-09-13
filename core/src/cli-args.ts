@@ -17,6 +17,7 @@ export type CliOptions = {
   timeoutMs: number;
   model?: string;
   logLevel?: "silent" | "error" | "warn" | "info" | "debug";
+  telemetry?: boolean;
   help: boolean;
   version: boolean;
 };
@@ -61,6 +62,8 @@ export function parseCliArgs(args: string[], stdin = ""): CliOptions {
       }
       options.logLevel = value;
     }
+    else if (arg === "--telemetry") options.telemetry = true;
+    else if (arg === "--no-telemetry") options.telemetry = false;
     else if (arg === "upgrade") positional.push(arg);
     else if (arg.startsWith("-")) throw new Error(`unknown option: ${arg}`);
     else positional.push(arg);
@@ -93,6 +96,8 @@ Options:
       --timeout DURATION  For example 10m (default: 10m)
       --model ROUTE       Select a model route
       --log-level LEVEL   Control startup logs: silent (default), error, warn, info, debug
+      --telemetry         Enable local telemetry for this run
+      --no-telemetry      Disable local telemetry for this run
   -h, --help              Show this help
 
 Exit codes: 0 success, 1 agent error, 2 invalid arguments, 3 permission denied,

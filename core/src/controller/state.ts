@@ -1,4 +1,4 @@
-import type { ProviderAdapter } from "@cagent/sdk";
+import type { Observability, ProviderAdapter } from "@cagent/sdk";
 import type { AppConfig } from "../config";
 import type { EventBus } from "../events";
 import type { Registry } from "../registry";
@@ -92,4 +92,5 @@ export interface ControllerDeps {
   skillNames?: () => string[];
   commands?: Map<string, CustomCommand>;
   invokeSubagent?: (request: SubagentRequest) => Promise<string>;
+  observability?: Observability;
 }

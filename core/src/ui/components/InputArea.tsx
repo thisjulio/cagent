@@ -14,6 +14,7 @@ export function InputArea({
   onChange,
   onSubmit,
   onUpArrow,
+  onClipboard,
 }: {
   input: string;
   inputKey: number;
@@ -24,16 +25,23 @@ export function InputArea({
   onChange: (v: string) => void;
   onSubmit: (v: string) => void;
   onUpArrow?: () => string | undefined;
+  onClipboard?: (direction: "paste", length: number, success: boolean) => void;
 }) {
   const textarea = useRef<TextareaRenderable>(null);
   const renderer = useRenderer();
+  // ponytail: track last-applied inputKey so setText only runs on external
+  // updates (autocomplete, up-arrow, session restore), not on user typing.
+  // User typing updates the prop via onChange but doesn't bump inputKey,
+  // so the effect skips and the textarea keeps its own cursor state.
+  const lastKey = useRef(inputKey);
 
   useEffect(() => {
+    if (inputKey === lastKey.current) return;
+    lastKey.current = inputKey;
     const current = textarea.current;
-    if (current && current.plainText !== input) {
-      current.setText(input);
-      current.cursorOffset = input.length;
-    }
+    if (!current) return;
+    current.setText(input);
+    current.cursorOffset = input.length;
   }, [input, inputKey]);
 
   return (
@@ -63,7 +71,7 @@ export function InputArea({
               return;
             }
             if (key.ctrl && key.name === "v") {
-              void paste(textarea.current, key.shift);
+              void paste(textarea.current, key.shift, onClipboard);
               return;
             }
             // ponytail: intercept up before the textarea's binding handler runs;
@@ -94,9 +102,14 @@ export function InputArea({
   );
 }
 
-async function paste(textarea: TextareaRenderable | null, plain: boolean): Promise<void> {
+async function paste(
+  textarea: TextareaRenderable | null,
+  plain: boolean,
+  onClipboard?: (direction: "paste", length: number, success: boolean) => void,
+): Promise<void> {
   if (!textarea) return;
   const value = await readClipboard();
+  onClipboard?.("paste", value?.length ?? 0, value !== undefined);
   if (value !== undefined) {
     textarea.insertText(plain ? value : value);
     textarea.cursorOffset = textarea.plainText.length;

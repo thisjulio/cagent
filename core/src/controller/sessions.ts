@@ -68,6 +68,7 @@ export function toTitle(records: LoadedRecord[]): string {
 }
 
 export function startNewSession(c: Controller): void {
+  c.observability?.recordEvent("session.created");
   c.session = new Session(undefined, c.deps.sessionDir);
   c.messages = [{ role: "system" as const, content: c.deps.systemPrompt }];
   c.interrupted = false;
@@ -110,11 +111,14 @@ export function restoreSession(c: Controller, id: string): void {
   c.state.suggest = [];
   c.state.suggestIdx = -1;
   c.state.tokens = estimateTokens(c.messages);
+  c.observability?.recordEvent("session.resumed", { "message.count": loaded.messages.length });
   c.bump();
 }
 
 export function openSessions(c: Controller): void {
   c.state.sessionList = Session.list();
+  c.observability?.recordEvent("session_picker.opened", { "session.count": c.state.sessionList.length });
+  c.observability?.recordEvent("session.listed", { "session.count": c.state.sessionList.length });
   c.bump();
 }
 
@@ -126,12 +130,14 @@ export function renameSession(c: Controller, name: string): void {
     return;
   }
   s.title = sanitizeTitle(name).slice(0, 60);
+  c.observability?.recordEvent("session.renamed", { "title.length": s.title.length });
   c.session.append({ ts: Date.now(), type: "meta", payload: { kind: "title", title: s.title } });
   s.notice = "";
   c.bump();
 }
 
 export async function generateTitle(c: Controller, msg: string): Promise<string> {
+  c.observability?.recordEvent("title_generation.started", { "input.length": msg.length });
   try {
     const { text } = await streamOnce({
       adapter: c.adapter,
@@ -140,20 +146,25 @@ export async function generateTitle(c: Controller, msg: string): Promise<string>
         {
           role: "system",
           content:
-            "You are a title generator. Output only a conversation title - nothing else. No preamble, no explanation, no conversational text. The title must be Title Case, 3-6 words, capturing the user's main goal as an action plus object. Examples: 'Commit Git Changes', 'Debug Login Timeout', 'Improve Session Titles'. Do not say 'I'll', 'I will', 'Here is', or any conversational phrase. Output only the title text.",
+            "You are a title generator. Your ONLY job is to generate a short title for the conversation opener below. Do NOT answer the question or respond to the content. Do NOT provide any information, facts, or responses to what is asked. Just generate a 3-6 word Title Case title that describes the topic. Examples: 'Commit Git Changes', 'Debug Login Timeout', 'Improve Session Titles', 'Check Current Date'. Output ONLY the title text, nothing else.",
         },
-        { role: "user", content: msg },
+        { role: "user", content: `Conversation opener to title (do NOT answer it):\n"${msg}"\n\nTitle:` },
       ],
       tools: [],
       attempts: 1,
       interrupted: () => c.interrupted,
     });
     const t = sanitizeTitle(text);
-    if (t) return t.slice(0, 60);
+    if (t) {
+      c.observability?.recordEvent("title_generation.completed", { "title.length": Math.min(t.length, 60), fallback: false });
+      return t.slice(0, 60);
+    }
   } catch {
+    c.observability?.recordEvent("title_generation.failed");
     // Fallback when the LLM fails or the user interrupts.
   }
   const fallback = sanitizeTitle(msg);
+  c.observability?.recordEvent("title_generation.fallback", { "title.length": Math.min(fallback.length, 40) });
   return fallback.length > 40 ? fallback.slice(0, 40) + "…" : fallback;
 }
 
@@ -162,22 +173,26 @@ export async function compact(c: Controller): Promise<void> {
   const threshold = s.threshold;
   const est = estimateTokens(c.messages);
   if (est < threshold) {
+    c.observability?.recordEvent("compaction.skipped", { reason: "below_threshold", tokens: est, threshold });
     s.notice = `no compaction (${est} < ${threshold} tokens)`;
     c.bump();
     return;
   }
   const keep = 10;
   if (c.messages.length <= keep + 1) {
+    c.observability?.recordEvent("compaction.skipped", { reason: "too_few_messages", "message.count": c.messages.length });
     s.notice = "(not enough to compact)";
     c.bump();
     return;
   }
   const old = c.messages.slice(1, c.messages.length - keep);
+  c.observability?.recordEvent("compaction.started", { tokens: est, threshold, "message.count": old.length });
   s.notice = "compacting context... Esc interrupts";
   c.bump();
   // Let OpenTUI paint the progress state before serializing a large history.
   await new Promise<void>((resolve) => setTimeout(resolve, 0));
   if (c.interrupted) {
+    c.observability?.recordEvent("compaction.interrupted");
     s.notice = "compaction interrupted";
     c.bump();
     return;
@@ -197,6 +212,7 @@ export async function compact(c: Controller): Promise<void> {
     interrupted: () => c.interrupted,
   });
   if (c.interrupted) {
+    c.observability?.recordEvent("compaction.interrupted");
     s.notice = "compaction interrupted";
     c.bump();
     return;
@@ -207,5 +223,10 @@ export async function compact(c: Controller): Promise<void> {
   c.session.append({ ts: Date.now(), type: "meta", payload: { kind: "compacted", summary } });
   appendChat(s, { kind: "meta", content: `compacted: ${est} -> ${estimateTokens(c.messages)} tokens` });
   s.tokens = estimateTokens(c.messages);
+  c.observability?.recordEvent("compaction.completed", {
+    "tokens.before": est,
+    "tokens.after": s.tokens,
+    "message.count": old.length,
+  });
   c.bump();
 }

@@ -3,6 +3,7 @@ import { appendChat } from "./chat-buffer";
 import { runToolPipeline } from "../tools";
 
 export async function submitShell(controller: Controller, command: string): Promise<void> {
+  controller.observability?.recordEvent("shell.started", { "command.length": command.length });
   const tool = controller.registry.tool("bash");
   if (!tool) {
     controller.state.notice = "bash tool is not available";
@@ -34,6 +35,9 @@ export async function submitShell(controller: Controller, command: string): Prom
       controller.registry.hooks,
       controller.signal,
     );
+    controller.observability?.recordEvent(result.isError ? "shell.failed" : "shell.completed", {
+      "output.bytes": result.output.length,
+    });
     controller.messages.push({ role: "tool", tool_call_id: callId, content: result.output });
     controller.session.append({
       ts: Date.now(),
@@ -46,6 +50,7 @@ export async function submitShell(controller: Controller, command: string): Prom
       payload: { tool_call_id: callId, content: result.output, isError: result.isError, toolName: tool.name },
     });
   } finally {
+    if (controller.isInterrupted()) controller.observability?.recordEvent("shell.cancelled");
     s.busy = false;
     s.turnStartedAt = null;
     controller.bump();

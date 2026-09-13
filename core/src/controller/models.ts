@@ -13,6 +13,10 @@ export async function openModelPicker(c: Controller): Promise<void> {
     }),
   );
   c.state.modelPicker = { entries: entries.filter((e) => e !== null), query: "" };
+  c.observability?.recordEvent("model_picker.opened", {
+    "provider.count": c.deps.registry.providers().length,
+    "model.count": c.state.modelPicker.entries.reduce((count, entry) => count + entry.models.length, 0),
+  });
   c.bump();
 }
 
@@ -29,5 +33,6 @@ export async function pickModel(c: Controller, route: string): Promise<void> {
   c.state.modelPicker = null;
   c.state.contextWindow = (await a.context_window?.(model)) ?? c.state.contextWindow;
   c.state.tokens = c.estimateCurrentTokens();
+  c.observability?.recordEvent("model_picker.selected", { "model.route": route });
   c.bump();
 }

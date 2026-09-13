@@ -35,6 +35,7 @@ const commands: Record<string, SlashHandler> = {
   },
   "/model": (c) => c.openModelPicker(),
   "/help": (c) => {
+    c.observability?.recordEvent("help.opened");
     c.state.helpOpen = true;
     c.bump();
   },
@@ -79,6 +80,11 @@ export function runSlash(c: Controller, text: string): void | Promise<void> {
   const arg = space === -1 ? "" : text.slice(space + 1);
   const handler = commands[name];
   const custom = c.customCommand(name);
+  c.observability?.recordEvent("command.executed", {
+    "command.name": name,
+    "command.known": Boolean(handler || custom),
+    "argument.length": arg.length,
+  });
   if (!handler && custom) {
     return c.submit(expandCommand(custom, arg));
   }

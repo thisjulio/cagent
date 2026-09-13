@@ -30,6 +30,7 @@ export function App({ c }: { c: Controller }) {
     const overlay = s.helpOpen || s.modelPicker || s.sessionList || s.pendingAsk;
 
     if (key.ctrl && key.name === "c" && !key.shift && !overlay) {
+      c.observability?.recordEvent("keyboard.ctrl_c", { busy: s.busy, cleared_input: s.input.length > 0 });
       if (s.input.length > 0) c.setInput("");
       else {
         renderer.destroy();
@@ -40,6 +41,7 @@ export function App({ c }: { c: Controller }) {
     }
     if (key.ctrl && key.shift && key.name === "c" && renderer.hasSelection) {
       const selected = renderer.getSelection()?.getSelectedText() ?? "";
+      c.observability?.recordEvent("clipboard.copy", { "text.length": selected.length, success: Boolean(selected) });
       if (selected) renderer.copyToClipboardOSC52(selected);
       key.preventDefault();
       return;
@@ -50,11 +52,13 @@ export function App({ c }: { c: Controller }) {
       return;
     }
     if (key.ctrl && key.name === "o") {
+      c.observability?.recordEvent("tool_output.toggled");
       c.handleKey({ ctrl: true }, "o");
       key.preventDefault();
       return;
     }
     if (key.name === "escape" || (overlay && (s.pendingAsk || s.helpOpen))) {
+      c.observability?.recordEvent("keyboard.escape", { busy: s.busy, overlay: Boolean(overlay) });
       c.handleKey({ escape: key.name === "escape", return: key.name === "enter" }, input);
       key.preventDefault();
       return;
@@ -109,6 +113,7 @@ export function App({ c }: { c: Controller }) {
           active={!overlay}
           onChange={(v) => c.setInput(v)}
           onSubmit={(v) => c.submit(v)}
+          onClipboard={(_, length, success) => c.observability?.recordEvent("clipboard.paste", { "text.length": length, success })}
           onUpArrow={() => {
             c.handleKey({ upArrow: true }, "");
             return c.state.input || undefined;

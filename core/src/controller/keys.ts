@@ -16,13 +16,23 @@ export function onKey(c: Controller, key: InputKey, input: string): void {
       s.suggestIdx = (s.suggestIdx + 1) % s.suggest.length;
       s.input = s.suggest[s.suggestIdx];
       s.inputKey += 1;
+      c.observability?.recordEvent("autocomplete.accepted", {
+        "suggestion.index": s.suggestIdx,
+        "suggestion.count": s.suggest.length,
+      });
     }
     c.bump();
     return;
   }
   if (s.modelPicker) {
-    if (key.escape) s.modelPicker = null;
-    else if (input && !/^[1-9]$/.test(input)) s.modelPicker.query += input;
+    if (key.escape) {
+      c.observability?.recordEvent("model_picker.cancelled");
+      s.modelPicker = null;
+    }
+    else if (input && !/^[1-9]$/.test(input)) {
+      s.modelPicker.query += input;
+      c.observability?.recordEvent("model_picker.query_changed", { "query.length": s.modelPicker.query.length });
+    }
     c.bump();
     return;
   }
@@ -34,12 +44,18 @@ export function onKey(c: Controller, key: InputKey, input: string): void {
     return;
   }
   if (s.sessionList) {
-    if (key.escape) s.sessionList = null;
+    if (key.escape) {
+      c.observability?.recordEvent("session_picker.cancelled");
+      s.sessionList = null;
+    }
     c.bump();
     return;
   }
   if (s.helpOpen) {
-    if (key.escape || key.return) s.helpOpen = false;
+    if (key.escape || key.return) {
+      c.observability?.recordEvent("help.closed", { reason: key.escape ? "escape" : "return" });
+      s.helpOpen = false;
+    }
     c.bump();
     return;
   }

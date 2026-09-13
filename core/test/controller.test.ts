@@ -89,6 +89,7 @@ describe("controller", () => {
   it("types and submits a message (user enters the context)", async () => {
     const c = new Controller(deps());
     c.setInput("hi");
+    const inputKey = c.state.inputKey;
     expect(c.state.input).toBe("hi");
     const p = c.submit("hi");
     await new Promise((r) => setTimeout(r, 50));
@@ -98,6 +99,8 @@ describe("controller", () => {
     expect(kinds).toContain("assistant");
     expect(c.state.chat[c.state.chat.length - 1].content).toBe("hi");
     expect(c.messages.some((m) => m.role === "user" && m.content === "hi")).toBe(true);
+    expect(c.state.input).toBe("");
+    expect(c.state.inputKey).toBe(inputKey + 1);
   });
 
   it("re-injects current date when the context is stale", async () => {
@@ -179,7 +182,7 @@ describe("controller", () => {
     c.state.input = "";
     c.handleKey({ upArrow: true }, "");
     expect(c.state.input).toBe("hello");
-    expect(c.state.inputKey).toBe(1);
+    expect(c.state.inputKey).toBe(2);
   });
 
   it("up arrow with non-empty input leaves the input untouched", () => {

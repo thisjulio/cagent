@@ -134,6 +134,7 @@ export interface ProviderAdapter {
 export interface PluginContext {
   name: string;
   config: Record<string, unknown>;
+  observability: Observability;
   registerTool(tool: ToolDefinition): void;
   registerHook(hook: HookDefinition): void;
   registerProvider(route: string, adapter: ProviderAdapter): void;
@@ -145,6 +146,16 @@ export interface PluginContext {
 }
 
 export type Plugin = (ctx: PluginContext) => void | Promise<void>;
+
+export {
+  InMemoryObservability,
+  noopObservability,
+  trace,
+  type Attributes,
+  type Observability,
+  type Span,
+  type SpanRecord,
+} from "./observability";
 
 export type CommandDefinition = { name: string; content: string; file: string };
 export interface CommandSource {

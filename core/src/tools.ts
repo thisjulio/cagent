@@ -1,4 +1,4 @@
-import type { HookResponse, ToolArgs, ToolDefinition } from "@cagent/sdk";
+import { noopObservability, trace, type HookResponse, type Observability, type ToolArgs, type ToolDefinition } from "@cagent/sdk";
 import type { EventBus } from "./events";
 import { appendCapped, MAX_TOOL_OUTPUT_CHARS } from "./stream-buffer";
 
@@ -18,6 +18,7 @@ export async function runToolPipeline(
   bus: EventBus,
   hooks?: { run(event: import("@cagent/sdk").HookEvent): Promise<HookResponse[]> },
   signal?: AbortSignal,
+  observability: Observability = noopObservability,
 ): Promise<{ output: string; isError?: boolean }> {
   const before = await hooks?.run({ phase: "before_tool", tool: tool.name, args }) ?? [];
   const blocking = before.find((response) => response.action === "deny" || response.action === "ask");
@@ -35,7 +36,7 @@ export async function runToolPipeline(
   }
   bus.emit("tools/pre", { tool: tool.name, args });
   try {
-    const result = await tool.execute({ ...args, signal });
+    const result = await trace(observability, "tool.execute", () => tool.execute({ ...args, signal }), { "tool.name": tool.name });
     bus.emit("tools/post", { tool: tool.name, result });
     await hooks?.run({ phase: "after_tool", tool: tool.name, args, result });
     return { ...result, output: appendCapped("", result.output, MAX_TOOL_OUTPUT_CHARS) };

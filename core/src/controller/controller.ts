@@ -132,6 +132,7 @@ export class Controller {
   async submit(text: string): Promise<void> {
     if (!text || this.state.busy) return;
     this.state.input = "";
+    this.state.inputKey += 1;
     if (text.startsWith("$") && text.slice(1).trim()) {
       await submitShellAction(this, text.slice(1).trim());
       return;

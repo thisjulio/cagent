@@ -15,7 +15,10 @@ export async function runCli(args: string[]): Promise<boolean> {
   const options = parseCliArgs(args, stdin);
   if (options.help) { console.log(cliHelp); return true; }
   if (options.version) { console.log(`cagent ${VERSION}`); return true; }
-  if (options.interactive || (!options.nonInteractive && !options.prompt)) return false;
+  if (options.interactive || (!options.nonInteractive && !options.prompt)) {
+    await bootstrap({ cli: options });
+    return true;
+  }
   await bootstrap({ headless: options });
   return true;
 }
