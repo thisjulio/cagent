@@ -158,9 +158,17 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
   bus.on("tools/stdout", (p) => c.onToolStream(p));
   bus.on("tools/stderr", (p) => c.onToolStream(p, "[stderr] "));
   bus.on("plugin/activity", (p) => {
-    const event = p as { plugin?: string; content?: string };
+    const event = p as { plugin?: string; content?: string; memory?: { id?: string; content?: string; scope?: string; kind?: string } };
     if (event.content) {
-      c.state.chat.push({ kind: "meta", content: `[${event.plugin ?? "plugin"}] ${event.content}`, timestamp: Date.now() });
+      c.state.chat.push({
+        kind: event.plugin === "memory-local" && event.memory ? "memory" : "meta",
+        content: event.memory?.content ?? event.content,
+        timestamp: Date.now(),
+        memoryStatus: "pending",
+        memoryScope: event.memory?.scope,
+        memoryKind: event.memory?.kind,
+        memoryId: event.memory?.id,
+      });
       c.state.chatVersion++;
       c.bump();
     }

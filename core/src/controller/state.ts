@@ -9,7 +9,7 @@ import type { CustomCommand } from "../commands/types";
 import type { SubagentRequest } from "../subagents/executor";
 
 export type ChatItem = {
-  kind: "user" | "assistant" | "tool" | "meta" | "thinking";
+  kind: "user" | "assistant" | "tool" | "meta" | "thinking" | "memory";
   content: string;
   subagent?: string;
   subagentHeader?: boolean;
@@ -24,6 +24,10 @@ export type ChatItem = {
   command?: string;
   startedAt?: number;
   durationMs?: number;
+  memoryStatus?: "pending" | "approved" | "ignored";
+  memoryScope?: string;
+  memoryKind?: string;
+  memoryId?: string;
 };
 
 export type ToolLogEntry = {

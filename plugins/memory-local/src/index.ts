@@ -15,7 +15,7 @@ const register: Plugin = (ctx) => {
     const candidates = captureCandidates(text, "turn.completed", projectIdentity(), entries);
     if (candidates.length) {
       saveEntries(file, [...entries, ...candidates]);
-      ctx.activity(`${candidates.length} memory suggestion${candidates.length === 1 ? "" : "s"} created (pending approval)`);
+      for (const candidate of candidates) ctx.activity(`memory suggestion created`, { memory: candidate });
     }
   });
   ctx.on("tool.completed", (payload) => {
@@ -27,7 +27,7 @@ const register: Plugin = (ctx) => {
     const candidates = captureCandidates(text, "tool.completed", projectIdentity(), entries, 1);
     if (candidates.length) {
       saveEntries(file, [...entries, ...candidates]);
-      ctx.activity(`${candidates.length} memory suggestion${candidates.length === 1 ? "" : "s"} created (pending approval)`);
+      for (const candidate of candidates) ctx.activity(`memory suggestion created`, { memory: candidate });
     }
   });
   ctx.registerContextExtension({
