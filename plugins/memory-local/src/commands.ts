@@ -29,6 +29,7 @@ export function memoryTools(file: string, state: { retrieval: boolean }): ToolDe
     tool("memory_diagnostics", "Show safe local memory diagnostics.", {}, async () => ({ output: `Storage: ${file}\nRetrieval: ${state.retrieval ? "enabled" : "disabled"}\nEmbedding: lexical fallback\nNetwork: disabled` })),
     tool("memory_conflicts", "List memories marked as conflicting.", {}, async () => output(loadEntries(file).filter((entry) => entry.conflict === true))),
     tool("memory_retrieval", "Enable or disable retrieval for this session.", { enabled: "boolean" }, async (args) => { state.retrieval = args.enabled === true; return { output: `Retrieval ${state.retrieval ? "enabled" : "disabled"}` }; }),
+    tool("memory_capture", "Enable or disable automatic capture for this session.", { enabled: "boolean" }, async (args) => { state.capture = args.enabled === true; return { output: `Capture ${state.capture ? "enabled" : "disabled"}` }; }),
   ];
 }
 
