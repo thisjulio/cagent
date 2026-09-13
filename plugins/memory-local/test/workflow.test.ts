@@ -10,5 +10,5 @@ test("plugin workflow registers tools and captures through lifecycle events", as
   await register({ name: "memory-local", config: { path: file, retrieval: true }, observability: {} as never, registerTool: (tool) => names.push(tool.name), registerHook: () => {}, registerProvider: () => {}, registerSubagent: () => {}, emit: () => {}, on: (event, handler) => handlers.set(event, handler), promptSection: () => {}, registerCommandSource: () => {}, registerContextExtension: () => {}, registerCommand: () => {}, contributeContext: async () => [], activity: () => {}, storage: { namespace: "memory-local", path: (...parts: string[]) => parts.join("/") }, diagnostics: { report: () => {} } });
   expect(names).toContain("memory_add");
   handlers.get("turn.completed")?.({ version: 1, data: { content: "A convenção deste projeto é sempre executar os testes com bun test." } });
-  expect(JSON.parse(fs.readFileSync(path.join(file === "" ? "" : path.dirname(file), "memory.json"), "utf8"))[0].status).toBe("pending");
+  expect(JSON.parse(fs.readFileSync(path.join(file === "" ? "" : path.dirname(file), "memory.json"), "utf8"))[0].status).toBe("approved");
 });

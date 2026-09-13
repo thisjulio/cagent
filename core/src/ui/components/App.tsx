@@ -27,7 +27,7 @@ export function App({ c }: { c: Controller }) {
   useKeyboard((key: KeyEvent) => {
     const s = c.state;
     const input = key.sequence || (key.name === "space" ? " " : "");
-    const overlay = s.helpOpen || s.modelPicker || s.sessionList || s.pendingAsk || s.chat.some((item) => item.kind === "memory" && item.memoryStatus === "pending");
+    const overlay = s.helpOpen || s.modelPicker || s.sessionList || s.pendingAsk;
 
     if (key.ctrl && key.name === "c" && !key.shift && !overlay) {
       c.observability?.recordEvent("keyboard.ctrl_c", { busy: s.busy, cleared_input: s.input.length > 0 });
@@ -68,12 +68,6 @@ export function App({ c }: { c: Controller }) {
       key.preventDefault();
       return;
     }
-    if (s.chat.some((item) => item.kind === "memory" && item.memoryStatus === "pending")) {
-      if (key.name === "enter") c.handleKey({ return: true }, input);
-      else c.handleKey({}, input);
-      key.preventDefault();
-      return;
-    }
     if (s.modelPicker && isPrintable(input) && !key.ctrl && !key.meta) {
       c.handleKey({}, input);
     }
@@ -82,7 +76,6 @@ export function App({ c }: { c: Controller }) {
   const lastLog = s.toolLog[s.toolLog.length - 1];
   const running = lastLog?.running ? lastLog.tool : undefined;
   const overlay = s.helpOpen || s.modelPicker || s.sessionList || s.pendingAsk;
-  const pendingMemory = s.chat.some((item) => item.kind === "memory" && item.memoryStatus === "pending");
   const status = s.pendingAsk ? "permission" : s.busy ? "working" : "ready";
   return (
     <box flexDirection="column" width="100%" height="100%">
@@ -110,7 +103,7 @@ export function App({ c }: { c: Controller }) {
         <SessionList list={s.sessionList} onSelect={(id) => c.resumeSession(id)} />
       ) : s.pendingAsk ? (
         <PendingAsk ask={s.pendingAsk} />
-      ) : pendingMemory ? null : (
+      ) : (
         <InputArea
           input={s.input}
           inputKey={s.inputKey}

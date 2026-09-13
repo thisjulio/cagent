@@ -24,7 +24,7 @@ export type ChatItem = {
   command?: string;
   startedAt?: number;
   durationMs?: number;
-  memoryStatus?: "pending" | "approved" | "ignored";
+  memoryStatus?: "approved" | "ignored";
   memoryScope?: string;
   memoryKind?: string;
   memoryId?: string;

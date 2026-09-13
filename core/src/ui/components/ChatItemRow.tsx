@@ -12,36 +12,7 @@ export function ChatItemRow({ it, index, controller, streaming, showAgentLabel }
   if (it.kind === "assistant") return <AssistantRow it={it} streaming={streaming} showAgentLabel={showAgentLabel} />;
   if (it.kind === "thinking") return <ThinkingRow it={it} showAgentLabel={showAgentLabel} />;
   if (it.kind === "tool") return <ToolRow it={it} onClick={() => controller.toggleToolExpand(index)} showAgentLabel={showAgentLabel} />;
-  if (it.kind === "memory") return <MemoryRow it={it} controller={controller} />;
   return <text attributes={TextAttributes.DIM}>{it.content}</text>;
-}
-
-function memoryAction(event: { button: number; preventDefault: () => void; stopPropagation: () => void }, controller: Controller, item: ChatItem, action: "approve" | "ignore" | "edit"): void {
-  if (event.button !== 0) return;
-  event.preventDefault();
-  event.stopPropagation();
-  void controller.reviewMemory(item.memoryId ?? "", action);
-}
-
-function MemoryRow({ it, controller }: { it: ChatItem; controller: Controller }) {
-  const status = it.memoryStatus === "approved" ? "✓" : it.memoryStatus === "ignored" ? "·" : "◆";
-  return (
-    <box paddingX={2} width="100%" flexDirection="column" flexShrink={0}>
-      <text fg="#d97757">Memory <span attributes={TextAttributes.DIM}>{time(it.timestamp)}</span></text>
-      <text><span fg="#d97757">├─ </span><span fg={it.memoryStatus === "pending" ? "#eab308" : "#22c55e"}>{status}</span> <strong>{it.memoryStatus === "pending" ? "Possible memory" : "Memory"}</strong></text>
-      <text><span fg="#d97757">│  ├─ </span><span attributes={TextAttributes.DIM}>{it.memoryScope ?? "project"} / {it.memoryKind ?? "fact"}</span></text>
-      <text><span fg="#d97757">│  └─ </span>{it.content}</text>
-      {it.memoryStatus === "pending" ? (
-        <text attributes={TextAttributes.DIM}>
-          <span fg="#d97757">│</span>{"\n"}<span fg="#d97757">│  </span>
-          <span onMouseDown={(event) => memoryAction(event, controller, it, "approve")}>[a] approve</span>{"  "}
-          <span onMouseDown={(event) => memoryAction(event, controller, it, "edit")}>[e] edit</span>{"  "}
-          <span onMouseDown={(event) => memoryAction(event, controller, it, "ignore")}>[i] ignore</span>{"  [enter] details"}
-        </text>
-      ) : null}
-      {it.expanded ? <text><span fg="#d97757">│  </span><span attributes={TextAttributes.DIM}>id: {it.memoryId ?? "unknown"}{"\n"}│  source: automatic capture{"\n"}│  status: {it.memoryStatus}</span></text> : null}
-    </box>
-  );
 }
 
 function time(ts?: number): string {

@@ -8,7 +8,7 @@ export function captureCandidates(text: string, source: string, project: string,
   return text.split(/[\n.!?]+/).map((part) => part.trim()).filter((part) => part.length >= 12 && part.length <= 500)
     .filter((part) => SIGNAL.test(part)).filter((part) => !existing.some((entry) => normalize(entry.content) === normalize(part)))
     .slice(0, limit).map((content) => { const suspicious = SECRET.test(content) || PERSONAL.test(content); const now = new Date().toISOString(); return {
-      id: crypto.randomUUID(), content: suspicious ? mask(content) : content, scope: "project", kind: kindOf(content), status: "pending", confidence: suspicious ? 0.1 : 0.7,
+      id: crypto.randomUUID(), content: suspicious ? mask(content) : content, scope: "project", kind: kindOf(content), status: "approved", confidence: suspicious ? 0.1 : 0.7,
       source, project, createdAt: now, updatedAt: now,
     }; });
 }

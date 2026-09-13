@@ -4,7 +4,7 @@ import { captureCandidates } from "../src/capture";
 test("capture limits candidates and rejects unrelated prose", () => {
   const entries = captureCandidates("This is ordinary prose. We always use Bun. We prefer bun test. We never skip review.", "test", "/p", [], 2);
   expect(entries).toHaveLength(2);
-  expect(entries.every((entry) => entry.status === "pending")).toBe(true);
+  expect(entries.every((entry) => entry.status === "approved")).toBe(true);
 });
 
 test("capture masks credentials and avoids exact duplicates", () => {

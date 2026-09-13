@@ -12,7 +12,7 @@ describe("local memory plugin", () => {
   test("captures pending candidates and masks secrets", () => {
     const entries = captureCandidates("We always run bun test. We decided API_KEY=secret-value", "test", "/project", []);
     expect(entries.length).toBe(2);
-    expect(entries[0].status).toBe("pending");
+    expect(entries[0].status).toBe("approved");
     expect(entries[1].content).toContain("[redacted]");
     expect(captureCandidates("We prefer email: user@example.com", "test", "/project", []) [0].content).toContain("[redacted]");
   });
@@ -44,9 +44,6 @@ describe("local memory plugin", () => {
     expect(tools).toContain("memory_add");
     handlers.get("turn.completed")?.({ content: "We always use bun test." });
     handlers.get("tool.completed")?.({ data: { content: "Always run bun test before release." } });
-    const pending = JSON.parse(fs.readFileSync(file, "utf8")); expect(pending[0].status).toBe("pending");
-    const reviewTools = Object.fromEntries((await import("../src/commands")).memoryTools(file, { retrieval: false, capture: true }).map((tool) => [tool.name, tool]));
-    await reviewTools.memory_review.execute({ id: pending[0].id, action: "approve" });
-    expect(JSON.parse(fs.readFileSync(file, "utf8"))[0].status).toBe("approved");
+    const learned = JSON.parse(fs.readFileSync(file, "utf8")); expect(learned[0].status).toBe("approved");
   });
 });

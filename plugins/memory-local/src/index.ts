@@ -3,31 +3,23 @@ import { captureCandidates } from "./capture";
 import { memoryTools } from "./commands";
 import { loadEntries, projectIdentity, saveEntries, storageFile } from "./storage";
 import { rankEntries } from "./retrieval";
+import { createMemoryCommand } from "./plugin-command";
 
 const register: Plugin = (ctx) => {
   const file = typeof ctx.config.path === "string" ? storageFile(ctx.config) : ctx.storage.path("memory.json");
   const state = { retrieval: ctx.config.retrieval === true, capture: ctx.config.capture !== false };
-  for (const tool of memoryTools(file, state)) ctx.registerTool(tool);
+  const tools = memoryTools(file, state);
+  for (const tool of tools) ctx.registerTool(tool);
+  ctx.registerCommand(createMemoryCommand(tools));
   ctx.on("turn.completed", (payload) => {
     if (!state.capture) return;
     const text = eventText(payload);
     const entries = loadEntries(file);
     const candidates = captureCandidates(text, "turn.completed", projectIdentity(), entries);
     if (candidates.length) {
-      saveEntries(file, [...entries, ...candidates]);
-      for (const candidate of candidates) ctx.activity(`memory suggestion created`, { memory: candidate });
-    }
-  });
-  ctx.on("tool.completed", (payload) => {
-    if (!state.capture) return;
-    const event = payload as { data?: { content?: unknown }; content?: unknown };
-    const text = String(event.data?.content ?? event.content ?? "");
-    if (!text || event.data?.isError === true) return;
-    const entries = loadEntries(file);
-    const candidates = captureCandidates(text, "tool.completed", projectIdentity(), entries, 1);
-    if (candidates.length) {
-      saveEntries(file, [...entries, ...candidates]);
-      for (const candidate of candidates) ctx.activity(`memory suggestion created`, { memory: candidate });
+      const learned = candidates.map((candidate) => ({ ...candidate, status: "approved" as const }));
+      saveEntries(file, [...entries, ...learned]);
+      for (const candidate of learned) ctx.activity(`memory learned`, { memory: candidate });
     }
   });
   ctx.registerContextExtension({
@@ -51,8 +43,10 @@ const register: Plugin = (ctx) => {
 
 function eventText(payload: unknown): string {
   if (typeof payload === "string") return payload;
-  const event = payload as { data?: { content?: unknown }; content?: unknown };
-  return String(event.data?.content ?? event.content ?? "");
+  const event = payload as { data?: { content?: unknown; toolContent?: unknown }; content?: unknown };
+  return [event.data?.content, event.data?.toolContent, event.content]
+    .filter((value) => typeof value === "string" && value.length > 0)
+    .join("\n");
 }
 
 export default register;

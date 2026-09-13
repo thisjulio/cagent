@@ -164,8 +164,8 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
     const memory = event.attributes?.memory;
     if (event.content) {
       c.state.chat.push({
-        kind: event.plugin === "memory-local" && memory ? "memory" : "meta",
-        content: memory?.content ?? event.content,
+        kind: "meta",
+        content: event.plugin === "memory-local" && memory ? `memory learned: ${memory.content}` : event.content,
         timestamp: Date.now(),
         memoryStatus: "pending",
         memoryScope: memory?.scope,

@@ -27,7 +27,7 @@ export function ChatViewport({
     >
       {chat.map((it, i) => {
         const previous = chat[i - 1]?.kind;
-        const showAgentLabel = it.kind !== "user" && it.kind !== "meta" && it.kind !== "memory" &&
+        const showAgentLabel = it.kind !== "user" && it.kind !== "meta" &&
           previous !== "assistant" && previous !== "thinking" && previous !== "tool";
         return (
           <ChatItemRow
