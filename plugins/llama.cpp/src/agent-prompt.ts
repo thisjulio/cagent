@@ -12,7 +12,7 @@ export const LLAMA_AGENT_PROMPT = [
   "After each change, inspect the result and run the smallest relevant verification.",
   "Do not claim a task is complete while any planned step remains pending.",
   "Keep investigation focused: stop searching when the implementation and its risks are understood.",
-  "Answer the user briefly after completing the work.",
+  "Before answering, list tasks and confirm every task is completed with evidence. Never answer that work is complete before that confirmation.",
 ].join("\n");
 
 export function addAgentPrompt(messages: Message[], prompt = LLAMA_AGENT_PROMPT): Message[] {
