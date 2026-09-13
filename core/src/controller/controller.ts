@@ -1,8 +1,7 @@
 import type { Message, ToolArgs, ToolDefinition, ProviderAdapter } from "@cagent/sdk";
 import { runSlash } from "../commands/commands";
 import { inputSuggestions } from "../commands/suggest";
-import { Session, estimateTokens } from "../session";
-import { splitRoute } from "../route";
+import { Session } from "../session";
 import type { ToolAsk } from "../tools";
 import { generateTitle, openSessions, renameSession, startNewSession, restoreSession, toChatItems, toTitle, compact } from "./sessions";
 import { openModelPicker, pickModel } from "./models";
@@ -11,16 +10,18 @@ import { onKey } from "./keys";
 import type { ControllerDeps, InputKey, UIState } from "./state";
 import { invokeSkill as invokeSkillAction } from "./skill-actions";
 import { appendChat, MAX_CHAT_ITEMS } from "./chat-buffer";
-import { executeTurn } from "./turn";
 import { parseSubagentMention } from "../subagents/mention";
 import { mergeSystemMessages } from "../message-context";
-import { addEnvironmentContext } from "./environment";
 import { toggleToolExpand as toggleToolExpandAction } from "./chat-actions";
 import { restoreTasks } from "../tasks";
-import { taskAwareTools, updateTasks as updateTaskState } from "./task-actions";
+import { updateTasks as updateTaskState } from "./task-actions";
 import type { CustomCommand } from "../commands/types";
-import { runToolPipeline } from "../tools";
 import { submitMessage } from "./submission";
+import { submitShell as submitShellAction } from "./shell-submission";
+import { submitSubagent as submitSubagentAction } from "./subagent-submission";
+import { createStreamThrottle } from "./stream-throttle";
+import { estimateForModel } from "./token-estimation";
+
 export class Controller {
   state: UIState;
   messages: Message[];
@@ -38,9 +39,9 @@ export class Controller {
 
   private deps: ControllerDeps;
   private interrupted = false;
-  private lastStreamBump = 0;
   private skillCallId = 0;
   private abortController: AbortController | null = null;
+  private bumpStream: () => void;
   envStamp: number = Date.now();
   private askResolver: ((ok: boolean) => void) | null = null;
   get config(): ControllerDeps["config"] { return this.deps.config; }
@@ -49,60 +50,10 @@ export class Controller {
   get signal(): AbortSignal { return this.abortController?.signal ?? new AbortController().signal; }
   resetTurn(): void { this.interrupted = false; this.abortController = new AbortController(); }
   bumpStreamNow(): void { this.bumpStream(); }
+  get invokeSubagent() { return this.deps.invokeSubagent; }
 
   private agentNames(): string[] {
     return this.deps.registry.subagents().map((agent) => agent.name);
-  }
-
-  private async submitShell(command: string): Promise<void> {
-    const tool = this.deps.registry.tool("bash");
-    if (!tool) {
-      this.state.notice = "bash tool is not available";
-      this.bump();
-      return;
-    }
-    const callId = `input-bash-${Date.now()}-${this.skillCallId++}`;
-    const args = { command };
-    const s = this.state;
-    appendChat(s, { kind: "user", content: `$${command}` });
-    s.busy = true;
-    s.turnStartedAt = Date.now();
-    this.interrupted = false;
-    this.abortController = new AbortController();
-    this.session.append({ ts: Date.now(), type: "user", payload: { content: `$${command}` } });
-    this.messages.push({ role: "user", content: `$${command}` });
-    this.messages.push({
-      role: "assistant",
-      content: "",
-      tool_calls: [{ id: callId, name: tool.name, arguments: JSON.stringify(args) }],
-    });
-    this.bump();
-    try {
-      const result = await runToolPipeline(
-        tool,
-        args,
-        this.deps.config.allowlist,
-        this.ask,
-        this.deps.bus,
-        this.deps.registry.hooks,
-        this.abortController.signal,
-      );
-      this.messages.push({ role: "tool", tool_call_id: callId, content: result.output });
-      this.session.append({
-        ts: Date.now(),
-        type: "assistant",
-        payload: { content: "", tool_calls: [{ id: callId, name: tool.name, arguments: JSON.stringify(args) }] },
-      });
-      this.session.append({
-        ts: Date.now(),
-        type: "tool",
-        payload: { tool_call_id: callId, content: result.output, isError: result.isError, toolName: tool.name },
-      });
-    } finally {
-      s.busy = false;
-      s.turnStartedAt = null;
-      this.bump();
-    }
   }
 
   constructor(deps: ControllerDeps) {
@@ -114,6 +65,7 @@ export class Controller {
     this.onText = deps.onText;
     this.onReasoning = deps.onReasoning;
     this.onToolEvent = deps.onToolEvent;
+    this.bumpStream = createStreamThrottle(() => this.bump());
     const loaded = this.session.load();
     this.messages = mergeSystemMessages(deps.systemPrompt, loaded.messages);
     const contextWindow = deps.contextWindow ?? 60_000;
@@ -146,71 +98,14 @@ export class Controller {
     };
     if (loaded.records.length) appendChat(s, { kind: "meta", content: `resuming session ${this.session.id} (${loaded.messages.length} messages)` });
     this.state = s;
-}
-  async invokeSkill(name: string, args = ""): Promise<boolean> {
-    if (!this.deps.invokeSkill) return false;
-    try {
-      const activation = await this.deps.invokeSkill(name, args);
-      return invokeSkillAction(this, name, activation);
-    } catch (error) {
-      this.state.notice = error instanceof Error ? error.message : String(error);
-      this.bump();
-      return false;
-    }
-  }
-
-  private async submitSubagent(name: string, task: string, original: string): Promise<void> {
-    const s = this.state;
-    s.input = "";
-    appendChat(s, { kind: "user", content: original });
-    this.session.append({ ts: Date.now(), type: "user", payload: { content: original } });
-    this.session.append({ ts: Date.now(), type: "meta", payload: { kind: "subagent-start", name } });
-    appendChat(s, { kind: "assistant", content: "", subagent: name, subagentHeader: true });
-    s.busy = true;
-    s.turnStartedAt = Date.now();
-    this.bump();
-    try {
-      if (!this.deps.invokeSubagent) throw new Error("subagent runtime is unavailable");
-      const result = await this.deps.invokeSubagent({
-        name,
-        task,
-        context: this.messages.slice(),
-      });
-      this.messages.push(
-        { role: "user", content: original },
-        { role: "assistant", content: result },
-      );
-      appendChat(s, { kind: "assistant", content: result, subagent: name });
-      this.session.append({ ts: Date.now(), type: "assistant", payload: { content: result, subagent: name } });
-    } catch (error) {
-      s.notice = `error: ${error instanceof Error ? error.message : String(error)}`;
-    } finally {
-      s.busy = false;
-      s.turnStartedAt = null;
-      s.elapsedMs = 0;
-      this.bump();
-    }
-  }
-
-  updateTasks(operation: string, args: Record<string, unknown>): string {
-    return updateTaskState(this, operation, args);
-  }
-
-  reloadSkills(): boolean {
-    if (!this.deps.reloadSkills) return false;
-    this.deps.reloadSkills();
-    this.state.suggest = inputSuggestions(this.state.input, this.deps.skillNames?.() ?? [], [...(this.deps.commands?.keys() ?? [])], this.agentNames());
-    this.state.suggestIdx = -1;
-    return true;
-  }
-
-  estimateCurrentTokens(): number {
-    const model = splitRoute(this.state.model)[1];
-    return this.adapter.estimate_tokens?.(model, this.messages) ?? estimateTokens(this.messages);
   }
 
   private estimateTokens(): number {
-    return this.adapter.estimate_tokens?.(splitRoute(this.deps.model)[1], this.messages) ?? estimateTokens(this.messages);
+    return estimateForModel(this.adapter, this.deps.model, this.messages);
+  }
+
+  estimateCurrentTokens(): number {
+    return estimateForModel(this.adapter, this.state.model, this.messages);
   }
 
   onToolPre(p: unknown): void { toolPre(this.state, p); this.bump(); }
@@ -220,13 +115,6 @@ export class Controller {
   onToolDenied(p: unknown): void { toolDenied(this.state, p); this.bump(); }
 
   onToolStream(p: unknown, prefix = ""): void { toolStream(this.state, p, prefix); this.bumpStream(); }
-
-  private bumpStream(): void {
-    const now = Date.now();
-    if (now - this.lastStreamBump < 33) return;
-    this.lastStreamBump = now;
-    this.bump();
-  }
 
   interrupt(): void {
     if (this.state.busy) this.interrupted = true;
@@ -245,7 +133,7 @@ export class Controller {
     if (!text || this.state.busy) return;
     this.state.input = "";
     if (text.startsWith("$") && text.slice(1).trim()) {
-      await this.submitShell(text.slice(1).trim());
+      await submitShellAction(this, text.slice(1).trim());
       return;
     }
     if (text.startsWith("/")) {
@@ -254,7 +142,7 @@ export class Controller {
     }
     const mention = parseSubagentMention(text);
     if (mention && this.deps.registry.subagent(mention.name)) {
-      await this.submitSubagent(mention.name, mention.task, text);
+      await submitSubagentAction(this, mention.name, mention.task, text);
       return;
     }
     await submitMessage(this, text);
@@ -334,5 +222,29 @@ export class Controller {
     s.suggest = inputSuggestions(v, this.deps.skillNames?.() ?? [], [...(this.deps.commands?.keys() ?? [])], this.agentNames());
     s.suggestIdx = -1;
     this.bump();
+  }
+
+  updateTasks(operation: string, args: Record<string, unknown>): string {
+    return updateTaskState(this, operation, args);
+  }
+
+  reloadSkills(): boolean {
+    if (!this.deps.reloadSkills) return false;
+    this.deps.reloadSkills();
+    this.state.suggest = inputSuggestions(this.state.input, this.deps.skillNames?.() ?? [], [...(this.deps.commands?.keys() ?? [])], this.agentNames());
+    this.state.suggestIdx = -1;
+    return true;
+  }
+
+  async invokeSkill(name: string, args = ""): Promise<boolean> {
+    if (!this.deps.invokeSkill) return false;
+    try {
+      const activation = await this.deps.invokeSkill(name, args);
+      return invokeSkillAction(this, name, activation);
+    } catch (error) {
+      this.state.notice = error instanceof Error ? error.message : String(error);
+      this.bump();
+      return false;
+    }
   }
 }
