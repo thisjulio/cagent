@@ -1,4 +1,4 @@
-import { toChatMessages, type LlmCallOptions, type LlmChunk, type Plugin, type ProviderAdapter } from "@cagent/sdk";
+import { toChatMessages, type LlmCallOptions, type LlmChunk, type Plugin, type ProviderAdapter, type ToolOverrides } from "@cagent/sdk";
 import { addAgentPrompt } from "./agent-prompt";
 
 interface Config {
@@ -15,6 +15,7 @@ function baseUrl(config: Config): string {
 
 function headers(config: Config): Record<string, string> {
   return {
+    tool_overrides: toolOverrides,
     "Content-Type": "application/json",
     ...(config.api_key ? { Authorization: `Bearer ${config.api_key}` } : {}),
   };
@@ -42,15 +43,41 @@ function modelKey(id: string): string {
 }
 
 function validToolArguments(argumentsText: string): string {
-  try {
-    JSON.parse(argumentsText);
-    return argumentsText;
-  } catch {
-    // ponytail: llama-server rejects the entire next request when malformed
-    // arguments are replayed in assistant history; let the core report the
-    // bad call instead of poisoning the conversation history.
-    return "{}";
+  const candidates = [
+    argumentsText.trim(),
+    argumentsText.trim().replace(/^```(?:json)?\s*|\s*```$/gi, "").trim(),
+    argumentsText.trim().replace(/,\s*([}\]])/g, "$1"),
+  ];
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    try {
+      JSON.parse(candidate);
+      return candidate;
+    } catch {
+      // Try the next low-risk normalization. Never invent tool arguments.
+    }
   }
+  return argumentsText;
+}
+
+const LLAMA_TOOL_OVERRIDES: ToolOverrides = {
+  write_file: {
+    description:
+      "Writes a complete file. Return one valid JSON object with exactly {\"path\":\"...\",\"content\":\"...\"}. Escape newlines inside content as \\n; do not use markdown fences.",
+    parameters: {
+      type: "object",
+      properties: {
+        path: { type: "string", description: "Workspace-relative or absolute file path" },
+        content: { type: "string", description: "Complete file content; preserve it as a JSON string" },
+      },
+      required: ["path", "content"],
+      additionalProperties: false,
+    },
+  },
+};
+
+function toolOverrides(): ToolOverrides {
+  return LLAMA_TOOL_OVERRIDES;
 }
 
 async function* streamChatCompletions(request: LlmCallOptions, config: Config): AsyncGenerator<LlmChunk> {

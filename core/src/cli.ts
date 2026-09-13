@@ -1,6 +1,7 @@
 import { upgrade } from "./upgrade";
 import { parseCliArgs, cliHelp } from "./cli-args";
 import { bootstrap } from "./bootstrap";
+import { VERSION } from "./version";
 
 export async function runCli(args: string[]): Promise<boolean> {
   if (args[0] === "upgrade") {
@@ -13,7 +14,7 @@ export async function runCli(args: string[]): Promise<boolean> {
     : process.stdin.isTTY ? "" : await Bun.stdin.text();
   const options = parseCliArgs(args, stdin);
   if (options.help) { console.log(cliHelp); return true; }
-  if (options.version) { console.log("cagent"); return true; }
+  if (options.version) { console.log(`cagent ${VERSION}`); return true; }
   if (options.interactive || (!options.nonInteractive && !options.prompt)) return false;
   await bootstrap({ headless: options });
   return true;

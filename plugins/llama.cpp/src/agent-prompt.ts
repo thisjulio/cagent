@@ -7,6 +7,7 @@ export const LLAMA_AGENT_PROMPT = [
   "Use one tool call at a time unless calls are independent and the tool explicitly supports batching.",
   "When a tool reports an error, read it, correct the arguments, and do not repeat the same failed call.",
   "For edits, use the exact edit format described by the tool. Do not substitute another format.",
+  "For write_file, send valid JSON arguments with both path and content. Escape newlines in content as \\n and never wrap arguments in markdown fences.",
   "After each change, inspect the result and run the smallest relevant verification.",
   "Do not claim a task is complete while any planned step remains pending.",
   "Keep investigation focused: stop searching when the implementation and its risks are understood.",

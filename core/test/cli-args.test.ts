@@ -17,4 +17,8 @@ describe("CLI arguments", () => {
   test("rejects conflicting sessions", () => {
     expect(() => parseCliArgs(["--session", "old", "--new-session", "task"])).toThrow();
   });
+
+  test("parses the version flag", () => {
+    expect(parseCliArgs(["--version"]).version).toBe(true);
+  });
 });
