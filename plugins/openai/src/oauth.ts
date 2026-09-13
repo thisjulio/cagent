@@ -33,9 +33,15 @@ function base64UrlEncode(buffer: ArrayBuffer): string {
 
 async function generatePKCE(): Promise<{ verifier: string; challenge: string }> {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
-  const verifier = Array.from(crypto.getRandomValues(new Uint8Array(43)))
-    .map((b) => chars[b % chars.length])
-    .join("");
+  const limit = Math.floor(256 / chars.length) * chars.length;
+  const bytes: number[] = [];
+  while (bytes.length < 43) {
+    for (const byte of crypto.getRandomValues(new Uint8Array(43))) {
+      if (byte < limit) bytes.push(byte);
+      if (bytes.length === 43) break;
+    }
+  }
+  const verifier = bytes.map((byte) => chars[byte % chars.length]).join("");
   const challenge = base64UrlEncode(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier)));
   return { verifier, challenge };
 }
