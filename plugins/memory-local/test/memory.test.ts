@@ -18,7 +18,7 @@ describe("local memory plugin", () => {
   });
 
   test("supports add, search, archive and forget", async () => {
-    const file = tempFile(); const tools = Object.fromEntries(memoryTools(file, { retrieval: false }).map((tool) => [tool.name, tool]));
+    const file = tempFile(); const tools = Object.fromEntries(memoryTools(file, { retrieval: false, capture: true }).map((tool) => [tool.name, tool]));
     const added = await tools.memory_add.execute({ content: "Use bun test for validation", kind: "convention", scope: "project" });
     const id = added.output.split(" ").at(-1)!;
     expect((await tools.memory_search.execute({ query: "bun test" })).output).toContain("Use bun test");
@@ -36,7 +36,7 @@ describe("local memory plugin", () => {
     handlers.get("turn.completed")?.({ content: "We always use bun test." });
     handlers.get("tool.completed")?.({ data: { content: "Always run bun test before release." } });
     const pending = JSON.parse(fs.readFileSync(file, "utf8")); expect(pending[0].status).toBe("pending");
-    const reviewTools = Object.fromEntries((await import("../src/commands")).memoryTools(file, { retrieval: false }).map((tool) => [tool.name, tool]));
+    const reviewTools = Object.fromEntries((await import("../src/commands")).memoryTools(file, { retrieval: false, capture: true }).map((tool) => [tool.name, tool]));
     await reviewTools.memory_review.execute({ id: pending[0].id, action: "approve" });
     expect(JSON.parse(fs.readFileSync(file, "utf8"))[0].status).toBe("approved");
   });

@@ -2,7 +2,7 @@ import { defineTool, type ToolDefinition } from "@cagent/sdk";
 import { loadEntries, projectIdentity, saveEntries, scoped, type MemoryEntry, type MemoryKind, type MemoryScope, type MemoryStatus } from "./storage";
 import { rankEntries } from "./retrieval";
 
-export function memoryTools(file: string, state: { retrieval: boolean }): ToolDefinition[] {
+export function memoryTools(file: string, state: { retrieval: boolean; capture: boolean }): ToolDefinition[] {
   return [
     tool("memory_add", "Add an approved local memory.", { content: "string", scope: "string", kind: "string" }, async (args) => mutate(file, args, "approved")),
     tool("memory_list", "List local memories by scope and status.", { scope: "string", status: "string" }, async (args) => output(loadEntries(file).filter((entry) => scoped(entry, optionalScope(args.scope), projectIdentity()) && (!args.status || entry.status === args.status)))),
@@ -25,8 +25,8 @@ export function memoryTools(file: string, state: { retrieval: boolean }): ToolDe
       if (action === "edit") return update(file, String(args.id), { content: String(args.content ?? ""), status: "pending" });
       return { output: "ERROR INVALID_REVIEW — action must be approve, edit, or ignore" };
     }),
-    tool("memory_status", "Show local memory status.", {}, async () => ({ output: `Memory plugin: enabled\nRetrieval: ${state.retrieval ? "enabled" : "disabled"}\nEntries: ${loadEntries(file).length}\nNetwork: disabled` })),
-    tool("memory_diagnostics", "Show safe local memory diagnostics.", {}, async () => ({ output: `Storage: ${file}\nRetrieval: ${state.retrieval ? "enabled" : "disabled"}\nEmbedding: lexical fallback\nNetwork: disabled` })),
+    tool("memory_status", "Show local memory status.", {}, async () => ({ output: `Memory plugin: enabled\nCapture: ${state.capture ? "enabled" : "disabled"}\nRetrieval: ${state.retrieval ? "enabled" : "disabled"}\nEntries: ${loadEntries(file).length}\nNetwork: disabled` })),
+    tool("memory_diagnostics", "Show safe local memory diagnostics.", {}, async () => ({ output: `Storage: ${file}\nCapture: ${state.capture ? "enabled" : "disabled"}\nRetrieval: ${state.retrieval ? "enabled" : "disabled"}\nEmbedding: lexical fallback\nNetwork: disabled` })),
     tool("memory_conflicts", "List memories marked as conflicting.", {}, async () => output(loadEntries(file).filter((entry) => entry.conflict === true))),
     tool("memory_retrieval", "Enable or disable retrieval for this session.", { enabled: "boolean" }, async (args) => { state.retrieval = args.enabled === true; return { output: `Retrieval ${state.retrieval ? "enabled" : "disabled"}` }; }),
     tool("memory_capture", "Enable or disable automatic capture for this session.", { enabled: "boolean" }, async (args) => { state.capture = args.enabled === true; return { output: `Capture ${state.capture ? "enabled" : "disabled"}` }; }),
