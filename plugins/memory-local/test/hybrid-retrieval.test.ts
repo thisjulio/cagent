@@ -9,4 +9,5 @@ test("hybrid retrieval fuses lexical and vector ranks with filters and limits", 
   ], "bun test", "/p", { queryVector: [1, 0], model: "m", limit: 2, maxTokens: 10 });
   expect(results.map((result) => result.entry.id)).toEqual(["lex", "vec"]);
   expect(results.every((result) => result.entry.status === "approved")).toBe(true);
+  expect(hybridRetrieve(results.map((result) => result.entry), "bun test", "/p", { maxTokens: 1 })).toHaveLength(0);
 });
