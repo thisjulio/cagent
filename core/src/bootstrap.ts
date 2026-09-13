@@ -67,6 +67,7 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
   const loaded = loadConfig(process.cwd());
   const config = loaded.plugins.length || !options.defaultPlugins ? loaded : { ...loaded, plugins: options.defaultPlugins };
   if (options.headless?.model) config.model = options.headless.model;
+  if (options.headless?.logLevel) config.log_level = options.headless.logLevel;
   const registry = new Registry();
   const bus = new EventBus();
   const loadedPlugins = await loadPlugins(config, registry, bus, { loaders: options.pluginLoaders });

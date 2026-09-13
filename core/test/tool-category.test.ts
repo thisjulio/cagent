@@ -17,6 +17,7 @@ describe("classifyTool", () => {
     expect(classifyTool("skill")).toBe("skill");
     expect(classifyTool("cagent-development")).toBe("generic");
     expect(classifyTool("subagent")).toBe("agent");
+    expect(classifyTool("mcp-filesystem-read_file")).toBe("mcp");
   });
 
   it("uses generic only for genuinely unknown tools", () => {

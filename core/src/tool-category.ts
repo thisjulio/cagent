@@ -2,6 +2,7 @@ export type ToolCategory = "shell" | "read" | "write" | "search" | "skill" | "ag
 
 export function classifyTool(toolName: string): ToolCategory {
   const name = toolName.toLowerCase();
+  if (name.startsWith("mcp-") || name.includes("mcp")) return "mcp";
   if (name === "bash" || name.includes("shell") || name.includes("terminal")) return "shell";
   if (name === "cat" || name.startsWith("read_") || name.includes("read")) return "read";
   if (name === "apply_patch" || name.includes("write") || name.includes("edit") || name.includes("patch")) return "write";
@@ -15,7 +16,7 @@ export function classifyTool(toolName: string): ToolCategory {
   ) return "search";
   if (name === "skill" || name.startsWith("skill")) return "skill";
   if (name === "agent" || name === "subagent" || name.includes("task")) return "agent";
-  if (name.includes("mcp") || name.includes("__")) return "mcp";
+  if (name.includes("__")) return "mcp";
   return "generic";
 }
 

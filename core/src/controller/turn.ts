@@ -30,6 +30,7 @@ export type TurnHost = {
 
 export async function executeTurn(host: TurnHost): Promise<void> {
   let thinkingContent = "";
+  let streamedTokens = 0;
   try {
     const turn = await runTurn({
       adapter: host.adapter,
@@ -43,11 +44,17 @@ export async function executeTurn(host: TurnHost): Promise<void> {
       signal: host.signal,
       onText: (text) => {
         appendText(host, text);
+        streamedTokens += Math.ceil(text.length / 4);
+        host.state.tokens = estimateTokens(host.messages) + streamedTokens;
+        host.bumpStream();
         host.onText?.(text);
       },
       onReasoning: (text) => {
         thinkingContent = appendCapped(thinkingContent, text, MAX_VISIBLE_STREAM_CHARS);
         appendReasoning(host, text);
+        streamedTokens += Math.ceil(text.length / 4);
+        host.state.tokens = estimateTokens(host.messages) + streamedTokens;
+        host.bumpStream();
         host.onReasoning?.(text);
       },
       interrupted: host.interrupted,

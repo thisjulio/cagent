@@ -19,6 +19,7 @@ export interface AppConfig {
   compact_threshold_percent?: number;
   retry_attempts?: number;
   permissions?: boolean;
+  log_level?: "silent" | "error" | "warn" | "info" | "debug";
   skills?: { enabled?: boolean; roots?: string[] };
 }
 
@@ -47,6 +48,7 @@ export function loadConfig(cwd: string): AppConfig {
     compact_threshold_percent: (local.compact_threshold_percent as number | undefined) ?? (global.compact_threshold_percent as number | undefined),
     retry_attempts: (local.retry_attempts as number | undefined) ?? (global.retry_attempts as number | undefined),
     permissions: (local.permissions as boolean | undefined) ?? (global.permissions as boolean | undefined) ?? true,
+    log_level: (local.log_level as AppConfig["log_level"]) ?? (global.log_level as AppConfig["log_level"]) ?? "silent",
     skills: {
       enabled: (local.skills as { enabled?: boolean } | undefined)?.enabled
         ?? (global.skills as { enabled?: boolean } | undefined)?.enabled ?? true,

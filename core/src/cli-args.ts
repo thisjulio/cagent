@@ -16,6 +16,7 @@ export type CliOptions = {
   maxToolCalls: number;
   timeoutMs: number;
   model?: string;
+  logLevel?: "silent" | "error" | "warn" | "info" | "debug";
   help: boolean;
   version: boolean;
 };
@@ -53,6 +54,13 @@ export function parseCliArgs(args: string[], stdin = ""): CliOptions {
     else if (arg === "--max-tool-calls") options.maxToolCalls = Number(next());
     else if (arg === "--timeout") options.timeoutMs = duration(next());
     else if (arg === "--model") options.model = next();
+    else if (arg === "--log-level") {
+      const value = next() as NonNullable<CliOptions["logLevel"]>;
+      if (!["silent", "error", "warn", "info", "debug"].includes(value)) {
+        throw new Error("invalid log level");
+      }
+      options.logLevel = value;
+    }
     else if (arg === "upgrade") positional.push(arg);
     else if (arg.startsWith("-")) throw new Error(`unknown option: ${arg}`);
     else positional.push(arg);
@@ -84,6 +92,7 @@ Options:
       --max-tool-calls N  Maximum tool calls (default: 50)
       --timeout DURATION  For example 10m (default: 10m)
       --model ROUTE       Select a model route
+      --log-level LEVEL   Control startup logs: silent (default), error, warn, info, debug
   -h, --help              Show this help
 
 Exit codes: 0 success, 1 agent error, 2 invalid arguments, 3 permission denied,

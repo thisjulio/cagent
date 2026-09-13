@@ -36,7 +36,7 @@ export async function loadPlugins(
 
     const ctx: PluginContext = {
       name: p.name,
-      config: p.config ?? {},
+      config: { ...p.config, log_level: config.log_level },
       registerTool: (tool) => registry.registerTool(tool),
       registerHook: (hook) => registry.registerHook(hook),
       registerProvider: (route, adapter) => registry.registerProvider(route, adapter),

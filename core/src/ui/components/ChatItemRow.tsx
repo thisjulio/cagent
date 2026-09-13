@@ -93,6 +93,9 @@ function ToolRow({ it, onClick, showAgentLabel }: { it: ChatItem; onClick: () =>
       <text>
         <span fg="#d97757">├─ </span><span fg={color}>{status}</span><span fg="#d97757"> </span>
         <strong>{categoryLabel(it.toolCategory ?? "generic")}</strong>
+        {it.toolCategory === "mcp" && it.toolName ? (
+          <span attributes={TextAttributes.DIM}> · {it.toolName}</span>
+        ) : null}
         {it.cmd ? (
           <span attributes={TextAttributes.DIM}> · {it.expanded ? it.cmd : it.cmd.length > 40 ? it.cmd.slice(0, 40) + "..." : it.cmd}</span>
         ) : null}
