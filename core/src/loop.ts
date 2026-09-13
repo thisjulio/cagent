@@ -1,4 +1,4 @@
-import { applyToolOverrides, noopObservability, overrideNameMap, trace, type LlmCallOptions, type Message, type Observability, type ProviderAdapter, type ToolArgs, type ToolDefinition } from "@cagent/sdk";
+import { applyToolOverrides, noopObservability, overrideNameMap, trace, type LlmCallOptions, type Message, type Observability, type ProviderAdapter, type ToolArgs, type ToolDefinition, type WorkflowEventPayload } from "@cagent/sdk";
 import type { EventBus } from "./events";
 import { runToolPipeline, type ToolAsk } from "./tools";
 import { appendCapped, MAX_RESPONSE_CHARS } from "./stream-buffer";
@@ -116,6 +116,11 @@ async function runToolCall(ctx: ToolLoopCtx, tc: { id: string; name: string; arg
     args,
     isError: result.isError,
   });
+  opts.bus.emit("tool.completed", workflowPayload(opts, {
+    tool: tool?.name ?? tc.name,
+    content: result.output.slice(0, 4000),
+    isError: result.isError === true,
+  }));
 }
 
 export type TurnResult = { records: TurnRecord[]; interrupted: boolean; inputTokens?: number };
@@ -134,6 +139,7 @@ export async function runTurn(opts: TurnOpts): Promise<TurnResult> {
   return trace(observability, "agent.turn", async () => {
   for (;;) {
     if (++turns > (opts.maxTurns ?? Infinity)) throw new Error("maximum turns exceeded");
+    opts.bus.emit("prompt.assembling", workflowPayload(opts, { query: lastUserMessage(opts.messages) }));
     const result = await streamOnce(streamOpts);
     const { text, toolCalls: streamedToolCalls } = result;
     inputTokens = result.inputTokens ?? inputTokens;
@@ -151,6 +157,15 @@ export async function runTurn(opts: TurnOpts): Promise<TurnResult> {
       if (opts.interrupted?.()) break;
     }
   }
+  opts.bus.emit("turn.completed", workflowPayload(opts, { content: records.filter((record) => record.role === "assistant").map((record) => record.content).join("\n") }));
   return { records, interrupted: opts.interrupted?.() ?? false, inputTokens };
   }, opts.traceAttributes);
+}
+
+function lastUserMessage(messages: Message[]): string {
+  return [...messages].reverse().find((message) => message.role === "user")?.content ?? "";
+}
+
+function workflowPayload(opts: TurnOpts, data: Record<string, unknown>): WorkflowEventPayload {
+  return { version: 1, data };
 }

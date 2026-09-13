@@ -72,6 +72,16 @@ function formatTaskResult(result: string): string {
   }
 }
 
+function parseValues(argumentsText: string): Record<string, string | boolean> {
+  const values: Record<string, string | boolean> = {};
+  for (const token of argumentsText.match(/(?:[^\s"]+|"[^"]*")+/g) ?? []) {
+    if (!token.startsWith("--")) continue;
+    const [key, value] = token.slice(2).split("=", 2);
+    values[key] = value === undefined ? true : value.replace(/^"|"$/g, "");
+  }
+  return values;
+}
+
 export const commandNames = Object.keys(commands);
 
 export function runSlash(c: Controller, text: string): void | Promise<void> {
@@ -79,14 +89,26 @@ export function runSlash(c: Controller, text: string): void | Promise<void> {
   const name = space === -1 ? text : text.slice(0, space);
   const arg = space === -1 ? "" : text.slice(space + 1);
   const handler = commands[name];
+  const pluginCommand = c.registry.command(name.slice(1));
   const custom = c.customCommand(name);
   c.observability?.recordEvent("command.executed", {
     "command.name": name,
-    "command.known": Boolean(handler || custom),
+    "command.known": Boolean(handler || custom || pluginCommand),
     "argument.length": arg.length,
   });
   if (!handler && custom) {
     return c.submit(expandCommand(custom, arg));
+  }
+  if (!handler && pluginCommand) {
+    return pluginCommand.execute({ name: pluginCommand.name, arguments: arg, values: parseValues(arg) })
+      .then((output) => {
+        appendChat(c.state, { kind: "assistant", content: output, command: text });
+        c.bump();
+      })
+      .catch((error) => {
+        c.state.notice = error instanceof Error ? error.message : String(error);
+        c.bump();
+      });
   }
   if (!handler) {
     c.state.notice = `unknown command: ${text}`;

@@ -1,0 +1,46 @@
+import Database from "better-sqlite3";
+import fs from "node:fs";
+import path from "node:path";
+import type { MemoryEntry } from "./storage";
+
+export type SqliteStore = {
+  db: Database.Database;
+  close(): void;
+  entries(): MemoryEntry[];
+  replace(entry: MemoryEntry): void;
+  remove(id: string): void;
+};
+
+export function openStore(file: string): SqliteStore {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const db = new Database(file);
+  db.pragma("journal_mode = WAL");
+  db.exec(`CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL);
+    INSERT INTO schema_version SELECT 1 WHERE NOT EXISTS (SELECT 1 FROM schema_version);
+    CREATE TABLE IF NOT EXISTS entries (
+      id TEXT PRIMARY KEY, content TEXT NOT NULL, scope TEXT NOT NULL, kind TEXT NOT NULL,
+      status TEXT NOT NULL, confidence REAL NOT NULL, source TEXT NOT NULL, project TEXT,
+      conflict INTEGER NOT NULL DEFAULT 0, supersedes TEXT, normalized_text TEXT, embedding_model TEXT,
+      embedding_dimension INTEGER, embedding TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+    );
+    CREATE VIRTUAL TABLE IF NOT EXISTS entries_fts USING fts5(id UNINDEXED, content);`);
+  return wrap(db);
+}
+
+function wrap(db: Database.Database): SqliteStore {
+  return {
+    db,
+    close: () => db.close(),
+    entries: () => (db.prepare("SELECT * FROM entries ORDER BY created_at").all() as Record<string, unknown>[]).map(fromRow),
+    replace: (entry) => {
+      db.prepare(`INSERT INTO entries (id,content,scope,kind,status,confidence,source,project,conflict,supersedes,normalized_text,embedding_model,embedding_dimension,embedding,created_at,updated_at)
+        VALUES (@id,@content,@scope,@kind,@status,@confidence,@source,@project,@conflict,@supersedes,@normalizedText,@embeddingModel,@embeddingDimension,@embedding,@createdAt,@updatedAt)
+        ON CONFLICT(id) DO UPDATE SET content=@content,scope=@scope,kind=@kind,status=@status,confidence=@confidence,source=@source,project=@project,conflict=@conflict,supersedes=@supersedes,normalized_text=@normalizedText,embedding_model=@embeddingModel,embedding_dimension=@embeddingDimension,embedding=@embedding,updated_at=@updatedAt`).run({ ...entry, conflict: entry.conflict ? 1 : 0, supersedes: entry.supersedes ?? null, project: entry.project ?? null, normalizedText: entry.normalizedText ?? entry.content.toLocaleLowerCase(), embeddingModel: entry.embeddingModel ?? null, embeddingDimension: entry.embeddingDimension ?? null, embedding: entry.embedding ? JSON.stringify(entry.embedding) : null });
+    },
+    remove: (id) => db.prepare("DELETE FROM entries WHERE id = ?").run(id),
+  };
+}
+
+function fromRow(row: Record<string, unknown>): MemoryEntry {
+  return { id: String(row.id), content: String(row.content), scope: row.scope as MemoryEntry["scope"], kind: row.kind as MemoryEntry["kind"], status: row.status as MemoryEntry["status"], confidence: Number(row.confidence), source: String(row.source), project: row.project ? String(row.project) : undefined, conflict: row.conflict === 1, supersedes: row.supersedes ? String(row.supersedes) : undefined, normalizedText: row.normalized_text ? String(row.normalized_text) : undefined, embeddingModel: row.embedding_model ? String(row.embedding_model) : undefined, embeddingDimension: row.embedding_dimension ? Number(row.embedding_dimension) : undefined, embedding: row.embedding ? JSON.parse(String(row.embedding)) : undefined, createdAt: String(row.created_at), updatedAt: String(row.updated_at) };
+}

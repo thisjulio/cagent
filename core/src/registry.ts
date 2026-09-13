@@ -1,4 +1,4 @@
-import type { HookDefinition, ProviderAdapter, SubagentDefinition, ToolDefinition } from "@cagent/sdk";
+import type { HookDefinition, PluginCommand, ProviderAdapter, SubagentDefinition, ToolDefinition } from "@cagent/sdk";
 import { HookRegistry } from "./hooks";
 
 export class Registry {
@@ -6,12 +6,21 @@ export class Registry {
   private providerList = new Map<string, ProviderAdapter>();
   private serviceList = new Map<string, unknown>();
   private subagentList = new Map<string, SubagentDefinition>();
+  private commandList = new Map<string, PluginCommand>();
   readonly hooks = new HookRegistry();
 
   registerTool(tool: ToolDefinition): void {
     if (this.toolList.has(tool.name)) throw new Error(`duplicate tool: ${tool.name}`);
     this.toolList.set(tool.name, tool);
   }
+
+  registerCommand(command: PluginCommand): void {
+    if (this.commandList.has(command.name)) throw new Error(`duplicate command: ${command.name}`);
+    this.commandList.set(command.name, command);
+  }
+
+  command(name: string): PluginCommand | undefined { return this.commandList.get(name); }
+  commands(): PluginCommand[] { return [...this.commandList.values()]; }
 
   registerHook(hook: HookDefinition): void {
     this.hooks.register(hook);

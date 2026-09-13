@@ -1,3 +1,5 @@
+import type { WorkflowEventHandler, WorkflowEventName, WorkflowEventPayload } from "@cagent/sdk";
+
 export type Handler = (payload: unknown) => unknown;
 
 export class EventBus {
@@ -11,6 +13,14 @@ export class EventBus {
 
   emit(event: string, payload: unknown): void {
     for (const h of this.handlers.get(event) ?? []) h(payload);
+  }
+
+  emitWorkflow(event: WorkflowEventName, payload: WorkflowEventPayload): void {
+    this.emit(event, payload);
+  }
+
+  onWorkflow(event: WorkflowEventName, handler: WorkflowEventHandler): void {
+    this.on(event, handler);
   }
 
   waterfall(event: string, payload: unknown): unknown {

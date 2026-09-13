@@ -4,11 +4,13 @@ import { noopObservability, trace, type Observability, type Plugin, type PluginC
 import type { AppConfig } from "./config";
 import { EventBus } from "./events";
 import { Registry } from "./registry";
+import fs from "node:fs";
 
 export interface LoadResult {
   contexts: PluginContext[];
   promptSections: Map<string, string>;
   commandSources: import("@cagent/sdk").CommandSource[];
+  contextExtensions: import("@cagent/sdk").ContextExtension[];
 }
 
 export interface LoadOptions {
@@ -25,6 +27,7 @@ export async function loadPlugins(
   const contexts: PluginContext[] = [];
   const promptSections = new Map<string, string>();
   const commandSources: import("@cagent/sdk").CommandSource[] = [];
+  const contextExtensions: import("@cagent/sdk").ContextExtension[] = [];
   const observability = options.observability ?? noopObservability;
 
   for (const p of config.plugins) {
@@ -40,6 +43,20 @@ export async function loadPlugins(
       name: p.name,
       config: { ...p.config, log_level: config.log_level },
       observability,
+      storage: {
+        namespace: p.name,
+        path: (...segments) => path.join(path.resolve(process.env.CAGENT_DATA_DIR ?? path.join(process.env.HOME ?? ".", ".cagent"), "plugins", p.name), ...segments),
+      },
+      diagnostics: {
+        report: (diagnostic) => {
+          observability.recordEvent("plugin.diagnostic", {
+            "plugin.name": p.name,
+            "diagnostic.level": diagnostic.level,
+            "diagnostic.code": diagnostic.code,
+          });
+          if (diagnostic.level === "error") console.error(`[${p.name}] ${diagnostic.code}: ${diagnostic.message}`);
+        },
+      },
       registerTool: (tool) => registry.registerTool(tool),
       registerHook: (hook) => registry.registerHook(hook),
       registerProvider: (route, adapter) => registry.registerProvider(route, adapter),
@@ -47,11 +64,13 @@ export async function loadPlugins(
       emit: (event, payload) => bus.emit(event, payload),
       on: (event, handler) => bus.on(event, handler),
       promptSection: (name, content) => promptSections.set(name, content),
+      registerContextExtension: (extension) => contextExtensions.push(extension),
       registerCommandSource: (source) => commandSources.push(source),
+      registerCommand: (command) => registry.registerCommand(command),
     };
     await trace(observability, "plugin.load", () => plugin(ctx), { "plugin.name": p.name });
     contexts.push(ctx);
   }
 
-  return { contexts, promptSections, commandSources };
+  return { contexts, promptSections, commandSources, contextExtensions };
 }

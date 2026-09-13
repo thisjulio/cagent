@@ -5,6 +5,47 @@ export interface ToolResult {
   isError?: boolean;
 }
 
+export {
+  type ContextContribution,
+  type ContextExtension,
+  type ContextExtensionInput,
+  orderContextExtensions,
+} from "./context-extension";
+export {
+  type Diagnostic,
+  type DiagnosticLevel,
+  type PluginDiagnostics,
+  type PluginStorage,
+} from "./plugin-services";
+export { type PluginCommand, type PluginCommandContext } from "./plugin-command";
+
+export const WORKFLOW_EVENTS = [
+  "session.started",
+  "message.submitted",
+  "prompt.assembling",
+  "prompt.assembled",
+  "tool.completed",
+  "turn.completed",
+  "session.compacted",
+  "session.completed",
+] as const;
+
+export type WorkflowEventName = (typeof WORKFLOW_EVENTS)[number];
+export type WorkflowEventPayload = {
+  version: 1;
+  sessionId?: string;
+  projectId?: string;
+  data: Readonly<Record<string, unknown>>;
+};
+export type WorkflowEventHandler = (payload: WorkflowEventPayload) => unknown | Promise<unknown>;
+
+export function workflowEvent(
+  data: Record<string, unknown>,
+  identifiers: Pick<WorkflowEventPayload, "sessionId" | "projectId"> = {},
+): WorkflowEventPayload {
+  return { version: 1, ...identifiers, data };
+}
+
 export type HookPhase = "before_tool" | "after_tool";
 export type HookAction = "allow" | "ask" | "deny" | "continue";
 
@@ -139,10 +180,14 @@ export interface PluginContext {
   registerHook(hook: HookDefinition): void;
   registerProvider(route: string, adapter: ProviderAdapter): void;
   registerSubagent(agent: SubagentDefinition): void;
-  emit(event: string, payload: unknown): void;
-  on(event: string, handler: (payload: unknown) => unknown): void;
+  emit(event: WorkflowEventName | string, payload: WorkflowEventPayload | unknown): void;
+  on(event: WorkflowEventName | string, handler: WorkflowEventHandler | ((payload: unknown) => unknown)): void;
+  registerContextExtension(extension: ContextExtension): void;
+  storage: PluginStorage;
+  diagnostics: PluginDiagnostics;
   promptSection(name: string, content: string): void;
   registerCommandSource(source: CommandSource): void;
+  registerCommand(command: PluginCommand): void;
 }
 
 export type Plugin = (ctx: PluginContext) => void | Promise<void>;
