@@ -188,6 +188,7 @@ export interface PluginContext {
   promptSection(name: string, content: string): void;
   registerCommandSource(source: CommandSource): void;
   registerCommand(command: PluginCommand): void;
+  contributeContext(input: ContextExtensionInput): Promise<ContextContribution[]>;
 }
 
 export type Plugin = (ctx: PluginContext) => void | Promise<void>;

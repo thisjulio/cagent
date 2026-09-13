@@ -67,6 +67,14 @@ export async function loadPlugins(
       registerContextExtension: (extension) => contextExtensions.push(extension),
       registerCommandSource: (source) => commandSources.push(source),
       registerCommand: (command) => registry.registerCommand(command),
+      contributeContext: async (input) => {
+        const results: import("@cagent/sdk").ContextContribution[] = [];
+        for (const extension of contextExtensions) {
+          const contribution = await extension.contribute(input);
+          if (contribution) results.push(contribution);
+        }
+        return results;
+      },
     };
     await trace(observability, "plugin.load", () => plugin(ctx), { "plugin.name": p.name });
     contexts.push(ctx);
