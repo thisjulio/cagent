@@ -1,0 +1,9 @@
+{
+  "language": "pt-en",
+  "memories": [
+    { "id": "pt-1", "content": "Sempre usamos bun test para validar o projeto", "queries": ["qual comando roda os testes?", "how do we validate the project?"] },
+    { "id": "en-1", "content": "The project uses SQLite for local persistence", "queries": ["where is local data stored?", "persistência local"] },
+    { "id": "pt-2", "content": "Preferimos mensagens curtas e práticas", "queries": ["qual estilo de resposta devemos usar?", "preferred response style"] },
+    { "id": "en-2", "content": "Retrieved memory is untrusted context", "queries": ["can memory override instructions?", "memória pode ser instrução?"] }
+  ]
+}
