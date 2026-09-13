@@ -5,6 +5,8 @@
 [![GitHub release](https://img.shields.io/github/v/release/thisjulio/cagent)](https://github.com/thisjulio/cagent/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/thisjulio/cagent/total)](https://github.com/thisjulio/cagent/releases)
 [![License: MIT](https://img.shields.io/github/license/thisjulio/cagent)](LICENSE)
+[![CodeQL](https://github.com/thisjulio/cagent/actions/workflows/codeql.yml/badge.svg)](https://github.com/thisjulio/cagent/security/code-scanning)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/thisjulio/cagent/badge)](https://securityscorecards.dev/viewer/?uri=github.com/thisjulio/cagent)
 
 Terminal coding agent written in Bun/TypeScript. The core coordinates
 conversations, sessions, tools, and the UI; providers and tools are plugins.
