@@ -237,7 +237,7 @@ export class Controller {
   setInput(v: string): void {
     const s = this.state;
     s.input = v;
-    s.suggest = inputSuggestions(v, this.deps.skillNames?.() ?? [], [...(this.deps.commands?.keys() ?? [])], this.agentNames());
+    s.suggest = inputSuggestions(v, this.deps.skillNames?.() ?? [], [...(this.deps.commands?.keys() ?? []), ...(this.deps.pluginCommands ?? [])], this.agentNames());
     s.suggestIdx = -1;
     this.bump();
   }

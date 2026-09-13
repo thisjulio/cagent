@@ -95,6 +95,7 @@ export interface ControllerDeps {
   invokeSkill?: (name: string, args: string) => Promise<SkillActivation | undefined>;
   skillNames?: () => string[];
   commands?: Map<string, CustomCommand>;
+  pluginCommands?: string[];
   invokeSubagent?: (request: SubagentRequest) => Promise<string>;
   observability?: Observability;
 }

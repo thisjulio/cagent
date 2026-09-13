@@ -140,6 +140,7 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
     skillNames: () => [...(skills?.byName.keys() ?? [])]
       .filter((name) => skills?.byName.get(name)?.metadata.userInvocable !== false),
     commands: commands.byName,
+    pluginCommands: registry.commands().map((command) => command.name),
     invokeSubagent: registry.subagents().length ? executeSubagent : undefined,
     observability: telemetry,
   });
