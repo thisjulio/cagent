@@ -19,7 +19,7 @@ export function buildSystemPrompt(cwd: string, sections: Map<string, string>, in
     "For any request involving file changes, multiple tools, or multiple steps, first create a task plan with the tasks tool.",
     "Work through exactly one checklist task at a time. Before doing any work, mark the next task in_progress. Do not use other tools while no task is in_progress.",
     "After the work, verify only that task, mark it completed with concrete evidence, then stop and begin the next task. Never complete multiple tasks in one update or skip the in_progress state.",
-    "When marking the final task as completed, verify that all requested work is truly done and all evidence is correct before completing it. Once all tasks are completed, the task list is automatically cleared for the next request.",
+    "When marking the final task as completed, verify that all requested work is truly done and all evidence is correct before completing it. Do not claim completion until the tasks list confirms every task is completed.",
     "The core enforces this sequence: non-task tools are blocked unless one task is in_progress, and completion requires that task to have been in_progress.",
     "Never claim completion without evidence. Use blocked when progress requires user input or permission.",
   ].join("\n"));

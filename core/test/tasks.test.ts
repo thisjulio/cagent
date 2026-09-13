@@ -24,4 +24,14 @@ describe("task domain", () => {
     expect(removeTask(tasks, tasks[0].id)).toEqual([]);
     expect(() => removeTask(tasks, "missing")).toThrow("task not found");
   });
+
+  it("enforces task order and rejects reopening without confirmation", () => {
+    const tasks = createTasks([], ["Plan", "Verify"]);
+    expect(() => updateTask(tasks, tasks[1].id, "in_progress")).toThrow("follow unfinished task");
+    const active = updateTask(tasks, tasks[0].id, "in_progress");
+    const completed = updateTask(active, tasks[0].id, "completed", "verified");
+    expect(() => updateTask(completed, tasks[0].id, "in_progress")).toThrow("explicit reopen");
+    expect(() => updateTask(completed, tasks[0].id, "pending")).toThrow("explicit confirmation");
+    expect(() => updateTask(completed, tasks[1].id, "pending")).toThrow("only completed");
+  });
 });

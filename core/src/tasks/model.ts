@@ -9,8 +9,11 @@ export function updateTask(tasks: Task[], id: string, status: TaskStatus, detail
   const task = tasks.find((item) => item.id === id);
   if (!task) throw new Error(`task not found: ${id}`);
   if (status === "in_progress") {
+    if (task.status === "completed") throw new Error(`completed task requires explicit reopen: ${id}`);
     const current = tasks.find((task) => task.status === "in_progress" && task.id !== id);
     if (current) throw new Error(`task already in progress: ${current.id}`);
+    const earlier = tasks.slice(0, tasks.indexOf(task)).find((item) => item.status !== "completed");
+    if (earlier) throw new Error(`task must follow unfinished task: ${earlier.id}`);
   }
   if (status === "completed" && !details?.trim()) throw new Error("task completion requires evidence");
   if (status === "completed" && task.status !== "in_progress") {
@@ -18,6 +21,9 @@ export function updateTask(tasks: Task[], id: string, status: TaskStatus, detail
   }
   if (status === "pending" && task.status === "completed" && !details?.includes("reopen")) {
     throw new Error(`reopening a completed task requires explicit confirmation: ${id}`);
+  }
+  if (status === "pending" && task.status !== "completed") {
+    throw new Error(`only completed tasks can return to pending: ${id}`);
   }
   return tasks.map((task) => task.id === id ? {
     ...task,

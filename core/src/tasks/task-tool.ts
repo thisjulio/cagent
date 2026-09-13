@@ -12,7 +12,7 @@ export function createTaskTool(update: (operation: string, args: Record<string, 
     }, required: ["operation"] },
     async (args) => {
       const output = update(String(args.operation), args);
-      return { output, isError: output.startsWith("task ") || output.startsWith("unknown ") };
+      return { output, isError: output.startsWith("ERROR TASK") };
     },
   );
 }
