@@ -39,6 +39,19 @@ export function onKey(c: Controller, key: InputKey, input: string): void {
     c.bump();
     return;
   }
+  if (key.upArrow) {
+    // ponytail: up reuses the last sent message only while the input is empty;
+    // with text the textarea keeps its normal cursor movement.
+    if (!s.input) {
+      const last = c.latestUserMessage();
+      if (last) {
+        s.input = last;
+        s.inputKey += 1;
+      }
+    }
+    c.bump();
+    return;
+  }
   if (key.return) {
     void c.submit(s.input);
     return;

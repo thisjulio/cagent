@@ -41,6 +41,18 @@ function modelKey(id: string): string {
   return cut === -1 ? id : id.slice(cut + 1);
 }
 
+function validToolArguments(argumentsText: string): string {
+  try {
+    JSON.parse(argumentsText);
+    return argumentsText;
+  } catch {
+    // ponytail: llama-server rejects the entire next request when malformed
+    // arguments are replayed in assistant history; let the core report the
+    // bad call instead of poisoning the conversation history.
+    return "{}";
+  }
+}
+
 async function* streamChatCompletions(request: LlmCallOptions, config: Config): AsyncGenerator<LlmChunk> {
   const root = baseUrl(config);
   const fetchOptions = config.timeout_ms ? { signal: AbortSignal.timeout(config.timeout_ms) } : {};
@@ -112,7 +124,7 @@ async function* streamChatCompletions(request: LlmCallOptions, config: Config): 
   buffer += decoder.decode();
   for await (const chunk of consume(buffer)) yield chunk;
   for (const call of calls.values()) {
-    yield { type: "tool-call", tool_call: { ...call, arguments: call.arguments || "{}" } };
+    yield { type: "tool-call", tool_call: { ...call, arguments: validToolArguments(call.arguments || "{}") } };
   }
 }
 

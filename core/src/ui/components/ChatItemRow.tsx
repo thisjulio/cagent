@@ -10,7 +10,7 @@ const MAX_THINKING_CHARS = 2400;
 export function ChatItemRow({ it, index, controller, streaming, showAgentLabel }: { it: ChatItem; index: number; controller: Controller; streaming: boolean; showAgentLabel: boolean }) {
   if (it.kind === "user") return <UserRow it={it} />;
   if (it.kind === "assistant") return <AssistantRow it={it} streaming={streaming} showAgentLabel={showAgentLabel} />;
-  if (it.kind === "thinking") return <ThinkingRow it={it} streaming={streaming} showAgentLabel={showAgentLabel} />;
+  if (it.kind === "thinking") return <ThinkingRow it={it} />;
   if (it.kind === "tool") return <ToolRow it={it} onClick={() => controller.toggleToolExpand(index)} showAgentLabel={showAgentLabel} />;
   return <text attributes={TextAttributes.DIM}>{it.content}</text>;
 }
@@ -52,26 +52,26 @@ function AssistantRow({ it, streaming, showAgentLabel }: { it: ChatItem; streami
   );
 }
 
-function ThinkingRow({ it, streaming, showAgentLabel }: { it: ChatItem; streaming: boolean; showAgentLabel: boolean }) {
+function ThinkingRow({ it }: { it: ChatItem }) {
   const content = it.content ?? "";
-  const truncated = content.length > MAX_THINKING_CHARS;
-  const visible = truncated ? content.slice(-MAX_THINKING_CHARS) : content;
+  const visible = content.length > MAX_THINKING_CHARS ? content.slice(-MAX_THINKING_CHARS) : content;
   const allLines = visible.split("\n");
   const lines = allLines.slice(-MAX_THINKING_LINES);
-  const omitted = truncated || allLines.length > lines.length;
   return (
-    <box paddingX={2} width="100%" flexDirection="column" flexShrink={0}>
-      {showAgentLabel ? <text fg="#d97757">cagent <span attributes={TextAttributes.DIM}>{time(it.timestamp)}</span></text> : null}
-      <text attributes={TextAttributes.DIM}>
-        <span fg="#d97757">├─ </span>
-        {streaming ? <strong><span fg="#d97757">thinking ...</span></strong> : <strong>thinking</strong>}
+    <box paddingX={2} marginBottom={1} width="100%" flexDirection="column" flexShrink={0}>
+      <text>
+        <span fg="#d97757">├─ </span><strong fg="#ffffff">thinking</strong>
       </text>
-      {omitted ? <text attributes={TextAttributes.DIM}><span fg="#d97757">│  </span>…</text> : null}
-      {lines.map((line, lineIndex) => (
-        <text key={`thinking-line-${lineIndex}`} attributes={TextAttributes.DIM}>
-          <span fg="#d97757">│  </span>{plainLine(line) || " "}
-        </text>
-      ))}
+      <box flexDirection="row">
+        <text fg="#d97757">│  </text>
+        <box flexGrow={1}>
+          {lines.map((line, lineIndex) => (
+            <text key={`thinking-line-${lineIndex}`} fg="#888888" attributes={TextAttributes.ITALIC}>
+              {plainLine(line) || " "}
+            </text>
+          ))}
+        </box>
+      </box>
     </box>
   );
 }

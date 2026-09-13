@@ -21,6 +21,10 @@ export type TurnHost = {
   interrupted: () => boolean;
   bump: () => void;
   bumpStream: () => void;
+  maxTurns?: number;
+  maxToolCalls?: number;
+  onText?: (text: string) => void;
+  onReasoning?: (text: string) => void;
 };
 
 export async function executeTurn(host: TurnHost): Promise<void> {
@@ -35,12 +39,18 @@ export async function executeTurn(host: TurnHost): Promise<void> {
       ask: host.ask,
       bus: host.bus,
       hooks: host.hooks,
-      onText: (text) => appendText(host, text),
+      onText: (text) => {
+        appendText(host, text);
+        host.onText?.(text);
+      },
       onReasoning: (text) => {
         thinkingContent = appendCapped(thinkingContent, text, MAX_VISIBLE_STREAM_CHARS);
         appendReasoning(host, text);
+        host.onReasoning?.(text);
       },
       interrupted: host.interrupted,
+      maxTurns: host.maxTurns,
+      maxToolCalls: host.maxToolCalls,
     });
     persistTurn(host, turn.records, thinkingContent);
     for (const item of host.state.chat) if (item.kind === "tool" && item.running) item.running = false;

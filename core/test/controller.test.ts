@@ -172,4 +172,29 @@ describe("controller", () => {
     expect(c.state.chat[c.state.chat.length - 1].expanded).toBe(false);
   });
 
+  it("up arrow with empty input recalls the last sent user message", async () => {
+    const c = new Controller(deps());
+    c.state.inputKey = 0;
+    await c.submit("hello");
+    c.state.input = "";
+    c.handleKey({ upArrow: true }, "");
+    expect(c.state.input).toBe("hello");
+    expect(c.state.inputKey).toBe(1);
+  });
+
+  it("up arrow with non-empty input leaves the input untouched", () => {
+    const c = new Controller(deps());
+    c.messages.push({ role: "user", content: "hello" });
+    c.state.input = "partial";
+    c.handleKey({ upArrow: true }, "");
+    expect(c.state.input).toBe("partial");
+  });
+
+  it("up arrow with empty history leaves the input empty", () => {
+    const c = new Controller(deps());
+    c.state.input = "";
+    c.handleKey({ upArrow: true }, "");
+    expect(c.state.input).toBe("");
+  });
+
 });

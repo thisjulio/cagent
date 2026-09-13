@@ -1,0 +1,20 @@
+import { describe, expect, test } from "bun:test";
+import { parseCliArgs } from "../src/cli-args";
+
+describe("CLI arguments", () => {
+  test("combines stdin and positional prompts", () => {
+    const result = parseCliArgs(["--prompt", "second", "first"], "from pipe");
+    expect(result.prompt).toBe("from pipe\n\nsecond\n\nfirst");
+  });
+
+  test("parses automation options", () => {
+    const result = parseCliArgs(["--yes", "--output", "jsonl", "--timeout", "2m", "task"]);
+    expect(result.permissionMode).toBe("auto");
+    expect(result.output).toBe("jsonl");
+    expect(result.timeoutMs).toBe(120000);
+  });
+
+  test("rejects conflicting sessions", () => {
+    expect(() => parseCliArgs(["--session", "old", "--new-session", "task"])).toThrow();
+  });
+});

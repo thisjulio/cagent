@@ -92,6 +92,32 @@ export class Session {
       })
       .sort((a, b) => b.updated.localeCompare(a.updated));
   }
+
+  static latestUserMessage(dir?: string): string | null {
+    const base = dir ?? path.join(os.homedir(), ".cagent", "sessions");
+    if (!fs.existsSync(base)) return null;
+    let latest: { ts: number; content: string } | null = null;
+    for (const file of fs.readdirSync(base).filter((name) => name.endsWith(".jsonl"))) {
+      const records = readRecords(path.join(base, file));
+      for (const record of records) {
+        if (record.type !== "user") continue;
+        const content = String(record.payload.content ?? "");
+        if (content && (!latest || record.ts >= latest.ts)) latest = { ts: record.ts, content };
+      }
+    }
+    return latest?.content ?? null;
+  }
+}
+
+function readRecords(file: string): SessionRecord[] {
+  try {
+    return fs.readFileSync(file, "utf8")
+      .split("\n")
+      .filter(Boolean)
+      .map((line) => JSON.parse(line) as SessionRecord);
+  } catch {
+    return [];
+  }
 }
 
 function skillMessage(payload: Record<string, unknown>): string {

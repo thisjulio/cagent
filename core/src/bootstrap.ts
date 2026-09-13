@@ -20,6 +20,9 @@ import { discoverSubagents } from "./subagents/discovery";
 import { createSubagentExecutor } from "./subagents/executor";
 import { createSubagentTool } from "./subagents/tool";
 import type { ToolAsk } from "./tools";
+import type { CliOptions } from "./cli-args";
+import fs from "node:fs";
+import path from "node:path";
 
 export async function resolveRoute(config: AppConfig, registry: Registry): Promise<string> {
   if (config.model) {
@@ -37,14 +40,33 @@ export async function resolveRoute(config: AppConfig, registry: Registry): Promi
   return `${first}/${models[0]}`;
 }
 
+function contextFiles(options: CliOptions): string {
+  const paths = [...options.files, ...options.directories];
+  if (!paths.length) return "";
+  const root = path.resolve(process.cwd());
+  return paths.map((entry) => {
+    const target = path.resolve(root, entry);
+    if (target !== root && !target.startsWith(`${root}${path.sep}`)) {
+      throw new Error(`context path is outside the workspace: ${entry}`);
+    }
+    if (!fs.existsSync(target)) throw new Error(`context path does not exist: ${entry}`);
+    const stat = fs.statSync(target);
+    if (stat.isDirectory()) return `[context directory] ${path.relative(root, target)}`;
+    const content = fs.readFileSync(target, "utf8");
+    return `[context file: ${path.relative(root, target)}]\n${content}`;
+  }).join("\n\n");
+}
+
 export interface BootstrapOptions {
   defaultPlugins?: AppConfig["plugins"];
   pluginLoaders?: Record<string, Plugin>;
+  headless?: CliOptions;
 }
 
 export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
   const loaded = loadConfig(process.cwd());
   const config = loaded.plugins.length || !options.defaultPlugins ? loaded : { ...loaded, plugins: options.defaultPlugins };
+  if (options.headless?.model) config.model = options.headless.model;
   const registry = new Registry();
   const bus = new EventBus();
   const loadedPlugins = await loadPlugins(config, registry, bus, { loaders: options.pluginLoaders });
@@ -85,6 +107,9 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
     adapter,
     model: route,
     contextWindow,
+    sessionId: options.headless?.session,
+    maxTurns: options.headless?.maxTurns,
+    maxToolCalls: options.headless?.maxToolCalls,
     systemPrompt: buildSystemPrompt(process.cwd(), loadedPlugins.promptSections, config.instructions, skills),
     reloadSkills,
     invokeSkill: async (name, args) => {
@@ -112,6 +137,57 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
   bus.on("tools/denied", (p) => c.onToolDenied(p));
   bus.on("tools/stdout", (p) => c.onToolStream(p));
   bus.on("tools/stderr", (p) => c.onToolStream(p, "[stderr] "));
+  if (options.headless) {
+    await runHeadless(c, options.headless);
+    return;
+  }
   const renderer = await createCliRenderer({ exitOnCtrlC: false });
   createRoot(renderer).render(React.createElement(App, { c }));
+}
+
+async function runHeadless(c: Controller, options: CliOptions): Promise<void> {
+  if (!options.prompt) throw new Error("a prompt is required in non-interactive mode");
+  const context = contextFiles(options);
+  const prompt = context ? `${context}\n\n${options.prompt}` : options.prompt;
+  const human = options.output === "human";
+  let answerStarted = false;
+  if (human) {
+    process.stdout.write(`You\n└─ ${prompt}\n`);
+    c.onReasoning = (text) => process.stdout.write(`\u001b[3;90m${text}\u001b[0m`);
+    c.onText = (text) => {
+      if (!answerStarted) {
+        answerStarted = true;
+        process.stdout.write("\ncagent\n└─ ");
+      }
+      process.stdout.write(text);
+    };
+  }
+  const previousAsk = c.ask;
+  c.ask = async (tool, args) => {
+    if (options.permissionMode === "read-only") return false;
+    if (options.permissionMode === "auto" || options.yes) return true;
+    process.stderr.write(`permission required for ${tool.name}; use --yes or --permission-mode auto\n`);
+    return false;
+  };
+  const abort = new AbortController();
+  const onSignal = () => c.interrupt();
+  process.once("SIGINT", onSignal);
+  process.once("SIGTERM", onSignal);
+  const timeout = setTimeout(() => c.interrupt(), options.timeoutMs);
+  try {
+    await c.submit(prompt);
+    if (options.output === "jsonl") {
+      for (const item of c.state.chat) {
+        const event = { type: item.kind, content: item.content, tool: item.toolName, error: item.isError };
+        process.stdout.write(`${JSON.stringify(event)}\n`);
+      }
+    } else {
+      if (answerStarted) process.stdout.write("\n");
+    }
+  } finally {
+    c.ask = previousAsk;
+    clearTimeout(timeout);
+    process.removeListener("SIGINT", onSignal);
+    process.removeListener("SIGTERM", onSignal);
+  }
 }

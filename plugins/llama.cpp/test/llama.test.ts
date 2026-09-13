@@ -103,4 +103,25 @@ describe("llama.cpp adapter", () => {
       globalThis.fetch = orig;
     }
   });
+
+  test("sanitizes malformed streamed tool arguments before replay", async () => {
+    const orig = globalThis.fetch;
+    globalThis.fetch = (async () =>
+      new Response(
+        'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call-1","function":{"name":"bash","arguments":"not JSON"}}]}}]}\n\n' +
+          "data: [DONE]\n\n",
+        { headers: { "Content-Type": "text/event-stream" } },
+      )) as typeof fetch;
+    try {
+      const adapter = createAdapter();
+      const chunks = [];
+      for await (const chunk of adapter.stream({ model: "qwen", messages: [], tools: [] })) chunks.push(chunk);
+      expect(chunks).toContainEqual({
+        type: "tool-call",
+        tool_call: { id: "call-1", name: "bash", arguments: "{}" },
+      });
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
 });

@@ -47,6 +47,15 @@ describe("JSONL sessions", () => {
     expect(xyz.title).toBe("hello hello");
   });
 
+  it("finds the latest user message across all sessions", () => {
+    const first = new Session("first", dir);
+    first.append({ ts: 10, type: "user", payload: { content: "older session message" } });
+    const second = new Session("second", dir);
+    second.append({ ts: 20, type: "user", payload: { content: "latest global message" } });
+
+    expect(Session.latestUserMessage(dir)).toBe("latest global message");
+  });
+
   it("a missing session has empty messages", () => {
     const loaded = new Session("inexistente", dir).load();
     expect(loaded.messages).toEqual([]);

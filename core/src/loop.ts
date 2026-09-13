@@ -65,6 +65,8 @@ export interface TurnOpts extends StreamOpts {
   ask: ToolAsk;
   bus: EventBus;
   hooks?: { run(event: import("@cagent/sdk").HookEvent): Promise<import("@cagent/sdk").HookResponse[]> };
+  maxTurns?: number;
+  maxToolCalls?: number;
 }
 
 interface ToolLoopCtx {
@@ -107,19 +109,23 @@ export async function runTurn(opts: TurnOpts): Promise<TurnResult> {
   const records: TurnRecord[] = [];
   let inputTokens: number | undefined;
   const ctx: ToolLoopCtx = { opts, nameToCanonical, records };
+  let turns = 0;
+  let toolCalls = 0;
   for (;;) {
+    if (++turns > (opts.maxTurns ?? Infinity)) throw new Error("maximum turns exceeded");
     const result = await streamOnce(streamOpts);
-    const { text, toolCalls } = result;
+    const { text, toolCalls: streamedToolCalls } = result;
     inputTokens = result.inputTokens ?? inputTokens;
     const assistant: Message = {
       role: "assistant",
       content: text,
-      ...(toolCalls.length ? { tool_calls: toolCalls } : {}),
+      ...(streamedToolCalls.length ? { tool_calls: streamedToolCalls } : {}),
     };
     opts.messages.push(assistant);
-    records.push({ role: "assistant", content: text, tool_calls: toolCalls.length ? toolCalls : undefined });
-    if (!toolCalls.length || opts.interrupted?.()) break;
-    for (const tc of toolCalls) {
+    records.push({ role: "assistant", content: text, tool_calls: streamedToolCalls.length ? streamedToolCalls : undefined });
+    if (!streamedToolCalls.length || opts.interrupted?.()) break;
+    for (const tc of streamedToolCalls) {
+      if (++toolCalls > (opts.maxToolCalls ?? Infinity)) throw new Error("maximum tool calls exceeded");
       await runToolCall(ctx, tc);
       if (opts.interrupted?.()) break;
     }

@@ -41,6 +41,19 @@ describe("OpenTUI render", () => {
     act(() => setup.renderer.destroy());
   });
 
+  it("renders thinking content", async () => {
+    const c = new Controller(deps());
+    c.state.chat.push({ kind: "thinking", content: "private reasoning" });
+    const setup = await testRender(React.createElement(App, { c }), { width: 80, height: 24 });
+    await act(async () => { await setup.flush(); });
+    const out = setup.captureCharFrame();
+    expect(out).toContain("thinking");
+    expect(out).toContain("├─");
+    expect(out).toContain("│");
+    expect(out).toContain("private reasoning");
+    act(() => setup.renderer.destroy());
+  });
+
   it("keeps the input indicator on the same line as the text", async () => {
     const c = new Controller(deps());
     c.state.input = "type a long text without breaking the indicator";

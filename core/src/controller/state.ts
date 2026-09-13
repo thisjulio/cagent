@@ -80,6 +80,12 @@ export interface ControllerDeps {
   contextWindow?: number;
   systemPrompt: string;
   sessionDir?: string;
+  sessionId?: string;
+  maxTurns?: number;
+  maxToolCalls?: number;
+  onText?: (text: string) => void;
+  onReasoning?: (text: string) => void;
+  onToolEvent?: (event: { phase: "start" | "end"; tool: string; content?: string; error?: boolean }) => void;
   reloadSkills?: () => void;
   invokeSkill?: (name: string, args: string) => Promise<SkillActivation | undefined>;
   skillNames?: () => string[];

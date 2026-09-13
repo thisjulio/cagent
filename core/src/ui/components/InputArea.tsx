@@ -13,6 +13,7 @@ export function InputArea({
   active,
   onChange,
   onSubmit,
+  onUpArrow,
 }: {
   input: string;
   inputKey: number;
@@ -22,6 +23,7 @@ export function InputArea({
   active: boolean;
   onChange: (v: string) => void;
   onSubmit: (v: string) => void;
+  onUpArrow?: () => string | undefined;
 }) {
   const textarea = useRef<TextareaRenderable>(null);
   const renderer = useRenderer();
@@ -59,6 +61,15 @@ export function InputArea({
             }
             if (key.ctrl && key.name === "v") {
               void paste(textarea.current, key.shift);
+              return;
+            }
+            // ponytail: intercept up before the textarea's binding handler runs;
+            // preventDefault stops move-up in the keypress phase, and the
+            // keyrelease move-up is a no-op on a single-line empty field.
+            if (key.name === "up" && textarea.current?.cursorOffset === 0 && onUpArrow) {
+              key.preventDefault();
+              const recalled = onUpArrow();
+              if (recalled !== undefined) textarea.current?.setText(recalled);
             }
           }}
           placeholder="type your next instruction"

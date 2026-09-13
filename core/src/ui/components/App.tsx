@@ -109,6 +109,10 @@ export function App({ c }: { c: Controller }) {
           active={!overlay}
           onChange={(v) => c.setInput(v)}
           onSubmit={(v) => c.submit(v)}
+          onUpArrow={() => {
+            c.handleKey({ upArrow: true }, "");
+            return c.state.input || undefined;
+          }}
         />
       )}
       <box height={1} flexShrink={0}>
