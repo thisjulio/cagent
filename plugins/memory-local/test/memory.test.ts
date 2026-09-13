@@ -36,5 +36,8 @@ describe("local memory plugin", () => {
     handlers.get("turn.completed")?.({ content: "We always use bun test." });
     handlers.get("tool.completed")?.({ data: { content: "Always run bun test before release." } });
     const pending = JSON.parse(fs.readFileSync(file, "utf8")); expect(pending[0].status).toBe("pending");
+    const reviewTools = Object.fromEntries((await import("../src/commands")).memoryTools(file, { retrieval: false }).map((tool) => [tool.name, tool]));
+    await reviewTools.memory_review.execute({ id: pending[0].id, action: "approve" });
+    expect(JSON.parse(fs.readFileSync(file, "utf8"))[0].status).toBe("approved");
   });
 });

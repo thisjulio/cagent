@@ -18,6 +18,13 @@ export function memoryTools(file: string, state: { retrieval: boolean }): ToolDe
       return { output: next.length === entries.length ? "Memory not found" : "Memory forgotten" };
     }),
     tool("memory_pending", "List pending memory suggestions.", {}, async () => output(loadEntries(file).filter((entry) => entry.status === "pending"))),
+    tool("memory_review", "Review pending suggestions with explicit approve, edit, or ignore action.", { id: "string", action: "string", content: "string" }, async (args) => {
+      const action = String(args.action ?? "");
+      if (action === "approve") return update(file, String(args.id), { status: "approved" });
+      if (action === "ignore") return update(file, String(args.id), { status: "ignored" });
+      if (action === "edit") return update(file, String(args.id), { content: String(args.content ?? ""), status: "pending" });
+      return { output: "ERROR INVALID_REVIEW — action must be approve, edit, or ignore" };
+    }),
     tool("memory_status", "Show local memory status.", {}, async () => ({ output: `Memory plugin: enabled\nRetrieval: ${state.retrieval ? "enabled" : "disabled"}\nEntries: ${loadEntries(file).length}\nNetwork: disabled` })),
     tool("memory_diagnostics", "Show safe local memory diagnostics.", {}, async () => ({ output: `Storage: ${file}\nRetrieval: ${state.retrieval ? "enabled" : "disabled"}\nEmbedding: lexical fallback\nNetwork: disabled` })),
     tool("memory_conflicts", "List memories marked as conflicting.", {}, async () => output(loadEntries(file).filter((entry) => entry.conflict === true))),
