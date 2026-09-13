@@ -9,6 +9,24 @@
             "command": "bash .claude/hooks/guard-bash.sh"
           }
         ]
+      },
+      {
+        "matcher": "Bash|Grep",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/thisjulio/.local/bin/graphify hook-guard search"
+          }
+        ]
+      },
+      {
+        "matcher": "Read|Glob",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/thisjulio/.local/bin/graphify hook-guard read"
+          }
+        ]
       }
     ],
     "PostToolUse": [
