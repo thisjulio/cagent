@@ -40,7 +40,7 @@ describe("local memory plugin", () => {
 
   test("registers tools and observes lifecycle events", async () => {
     const file = tempFile(); const tools: string[] = []; const handlers = new Map<string, (payload: unknown) => unknown>();
-    await register({ name: "memory-local", config: { path: file, retrieval: true }, observability: {} as never, registerTool: (tool) => tools.push(tool.name), registerHook: () => {}, registerProvider: () => {}, registerSubagent: () => {}, emit: () => {}, on: (event, handler) => handlers.set(event, handler), promptSection: () => {}, registerCommandSource: () => {}, registerContextExtension: () => {}, registerCommand: () => {}, contributeContext: async () => [], storage: { namespace: "memory-local", path: (...parts: string[]) => parts.join("/") }, diagnostics: { report: () => {} } });
+    await register({ name: "memory-local", config: { path: file, retrieval: true }, observability: {} as never, registerTool: (tool) => tools.push(tool.name), registerHook: () => {}, registerProvider: () => {}, registerSubagent: () => {}, emit: () => {}, on: (event, handler) => handlers.set(event, handler), promptSection: () => {}, registerCommandSource: () => {}, registerContextExtension: () => {}, registerCommand: () => {}, contributeContext: async () => [], activity: () => {}, storage: { namespace: "memory-local", path: (...parts: string[]) => parts.join("/") }, diagnostics: { report: () => {} } });
     expect(tools).toContain("memory_add");
     handlers.get("turn.completed")?.({ content: "We always use bun test." });
     handlers.get("tool.completed")?.({ data: { content: "Always run bun test before release." } });

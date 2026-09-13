@@ -157,6 +157,14 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
   bus.on("tools/denied", (p) => c.onToolDenied(p));
   bus.on("tools/stdout", (p) => c.onToolStream(p));
   bus.on("tools/stderr", (p) => c.onToolStream(p, "[stderr] "));
+  bus.on("plugin/activity", (p) => {
+    const event = p as { plugin?: string; content?: string };
+    if (event.content) {
+      c.state.chat.push({ kind: "meta", content: `[${event.plugin ?? "plugin"}] ${event.content}`, timestamp: Date.now() });
+      c.state.chatVersion++;
+      c.bump();
+    }
+  });
   if (options.headless) {
     await runHeadless(c, options.headless);
     return;

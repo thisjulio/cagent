@@ -13,7 +13,10 @@ const register: Plugin = (ctx) => {
     const text = eventText(payload);
     const entries = loadEntries(file);
     const candidates = captureCandidates(text, "turn.completed", projectIdentity(), entries);
-    if (candidates.length) saveEntries(file, [...entries, ...candidates]);
+    if (candidates.length) {
+      saveEntries(file, [...entries, ...candidates]);
+      ctx.activity(`${candidates.length} memory suggestion${candidates.length === 1 ? "" : "s"} created (pending approval)`);
+    }
   });
   ctx.on("tool.completed", (payload) => {
     if (!state.capture) return;
@@ -22,7 +25,10 @@ const register: Plugin = (ctx) => {
     if (!text || event.data?.isError === true) return;
     const entries = loadEntries(file);
     const candidates = captureCandidates(text, "tool.completed", projectIdentity(), entries, 1);
-    if (candidates.length) saveEntries(file, [...entries, ...candidates]);
+    if (candidates.length) {
+      saveEntries(file, [...entries, ...candidates]);
+      ctx.activity(`${candidates.length} memory suggestion${candidates.length === 1 ? "" : "s"} created (pending approval)`);
+    }
   });
   ctx.registerContextExtension({
     id: "memory-local.retrieval",

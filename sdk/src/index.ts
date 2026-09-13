@@ -189,6 +189,7 @@ export interface PluginContext {
   registerCommandSource(source: CommandSource): void;
   registerCommand(command: PluginCommand): void;
   contributeContext(input: ContextExtensionInput): Promise<ContextContribution[]>;
+  activity(content: string, attributes?: Readonly<Record<string, string | number | boolean>>): void;
 }
 
 export type Plugin = (ctx: PluginContext) => void | Promise<void>;

@@ -75,6 +75,9 @@ export async function loadPlugins(
         }
         return results;
       },
+      activity: (content, attributes = {}) => {
+        bus.emit("plugin/activity", { plugin: p.name, content, attributes });
+      },
     };
     await trace(observability, "plugin.load", () => plugin(ctx), { "plugin.name": p.name });
     contexts.push(ctx);
