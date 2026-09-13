@@ -14,6 +14,7 @@ describe("local memory plugin", () => {
     expect(entries.length).toBe(2);
     expect(entries[0].status).toBe("pending");
     expect(entries[1].content).toContain("[redacted]");
+    expect(captureCandidates("We prefer email: user@example.com", "test", "/project", []) [0].content).toContain("[redacted]");
   });
 
   test("supports add, search, archive and forget", async () => {
