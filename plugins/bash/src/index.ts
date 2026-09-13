@@ -35,7 +35,13 @@ function runCommand(opts: RunOptions): Promise<{ code: number; stdout: string; s
     const child = spawn(opts.command, { shell: true, cwd: opts.workdir, env: process.env, detached: true });
 
     const killProcess = () => {
-      if (child.pid) process.kill(-child.pid, "SIGKILL");
+      if (!child.pid) return;
+      try {
+        process.kill(-child.pid, "SIGKILL");
+      } catch (e: unknown) {
+        // ESRCH: process already exited or process group gone — harmless.
+        if (!String(e).includes("ESRCH")) throw e;
+      }
     };
 
     const timer = setTimeout(() => {
