@@ -24,6 +24,30 @@ describe("llama.cpp adapter", () => {
     expect(messages[1]).toEqual({ role: "user", content: "Inspect this" });
   });
 
+  test("accepts nested context settings from older llama-server responses", async () => {
+    const orig = globalThis.fetch;
+    globalThis.fetch = (async () =>
+      ({ ok: true, json: async () => ({ default_generation_settings: { params: { n_ctx: 80128 } } }) })) as unknown as typeof fetch;
+    try {
+      expect(await createAdapter().context_window?.("qwen")).toBe(80128);
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+
+  test("reports the runtime context window from llama-server", async () => {
+    const orig = globalThis.fetch;
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      expect(String(input)).toBe("http://localhost:8080/props");
+      return { ok: true, json: async () => ({ default_generation_settings: { params: { n_ctx: 80128 } } }) };
+    }) as unknown as typeof fetch;
+    try {
+      expect(await createAdapter().context_window?.("qwen")).toBe(80128);
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+
   test("uses the native SEARCH/REPLACE schema for edit_file", () => {
     const override = createAdapter().tool_overrides?.().edit_file;
     expect(override?.name).toBe("edit_file");

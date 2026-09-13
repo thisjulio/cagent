@@ -197,6 +197,11 @@ export class Controller {
     return true;
   }
 
+  estimateCurrentTokens(): number {
+    const model = splitRoute(this.state.model)[1];
+    return this.adapter.estimate_tokens?.(model, this.messages) ?? estimateTokens(this.messages);
+  }
+
   private estimateTokens(): number {
     return this.adapter.estimate_tokens?.(splitRoute(this.deps.model)[1], this.messages) ?? estimateTokens(this.messages);
   }
@@ -350,8 +355,8 @@ export class Controller {
     return openModelPicker(this);
   }
 
-  pickModel(route: string): void {
-    pickModel(this, route);
+  pickModel(route: string): Promise<void> {
+    return pickModel(this, route);
   }
 
   handleKey(key: InputKey, input: string): void {

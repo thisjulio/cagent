@@ -9,6 +9,18 @@ interface Config {
   inject_agent_prompt?: boolean;
 }
 
+function contextSize(json: Record<string, unknown>): number | undefined {
+  const settings = json.default_generation_settings;
+  if (!settings || typeof settings !== "object") return undefined;
+  const direct = (settings as { n_ctx?: unknown }).n_ctx;
+  const params = (settings as { params?: unknown }).params;
+  const nested = params && typeof params === "object"
+    ? (params as { n_ctx?: unknown }).n_ctx
+    : undefined;
+  const value = direct ?? nested;
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : undefined;
+}
+
 function baseUrl(config: Config): string {
   return String(config.url ?? "http://localhost:8080").replace(/\/$/, "");
 }
@@ -198,6 +210,13 @@ export function createAdapter(config: Config = {}): ProviderAdapter {
 
   return {
     tool_overrides: () => LLAMA_TOOL_OVERRIDES,
+    async context_window(): Promise<number | undefined> {
+      const response = await fetch(`${baseUrl(config)}/props`, {
+        headers: headers(config),
+        ...(config.timeout_ms ? { signal: AbortSignal.timeout(config.timeout_ms) } : {}),
+      });
+      return contextSize(await checkedJson(response));
+    },
     async list_models(): Promise<string[]> {
       const response = await fetch(`${baseUrl(config)}/v1/models`, {
         headers: headers(config),

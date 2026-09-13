@@ -16,7 +16,7 @@ export async function openModelPicker(c: Controller): Promise<void> {
   c.bump();
 }
 
-export function pickModel(c: Controller, route: string): void {
+export async function pickModel(c: Controller, route: string): Promise<void> {
   const p = c.state.modelPicker;
   if (!p) return;
   const [prov, model] = splitRoute(route);
@@ -27,5 +27,7 @@ export function pickModel(c: Controller, route: string): void {
   c.adapter = a;
   c.state.model = route;
   c.state.modelPicker = null;
+  c.state.contextWindow = (await a.context_window?.(model)) ?? c.state.contextWindow;
+  c.state.tokens = c.estimateCurrentTokens();
   c.bump();
 }
