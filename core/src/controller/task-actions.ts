@@ -21,12 +21,19 @@ export function updateTasks(
 ): string {
   try {
     if (operation === "create") controller.state.tasks = createTasks(controller.state.tasks, (args.titles as string[]) ?? []);
-    else if (operation === "update") controller.state.tasks = updateTask(
-      controller.state.tasks,
-      String(args.id),
-      String(args.status) as TaskStatus,
-      args.details as string,
-    );
+    else if (operation === "update") {
+      controller.state.tasks = updateTask(
+        controller.state.tasks,
+        String(args.id),
+        String(args.status) as TaskStatus,
+        args.details as string,
+      );
+      // Auto-clear when all tasks are completed so the box disappears
+      // and new requests start with a fresh task list
+      if (controller.state.tasks.length > 0 && controller.state.tasks.every((task) => task.status === "completed")) {
+        controller.state.tasks = [];
+      }
+    }
     else if (operation === "remove") controller.state.tasks = removeTask(controller.state.tasks, String(args.id));
     else if (operation === "clear") controller.state.tasks = [];
     else if (operation === "list") return JSON.stringify(controller.state.tasks);

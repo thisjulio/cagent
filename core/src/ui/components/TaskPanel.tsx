@@ -6,10 +6,14 @@ import { taskProgress } from "../../tasks";
 export function TaskPanel({ tasks }: { tasks: Task[] }) {
   const scrollbox = useRef<ScrollBoxRenderable>(null);
   const activeTask = tasks.find((task) => task.status === "in_progress");
+  const activeIndex = tasks.findIndex((task) => task.id === activeTask?.id);
+  const nextPending = activeIndex >= 0 ? tasks.slice(activeIndex + 1).find((task) => task.status === "pending") : undefined;
 
   useEffect(() => {
-    if (activeTask) scrollbox.current?.scrollChildIntoView(activeTask.id);
-  }, [activeTask?.id, activeTask?.status, activeTask?.reason, activeTask?.evidence]);
+    // Scroll to next pending task if it exists, otherwise to active task
+    const target = nextPending ?? activeTask;
+    if (target) scrollbox.current?.scrollChildIntoView(target.id);
+  }, [activeTask?.id, activeTask?.status, nextPending?.id]);
 
   if (!tasks.some((task) => task.status !== "completed")) return null;
   return <box height={8} flexDirection="column" borderStyle="single" borderColor="#555555" paddingX={1} flexShrink={0}>
