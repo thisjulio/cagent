@@ -24,6 +24,22 @@ describe("llama.cpp adapter", () => {
     expect(messages[1]).toEqual({ role: "user", content: "Inspect this" });
   });
 
+  test("uses the native SEARCH/REPLACE schema for edit_file", () => {
+    const override = createAdapter().tool_overrides?.().edit_file;
+    expect(override?.name).toBe("edit_file");
+    expect(override?.parameters?.required).toEqual(["path", "blocks"]);
+    expect(override?.description).toContain("<<< SEARCH");
+  });
+
+  test("uses a strict JSON schema for write_file", () => {
+    const adapter = createAdapter();
+    const override = adapter.tool_overrides?.().write_file;
+    expect(override).toBeDefined();
+    expect(override?.name).toBe("write_file");
+    expect(override?.parameters?.required).toEqual(["path", "content"]);
+    expect(override?.parameters?.additionalProperties).toBe(false);
+  });
+
   test("prepare_call injects the agent prompt by default and supports disabling it", async () => {
     const orig = fakeModels(["qwen.gguf"]);
     try {
@@ -104,11 +120,11 @@ describe("llama.cpp adapter", () => {
     }
   });
 
-  test("sanitizes malformed streamed tool arguments before replay", async () => {
+  test("normalizes recoverable streamed tool arguments without inventing data", async () => {
     const orig = globalThis.fetch;
     globalThis.fetch = (async () =>
       new Response(
-        'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call-1","function":{"name":"bash","arguments":"not JSON"}}]}}]}\n\n' +
+          'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call-1","function":{"name":"bash","arguments":"```json{\\"x\\":1,}```"}}]}}]}\n\n' +
           "data: [DONE]\n\n",
         { headers: { "Content-Type": "text/event-stream" } },
       )) as typeof fetch;
@@ -118,7 +134,7 @@ describe("llama.cpp adapter", () => {
       for await (const chunk of adapter.stream({ model: "qwen", messages: [], tools: [] })) chunks.push(chunk);
       expect(chunks).toContainEqual({
         type: "tool-call",
-        tool_call: { id: "call-1", name: "bash", arguments: "{}" },
+        tool_call: { id: "call-1", name: "bash", arguments: "{\"x\":1}" },
       });
     } finally {
       globalThis.fetch = orig;

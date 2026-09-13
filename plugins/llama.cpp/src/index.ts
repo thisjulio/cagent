@@ -15,7 +15,6 @@ function baseUrl(config: Config): string {
 
 function headers(config: Config): Record<string, string> {
   return {
-    tool_overrides: toolOverrides,
     "Content-Type": "application/json",
     ...(config.api_key ? { Authorization: `Bearer ${config.api_key}` } : {}),
   };
@@ -43,11 +42,8 @@ function modelKey(id: string): string {
 }
 
 function validToolArguments(argumentsText: string): string {
-  const candidates = [
-    argumentsText.trim(),
-    argumentsText.trim().replace(/^```(?:json)?\s*|\s*```$/gi, "").trim(),
-    argumentsText.trim().replace(/,\s*([}\]])/g, "$1"),
-  ];
+  const plain = argumentsText.trim().replace(/^```(?:json)?\s*|\s*```$/gi, "").trim();
+  const candidates = [argumentsText.trim(), plain, plain.replace(/,\s*([}\]])/g, "$1")];
   for (const candidate of candidates) {
     if (!candidate) continue;
     try {
@@ -61,7 +57,26 @@ function validToolArguments(argumentsText: string): string {
 }
 
 const LLAMA_TOOL_OVERRIDES: ToolOverrides = {
+  edit_file: {
+    name: "edit_file",
+    description:
+      "Edits an existing file using one JSON object with path and blocks. blocks MUST contain exact delimiters: <<< SEARCH\\ntext to find\\n>>>\\n<<< REPLACE\\nreplacement text\\n>>>. Read the file first. Do not use markdown fences, *** patches, shell commands, or conversational text.",
+    parameters: {
+      type: "object",
+      properties: {
+        path: { type: "string", description: "File path to edit" },
+        blocks: {
+          type: "string",
+          description:
+            "Exact SEARCH/REPLACE blocks. Example: <<< SEARCH\\nold text\\n>>>\\n<<< REPLACE\\nnew text\\n>>>",
+        },
+      },
+      required: ["path", "blocks"],
+      additionalProperties: false,
+    },
+  },
   write_file: {
+    name: "write_file",
     description:
       "Writes a complete file. Return one valid JSON object with exactly {\"path\":\"...\",\"content\":\"...\"}. Escape newlines inside content as \\n; do not use markdown fences.",
     parameters: {
@@ -161,6 +176,7 @@ export function createAdapter(config: Config = {}): ProviderAdapter {
   const modelIds = new Map<string, string>();
 
   return {
+    tool_overrides: () => LLAMA_TOOL_OVERRIDES,
     async list_models(): Promise<string[]> {
       const response = await fetch(`${baseUrl(config)}/v1/models`, {
         headers: headers(config),

@@ -34,9 +34,12 @@ export function toChatItems(records: LoadedRecord[]): ChatItem[] {
   });
 }
 
-function sanitizeTitle(value: string): string {
+export function sanitizeTitle(value: string): string {
   return value
     .trim()
+    .replace(/<tool_call>[\s\S]*?<\/tool_call>/gi, "")
+    .replace(/<tool_call>[\s\S]*$/gi, "")
+    .replace(/^\s*\{?\s*"?(?:name|tool)\s*"\s*:\s*"[^"]+"[\s\S]*$/i, "")
     .replace(/^["'“”]+|["'“”]+$/g, "")
     .replace(/^#{1,6}\s+/, "")
     .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
@@ -46,6 +49,15 @@ function sanitizeTitle(value: string): string {
     .replace(/(^|[\s(])([*_~`]+)(?=\S)/g, "$1")
     .replace(/(\S)([*_~`]+)(?=[\s).,!?:;]|$)/g, "$1")
     .replace(/^\s*[-+*>]\s+/, "")
+    .replace(/^I'll\s+/i, "")
+    .replace(/^I will\s+/i, "")
+    .replace(/^Let me\s+/i, "")
+    .replace(/^Sure,\s+/i, "")
+    .replace(/^OK,\s+/i, "")
+    .replace(/^Alright,\s+/i, "")
+    .replace(/^Here is\s+/i, "")
+    .replace(/^Here's\s+/i, "")
+    .replace(/^Got it,\s+/i, "")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -128,7 +140,7 @@ export async function generateTitle(c: Controller, msg: string): Promise<string>
         {
           role: "system",
           content:
-            "Create a concise, specific conversation title in Title Case, using 3–6 words. Capture the user's main goal or topic, not the wording of the request. Prefer an action plus an object when appropriate (for example, 'Improve Session Titles' or 'Debug Login Timeout'). Reply with only the title on one line: no Markdown, labels, explanation, sentence-ending punctuation, or quotation marks.",
+            "You are a title generator. Output only a conversation title - nothing else. No preamble, no explanation, no conversational text. The title must be Title Case, 3-6 words, capturing the user's main goal as an action plus object. Examples: 'Commit Git Changes', 'Debug Login Timeout', 'Improve Session Titles'. Do not say 'I'll', 'I will', 'Here is', or any conversational phrase. Output only the title text.",
         },
         { role: "user", content: msg },
       ],

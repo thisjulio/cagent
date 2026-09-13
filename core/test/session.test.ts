@@ -3,12 +3,24 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { Session } from "../src/session";
-import { toChatItems } from "../src/controller/sessions";
+import { toChatItems, toTitle } from "../src/controller/sessions";
 
 describe("JSONL sessions", () => {
   let dir: string;
   beforeEach(() => {
     dir = mkdtempSync(path.join(tmpdir(), "cagent-sess-"));
+  });
+
+  it("removes leaked tool-call markup from generated titles", () => {
+    expect(
+      toTitle([
+        {
+          ts: 1,
+          type: "meta",
+          payload: { kind: "title", title: '<tool_call> {"name": "git_status", "arguments": {}} </tool_call>' },
+        },
+      ]),
+    ).toBe("");
   });
 
   it("append + load roundtrip", () => {
