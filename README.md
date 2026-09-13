@@ -79,7 +79,7 @@ supports the OAuth login used by Codex when no API key is configured.
 
 ## Development
 
-Requer Bun:
+Requires Bun:
 
 ```bash
 git clone https://github.com/thisjulio/cagent.git
@@ -136,3 +136,14 @@ may change before version 1.0.
 ## License
 
 MIT. See [`LICENSE`](LICENSE).
+
+## Contributing
+
+Contributions are welcome. Please read [`CONTRIBUTING.md`](CONTRIBUTING.md)
+before opening an issue or pull request.
+
+## Security
+
+Please report security vulnerabilities privately as described in
+[`SECURITY.md`](SECURITY.md). Do not disclose exploitable details in a public
+issue.
