@@ -10,7 +10,7 @@ const ROUTES: Record<string, { tool: string; required?: string[] }> = {
 
 export function createMemoryCommand(tools: ToolDefinition[]): PluginCommand {
   const byName = new Map(tools.map((tool) => [tool.name, tool]));
-  return { name: "memory", description: "Manage local project and user memories.", execute: async (context) => executeMemoryCommand(context, byName) };
+  return { name: "memory", description: "Manage local project and user memories.", subcommands: Object.keys(ROUTES), execute: async (context) => executeMemoryCommand(context, byName) };
 }
 
 async function executeMemoryCommand(context: PluginCommandContext, tools: Map<string, ToolDefinition>): Promise<string> {

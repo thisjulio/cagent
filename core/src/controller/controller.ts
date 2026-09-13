@@ -237,7 +237,7 @@ export class Controller {
   setInput(v: string): void {
     const s = this.state;
     s.input = v;
-    s.suggest = inputSuggestions(v, this.deps.skillNames?.() ?? [], [...(this.deps.commands?.keys() ?? []), ...(this.deps.pluginCommands ?? [])], this.agentNames());
+    s.suggest = inputSuggestions(v, this.deps.skillNames?.() ?? [], [...(this.deps.commands?.keys() ?? []), ...(this.deps.pluginCommands ?? [])], this.agentNames(), this.deps.pluginCommandSubcommands);
     s.suggestIdx = -1;
     this.bump();
   }
@@ -249,7 +249,7 @@ export class Controller {
   reloadSkills(): boolean {
     if (!this.deps.reloadSkills) return false;
     this.deps.reloadSkills();
-    this.state.suggest = inputSuggestions(this.state.input, this.deps.skillNames?.() ?? [], [...(this.deps.commands?.keys() ?? [])], this.agentNames());
+    s.suggest = inputSuggestions(this.state.input, this.deps.skillNames?.() ?? [], [...(this.deps.commands?.keys() ?? []), ...(this.deps.pluginCommands ?? [])], this.agentNames(), this.deps.pluginCommandSubcommands);
     this.state.suggestIdx = -1;
     return true;
   }

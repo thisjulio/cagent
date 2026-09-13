@@ -7,5 +7,6 @@ export type PluginCommandContext = {
 export type PluginCommand = {
   name: string;
   description: string;
+  subcommands?: string[];
   execute: (context: PluginCommandContext) => string | Promise<string>;
 };

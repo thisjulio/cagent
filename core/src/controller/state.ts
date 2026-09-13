@@ -96,6 +96,7 @@ export interface ControllerDeps {
   skillNames?: () => string[];
   commands?: Map<string, CustomCommand>;
   pluginCommands?: string[];
+  pluginCommandSubcommands?: Record<string, string[]>;
   invokeSubagent?: (request: SubagentRequest) => Promise<string>;
   observability?: Observability;
 }

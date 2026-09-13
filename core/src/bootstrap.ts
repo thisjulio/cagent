@@ -141,6 +141,7 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
       .filter((name) => skills?.byName.get(name)?.metadata.userInvocable !== false),
     commands: commands.byName,
     pluginCommands: registry.commands().map((command) => command.name),
+    pluginCommandSubcommands: Object.fromEntries(registry.commands().filter((command) => command.subcommands).map((command) => [command.name, command.subcommands!])),
     invokeSubagent: registry.subagents().length ? executeSubagent : undefined,
     observability: telemetry,
   });

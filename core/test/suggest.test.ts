@@ -13,6 +13,8 @@ describe("slashSuggestions", () => {
     expect(slashSuggestions("/skill gr", ["grill-me", "grilling", "deploy"])).toEqual(["/skill grill-me", "/skill grilling"]));
   it("suggests registered plugin commands", () =>
     expect(slashSuggestions("/", [], ["memory"])).toContain("/memory"));
+  it("suggests plugin subcommands", () =>
+    expect(slashSuggestions("/memory a", [], [], { memory: ["add", "archive"] })).toEqual(["/memory add", "/memory archive"]));
 });
 
 describe("subagent suggestions", () => {
