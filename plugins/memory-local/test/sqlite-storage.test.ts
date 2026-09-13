@@ -19,5 +19,7 @@ test("SQLite store persists entries and creates schema", () => {
   expect(reopened.entries()).toHaveLength(2);
   reopened.remove("m1");
   expect(reopened.entries()).toHaveLength(1);
+  reopened.replace({ id: "m2", content: "Updated", scope: "project", kind: "fact", status: "approved", confidence: 1, source: "test", project: "/project", createdAt: "2026-01-02", updatedAt: "2026-01-03" });
+  expect(reopened.entries().find((entry) => entry.id === "m2")?.content).toBe("Updated");
   reopened.close();
 });
