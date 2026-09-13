@@ -29,6 +29,15 @@ describe("local memory plugin", () => {
     expect((await tools.memory_show.execute({ id })).output).toContain("No memories");
   });
 
+  test("requires confirmation for restore and supports backup", async () => {
+    const file = tempFile(); const backup = `${file}.backup`;
+    const tools = Object.fromEntries(memoryTools(file, { retrieval: false, capture: true }).map((tool) => [tool.name, tool]));
+    await tools.memory_add.execute({ content: "Always use Bun", scope: "project", kind: "convention" });
+    expect((await tools.memory_backup.execute({ destination: backup })).output).toContain("Backup created");
+    expect((await tools.memory_restore.execute({ source: backup })).output).toContain("CONFIRMATION_REQUIRED");
+    expect((await tools.memory_restore.execute({ source: backup, confirm: true })).output).toBe("Memory restored");
+  });
+
   test("registers tools and observes lifecycle events", async () => {
     const file = tempFile(); const tools: string[] = []; const handlers = new Map<string, (payload: unknown) => unknown>();
     await register({ name: "memory-local", config: { path: file, retrieval: true }, observability: {} as never, registerTool: (tool) => tools.push(tool.name), registerHook: () => {}, registerProvider: () => {}, registerSubagent: () => {}, emit: () => {}, on: (event, handler) => handlers.set(event, handler), promptSection: () => {}, registerCommandSource: () => {}, registerContextExtension: () => {}, registerCommand: () => {}, contributeContext: async () => [], storage: { namespace: "memory-local", path: (...parts: string[]) => parts.join("/") }, diagnostics: { report: () => {} } });

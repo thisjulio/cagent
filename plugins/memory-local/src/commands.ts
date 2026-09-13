@@ -1,4 +1,6 @@
 import { defineTool, type ToolDefinition } from "@cagent/sdk";
+import fs from "node:fs";
+import path from "node:path";
 import { loadEntries, projectIdentity, saveEntries, scoped, type MemoryEntry, type MemoryKind, type MemoryScope, type MemoryStatus } from "./storage";
 import { rankEntries } from "./retrieval";
 
@@ -28,6 +30,16 @@ export function memoryTools(file: string, state: { retrieval: boolean; capture: 
     tool("memory_status", "Show local memory status.", {}, async () => ({ output: `Memory plugin: enabled\nCapture: ${state.capture ? "enabled" : "disabled"}\nRetrieval: ${state.retrieval ? "enabled" : "disabled"}\nEntries: ${loadEntries(file).length}\nNetwork: disabled` })),
     tool("memory_diagnostics", "Show safe local memory diagnostics.", {}, async () => ({ output: `Storage: ${file}\nCapture: ${state.capture ? "enabled" : "disabled"}\nRetrieval: ${state.retrieval ? "enabled" : "disabled"}\nEmbedding: lexical fallback\nNetwork: disabled` })),
     tool("memory_conflicts", "List memories marked as conflicting.", {}, async () => output(loadEntries(file).filter((entry) => entry.conflict === true))),
+    tool("memory_backup", "Create a copy of the local memory file.", { destination: "string" }, async (args) => {
+      const destination = path.resolve(String(args.destination ?? `${file}.backup`));
+      fs.copyFileSync(file, destination);
+      return { output: `Backup created: ${destination}` };
+    }),
+    tool("memory_restore", "Restore the local memory file from a backup.", { source: "string", confirm: "boolean" }, async (args) => {
+      if (args.confirm !== true) return { output: "ERROR CONFIRMATION_REQUIRED — pass confirm=true to restore" };
+      fs.copyFileSync(path.resolve(String(args.source)), file);
+      return { output: "Memory restored" };
+    }),
     tool("memory_retrieval", "Enable or disable retrieval for this session.", { enabled: "boolean" }, async (args) => { state.retrieval = args.enabled === true; return { output: `Retrieval ${state.retrieval ? "enabled" : "disabled"}` }; }),
     tool("memory_capture", "Enable or disable automatic capture for this session.", { enabled: "boolean" }, async (args) => { state.capture = args.enabled === true; return { output: `Capture ${state.capture ? "enabled" : "disabled"}` }; }),
   ];
