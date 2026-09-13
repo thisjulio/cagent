@@ -65,6 +65,7 @@ export interface TurnOpts extends StreamOpts {
   ask: ToolAsk;
   bus: EventBus;
   hooks?: { run(event: import("@cagent/sdk").HookEvent): Promise<import("@cagent/sdk").HookResponse[]> };
+  signal?: AbortSignal;
   maxTurns?: number;
   maxToolCalls?: number;
 }
@@ -86,7 +87,7 @@ async function runToolCall(ctx: ToolLoopCtx, tc: { id: string; name: string; arg
     if (tool?.name === "edit_file" && tc.name === "apply_patch") args = { patch: tc.arguments };
   }
   const result = tool
-    ? await runToolPipeline(tool, args, opts.allowlist, opts.ask, opts.bus, opts.hooks)
+    ? await runToolPipeline(tool, args, opts.allowlist, opts.ask, opts.bus, opts.hooks, opts.signal)
     : { output: `tool not found: ${tc.name}`, isError: true };
   opts.messages.push({ role: "tool", tool_call_id: tc.id, content: result.output });
   ctx.records.push({

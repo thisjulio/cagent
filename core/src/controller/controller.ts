@@ -39,6 +39,7 @@ export class Controller {
   private interrupted = false;
   private lastStreamBump = 0;
   private skillCallId = 0;
+  private abortController: AbortController | null = null;
   envStamp: number = Date.now();
   private askResolver: ((ok: boolean) => void) | null = null;
 
@@ -59,6 +60,8 @@ export class Controller {
     appendChat(s, { kind: "user", content: `$${command}` });
     s.busy = true;
     s.turnStartedAt = Date.now();
+    this.interrupted = false;
+    this.abortController = new AbortController();
     this.session.append({ ts: Date.now(), type: "user", payload: { content: `$${command}` } });
     this.messages.push({ role: "user", content: `$${command}` });
     this.messages.push({
@@ -75,6 +78,7 @@ export class Controller {
         this.ask,
         this.deps.bus,
         this.deps.registry.hooks,
+        this.abortController.signal,
       );
       this.messages.push({ role: "tool", tool_call_id: callId, content: result.output });
       this.session.append({
@@ -131,6 +135,7 @@ export class Controller {
       inputKey: 0,
       turnStartedAt: null,
       elapsedMs: 0,
+      lastEscTime: 0,
     };
     if (loaded.records.length) appendChat(s, { kind: "meta", content: `resuming session ${this.session.id} (${loaded.messages.length} messages)` });
     this.state = s;
@@ -215,6 +220,15 @@ export class Controller {
     if (this.state.busy) this.interrupted = true;
   }
 
+  forceCancel(): void {
+    if (this.state.busy) {
+      this.interrupted = true;
+      if (this.abortController) {
+        this.abortController.abort();
+      }
+    }
+  }
+
   async submit(text: string): Promise<void> {
     if (!text || this.state.busy) return;
     this.state.input = "";
@@ -237,6 +251,7 @@ export class Controller {
     s.turnStartedAt = Date.now();
     s.elapsedMs = 0;
     this.interrupted = false;
+    this.abortController = new AbortController();
     this.session.append({ ts: Date.now(), type: "user", payload: { content: text } });
     this.messages.push({ role: "user", content: text });
     this.envStamp = addEnvironmentContext(this.messages, this.envStamp);
@@ -269,6 +284,7 @@ export class Controller {
       hooks: this.deps.registry.hooks,
       session: this.session,
       interrupted: () => this.interrupted,
+      signal: this.abortController.signal,
       maxTurns: this.maxTurns,
       maxToolCalls: this.maxToolCalls,
       onText: this.onText,

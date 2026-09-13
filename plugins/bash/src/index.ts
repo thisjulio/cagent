@@ -6,6 +6,7 @@ interface RunOptions {
   workdir: string;
   timeout: number;
   emit: (stream: "stdout" | "stderr", chunk: string) => void;
+  signal?: AbortSignal;
 }
 
 const MAX_OUTPUT_CHARS = 128 * 1024;
@@ -25,17 +26,31 @@ function output(buffer: OutputBuffer): string {
   return buffer.parts.join("") + (buffer.truncated ? "\n[output truncated to preserve memory]" : "");
 }
 
-function runCommand(opts: RunOptions): Promise<{ code: number; stdout: string; stderr: string; timedOut: boolean; error?: string }> {
+function runCommand(opts: RunOptions): Promise<{ code: number; stdout: string; stderr: string; timedOut: boolean; cancelled?: boolean; error?: string }> {
   const out: OutputBuffer = { parts: [], length: 0, truncated: false };
   const err: OutputBuffer = { parts: [], length: 0, truncated: false };
   return new Promise((resolve) => {
     let timedOut = false;
+    let cancelled = false;
     const child = spawn(opts.command, { shell: true, cwd: opts.workdir, env: process.env, detached: true });
+
+    const killProcess = () => {
+      if (child.pid) process.kill(-child.pid, "SIGKILL");
+    };
+
     const timer = setTimeout(() => {
       timedOut = true;
       // Kill the shell's process group so descendants cannot keep stdout open.
-      if (child.pid) process.kill(-child.pid, "SIGKILL");
+      killProcess();
     }, opts.timeout);
+
+    if (opts.signal) {
+      opts.signal.addEventListener("abort", () => {
+        cancelled = true;
+        killProcess();
+      });
+    }
+
     child.stdout.on("data", (chunk: Buffer) => {
       const text = capture(out, chunk.toString("utf8"));
       if (text) opts.emit("stdout", text);
@@ -46,11 +61,11 @@ function runCommand(opts: RunOptions): Promise<{ code: number; stdout: string; s
     });
     child.on("error", (e: Error) => {
       clearTimeout(timer);
-      resolve({ code: -1, stdout: output(out), stderr: output(err), timedOut, error: e.message });
+      resolve({ code: -1, stdout: output(out), stderr: output(err), timedOut, cancelled, error: e.message });
     });
     child.on("close", (code) => {
       clearTimeout(timer);
-      resolve({ code, stdout: output(out), stderr: output(err), timedOut });
+      resolve({ code, stdout: output(out), stderr: output(err), timedOut, cancelled });
     });
   });
 }
@@ -70,12 +85,17 @@ const register: Plugin = (ctx) => {
       required: ["command"],
     },
     execute: async (args: ToolArgs) => {
+      const signal = args.signal as AbortSignal | undefined;
       const result = await runCommand({
         command: String(args.command),
         workdir: args.workdir ? String(args.workdir) : process.cwd(),
         timeout: typeof args.timeout_ms === "number" ? (args.timeout_ms as number) : defaultTimeout,
         emit: (stream, chunk) => ctx.emit(`tools/${stream}`, { tool: "bash", chunk }),
+        signal,
       });
+      if (result.cancelled) {
+        return { output: "cancelled by user", isError: true, cancelled: true };
+      }
       const isError = result.code !== 0 || result.timedOut || result.error !== undefined;
       const output = result.stderr ? `${result.stdout}\n[stderr] ${result.stderr}` : result.stdout;
       return { output, isError, timedOut: result.timedOut };

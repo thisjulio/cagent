@@ -140,4 +140,26 @@ describe("llama.cpp adapter", () => {
       globalThis.fetch = orig;
     }
   });
+
+  test("forwards llama-server prompt token usage on the finish chunk", async () => {
+    const orig = globalThis.fetch;
+    globalThis.fetch = (async () =>
+      new Response(
+        'data: {"choices":[{"delta":{"content":"done"},"finish_reason":"stop"}],"usage":{"prompt_tokens":2163,"completion_tokens":12}}\n\n' +
+          "data: [DONE]\n\n",
+        { headers: { "Content-Type": "text/event-stream" } },
+      )) as typeof fetch;
+    try {
+      const adapter = createAdapter();
+      const chunks = [];
+      for await (const chunk of adapter.stream({ model: "qwen", messages: [], tools: [] })) chunks.push(chunk);
+      expect(chunks).toContainEqual({
+        type: "finish",
+        finish_reason: "stop",
+        usage: { input_tokens: 2163, output_tokens: 12 },
+      });
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
 });

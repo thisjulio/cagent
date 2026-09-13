@@ -152,7 +152,28 @@ async function* streamChatCompletions(request: LlmCallOptions, config: Config): 
         if (call.function?.arguments) current.arguments += call.function.arguments;
         calls.set(index, current);
       }
-      if (choice?.finish_reason) yield { type: "finish", finish_reason: String(choice.finish_reason) };
+	      const usage = json.usage;
+	      const inputTokens =
+	        typeof usage?.prompt_tokens === "number"
+	          ? usage.prompt_tokens
+	          : typeof usage?.input_tokens === "number"
+	            ? usage.input_tokens
+	            : undefined;
+	      const outputTokens =
+	        typeof usage?.completion_tokens === "number"
+	          ? usage.completion_tokens
+	          : typeof usage?.output_tokens === "number"
+	            ? usage.output_tokens
+	            : undefined;
+	      if (choice?.finish_reason || inputTokens !== undefined) {
+	        yield {
+	          type: "finish",
+	          finish_reason: String(choice?.finish_reason ?? "stop"),
+	          ...(inputTokens !== undefined && outputTokens !== undefined
+	            ? { usage: { input_tokens: inputTokens, output_tokens: outputTokens } }
+	            : {}),
+	        };
+	      }
     }
   };
   for (;;) {

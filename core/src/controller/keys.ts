@@ -3,6 +3,10 @@ import type { InputKey } from "./state";
 
 // ponytail: input key orchestration (autocomplete, pickers, pendingAsk) lives
 // outside the controller to keep it under 250 lines; this is a state-rules layer.
+
+// ponytail: double-ESC within this window forces cancellation of running tools.
+const DOUBLE_ESC_WINDOW_MS = 500;
+
 export function onKey(c: Controller, key: InputKey, input: string): void {
   const s = c.state;
   if (key.tab) {
@@ -56,6 +60,16 @@ export function onKey(c: Controller, key: InputKey, input: string): void {
     void c.submit(s.input);
     return;
   }
-  if (key.ctrl && input === "o") c.toggleToolExpand();
-  else if (key.escape) c.interrupt();
+  if (key.ctrl && input === "o") {
+    c.toggleToolExpand();
+  } else if (key.escape) {
+    // Double-ESC while busy forces cancellation of running tools.
+    const now = Date.now();
+    if (s.busy && now - s.lastEscTime < DOUBLE_ESC_WINDOW_MS) {
+      c.forceCancel();
+    } else {
+      c.interrupt();
+    }
+    s.lastEscTime = now;
+  }
 }

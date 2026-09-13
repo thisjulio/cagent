@@ -17,6 +17,7 @@ export async function runToolPipeline(
   ask: ToolAsk,
   bus: EventBus,
   hooks?: { run(event: import("@cagent/sdk").HookEvent): Promise<HookResponse[]> },
+  signal?: AbortSignal,
 ): Promise<{ output: string; isError?: boolean }> {
   const before = await hooks?.run({ phase: "before_tool", tool: tool.name, args }) ?? [];
   const blocking = before.find((response) => response.action === "deny" || response.action === "ask");
@@ -34,7 +35,7 @@ export async function runToolPipeline(
   }
   bus.emit("tools/pre", { tool: tool.name, args });
   try {
-    const result = await tool.execute(args);
+    const result = await tool.execute({ ...args, signal });
     bus.emit("tools/post", { tool: tool.name, result });
     await hooks?.run({ phase: "after_tool", tool: tool.name, args, result });
     return { ...result, output: appendCapped("", result.output, MAX_TOOL_OUTPUT_CHARS) };

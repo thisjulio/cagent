@@ -56,6 +56,7 @@ export type UIState = {
   inputKey: number;
   turnStartedAt: number | null;
   elapsedMs: number;
+  lastEscTime: number;
 }
 
 export type InputKey = {

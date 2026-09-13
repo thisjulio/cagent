@@ -19,6 +19,7 @@ export type TurnHost = {
   hooks: { run(event: import("@cagent/sdk").HookEvent): Promise<import("@cagent/sdk").HookResponse[]> };
   session: Session;
   interrupted: () => boolean;
+  signal?: AbortSignal;
   bump: () => void;
   bumpStream: () => void;
   maxTurns?: number;
@@ -39,6 +40,7 @@ export async function executeTurn(host: TurnHost): Promise<void> {
       ask: host.ask,
       bus: host.bus,
       hooks: host.hooks,
+      signal: host.signal,
       onText: (text) => {
         appendText(host, text);
         host.onText?.(text);
