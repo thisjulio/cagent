@@ -11,6 +11,8 @@ describe("slashSuggestions", () => {
   it("no match returns empty", () => expect(slashSuggestions("/zz")).toEqual([]));
   it("suggests discovered skills after /skill", () =>
     expect(slashSuggestions("/skill gr", ["grill-me", "grilling", "deploy"])).toEqual(["/skill grill-me", "/skill grilling"]));
+  it("suggests registered plugin commands", () =>
+    expect(slashSuggestions("/", [], ["memory"])).toContain("/memory"));
 });
 
 describe("subagent suggestions", () => {
