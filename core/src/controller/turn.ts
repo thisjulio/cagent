@@ -29,13 +29,14 @@ export type TurnHost = {
   onReasoning?: (text: string) => void;
   observability?: Observability;
   traceAttributes?: Record<string, string | number | boolean>;
+  onContextLimit?: () => Promise<void>;
 };
 
 export async function executeTurn(host: TurnHost): Promise<void> {
   let thinkingContent = "";
   let streamedTokens = 0;
   try {
-    let turn = await runAgentTurn(host, () => thinkingContent, (value) => { thinkingContent = value; }, () => streamedTokens, (value) => { streamedTokens = value; });
+    let turn = await runAgentTurnWithRecovery(host, () => thinkingContent, (value) => { thinkingContent = value; }, () => streamedTokens, (value) => { streamedTokens = value; });
     let continuations = 0;
     let previousTasks = taskSignature(host.state.tasks);
     while (shouldContinueTasks(host.state.tasks, host.interrupted) && continuations < 2) {
@@ -45,7 +46,7 @@ export async function executeTurn(host: TurnHost): Promise<void> {
         role: "user",
         content: "Checklist tasks remain unfinished. Continue with the next pending task. Mark exactly one task in_progress before using other tools. Do not summarize yet.",
       });
-      turn = await runAgentTurn(host, () => thinkingContent, (value) => { thinkingContent = value; }, () => streamedTokens, (value) => { streamedTokens = value; });
+      turn = await runAgentTurnWithRecovery(host, () => thinkingContent, (value) => { thinkingContent = value; }, () => streamedTokens, (value) => { streamedTokens = value; });
       continuations++;
       previousTasks = currentTasks;
     }
@@ -63,6 +64,29 @@ export async function executeTurn(host: TurnHost): Promise<void> {
   host.state.turnStartedAt = null;
   host.state.tokens = estimateTokens(host.messages);
   host.bump();
+}
+
+async function runAgentTurnWithRecovery(
+  host: TurnHost,
+  getThinking: () => string,
+  setThinking: (value: string) => void,
+  getTokens: () => number,
+  setTokens: (value: number) => void,
+) {
+  try {
+    return await runAgentTurn(host, getThinking, setThinking, getTokens, setTokens);
+  } catch (error) {
+    if (!host.onContextLimit || !isContextLimitError(error)) throw error;
+    host.state.notice = "context limit reached; compacting context...";
+    host.bump();
+    await host.onContextLimit();
+    return await runAgentTurn(host, getThinking, setThinking, getTokens, setTokens);
+  }
+}
+
+function isContextLimitError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /exceed_context_size|context size|context length|maximum context/i.test(message);
 }
 
 async function runAgentTurn(

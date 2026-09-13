@@ -168,11 +168,11 @@ export async function generateTitle(c: Controller, msg: string): Promise<string>
   return fallback.length > 40 ? fallback.slice(0, 40) + "…" : fallback;
 }
 
-export async function compact(c: Controller): Promise<void> {
+export async function compact(c: Controller, force = false): Promise<void> {
   const s = c.state;
   const threshold = s.threshold;
   const est = estimateTokens(c.messages);
-  if (est < threshold) {
+  if (!force && est < threshold) {
     c.observability?.recordEvent("compaction.skipped", { reason: "below_threshold", tokens: est, threshold });
     s.notice = `no compaction (${est} < ${threshold} tokens)`;
     c.bump();
