@@ -33,6 +33,7 @@ describe("local memory plugin", () => {
     await register({ name: "memory-local", config: { path: file, retrieval: true }, observability: {} as never, registerTool: (tool) => tools.push(tool.name), registerHook: () => {}, registerProvider: () => {}, registerSubagent: () => {}, emit: () => {}, on: (event, handler) => handlers.set(event, handler), promptSection: () => {}, registerCommandSource: () => {} });
     expect(tools).toContain("memory_add");
     handlers.get("turn.completed")?.({ content: "We always use bun test." });
+    handlers.get("tool.completed")?.({ data: { content: "Always run bun test before release." } });
     const pending = JSON.parse(fs.readFileSync(file, "utf8")); expect(pending[0].status).toBe("pending");
   });
 });
