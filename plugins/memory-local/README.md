@@ -32,7 +32,7 @@ Forgetting and restoring require explicit confirmation. Backup files should be p
 
 ## Embeddings
 
-The baseline is `intfloat/multilingual-e5-small` through Transformers.js. Model artifacts must be prepared locally; runtime operation never downloads them. Embeddings are loaded lazily, record model metadata, and are refreshed by explicit reindexing.
+The baseline is `intfloat/multilingual-e5-small` through Transformers.js. The downloaded int8 artifact is stored at `~/.cache/cagent/models/Xenova/multilingual-e5-small`; configure that directory as `model_path`. Runtime operation never downloads models. Embeddings are loaded lazily, record model metadata, and are refreshed by explicit reindexing. Artifact SHA-256: `4d24e2bc01a447951524466ef533e52944bf48509e6552810bcee1a2711cb02c`.
 
 ## Support and limitations
 
