@@ -20,6 +20,7 @@ import { restoreTasks } from "../tasks";
 import { taskAwareTools, updateTasks as updateTaskState } from "./task-actions";
 import type { CustomCommand } from "../commands/types";
 import { runToolPipeline } from "../tools";
+import { submitMessage } from "./submission";
 export class Controller {
   state: UIState;
   messages: Message[];
@@ -42,6 +43,12 @@ export class Controller {
   private abortController: AbortController | null = null;
   envStamp: number = Date.now();
   private askResolver: ((ok: boolean) => void) | null = null;
+  get config(): ControllerDeps["config"] { return this.deps.config; }
+  get bus(): ControllerDeps["bus"] { return this.deps.bus; }
+  isInterrupted(): boolean { return this.interrupted; }
+  get signal(): AbortSignal { return this.abortController?.signal ?? new AbortController().signal; }
+  resetTurn(): void { this.interrupted = false; this.abortController = new AbortController(); }
+  bumpStreamNow(): void { this.bumpStream(); }
 
   private agentNames(): string[] {
     return this.deps.registry.subagents().map((agent) => agent.name);
@@ -250,53 +257,7 @@ export class Controller {
       await this.submitSubagent(mention.name, mention.task, text);
       return;
     }
-    const s = this.state;
-    appendChat(s, { kind: "user", content: text });
-    s.busy = true;
-    s.turnStartedAt = Date.now();
-    s.elapsedMs = 0;
-    this.interrupted = false;
-    this.abortController = new AbortController();
-    this.session.append({ ts: Date.now(), type: "user", payload: { content: text } });
-    this.messages.push({ role: "user", content: text });
-    this.envStamp = addEnvironmentContext(this.messages, this.envStamp);
-    s.tokens = this.estimateTokens();
-    if (estimateTokens(this.messages) >= s.threshold) {
-      try { await compact(this); } catch (e) { s.notice = `compaction failed: ${e instanceof Error ? e.message : String(e)}`; }
-    }
-    this.bump();
-    const titlePromise = s.title
-      ? Promise.resolve<void>()
-      : generateTitle(this, text).then((t) => {
-          s.title = t;
-          this.session.append({ ts: Date.now(), type: "meta", payload: { kind: "title", title: t } });
-          this.bump();
-        });
-    const timer = setInterval(() => {
-      if (!s.turnStartedAt) return;
-      s.elapsedMs = Date.now() - s.turnStartedAt;
-      this.bump();
-    }, 500);
-    await Promise.all([executeTurn({
-      state: s,
-      adapter: this.adapter,
-      model: splitRoute(s.model)[1],
-      messages: this.messages,
-      tools: taskAwareTools(this),
-      allowlist: this.deps.config.allowlist,
-      ask: this.ask,
-      bus: this.deps.bus,
-      hooks: this.deps.registry.hooks,
-      session: this.session,
-      interrupted: () => this.interrupted,
-      signal: this.abortController.signal,
-      maxTurns: this.maxTurns,
-      maxToolCalls: this.maxToolCalls,
-      onText: this.onText,
-      onReasoning: this.onReasoning,
-      bump: () => this.bump(),
-      bumpStream: () => this.bumpStream(),
-    }), titlePromise]).finally(() => clearInterval(timer));
+    await submitMessage(this, text);
   }
 
   ask: ToolAsk = async (tool: ToolDefinition, args: ToolArgs) => {

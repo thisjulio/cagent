@@ -1,113 +1,9 @@
-import { toChatMessages, type LlmCallOptions, type LlmChunk, type Plugin, type ProviderAdapter, type ToolOverrides } from "@cagent/sdk";
+import { toChatMessages, type LlmCallOptions, type LlmChunk, type Plugin, type ProviderAdapter } from "@cagent/sdk";
 import { addAgentPrompt } from "./agent-prompt";
+import { baseUrl, checkedJson, contextSize, headers, modelKey, toolPayload, validToolArguments, type LlamaConfig } from "./protocol";
+import { LLAMA_TOOL_OVERRIDES } from "./tools";
 
-interface Config {
-  url?: string;
-  api_key?: string;
-  timeout_ms?: number;
-  agent_prompt?: string;
-  inject_agent_prompt?: boolean;
-}
-
-function contextSize(json: Record<string, unknown>): number | undefined {
-  const settings = json.default_generation_settings;
-  if (!settings || typeof settings !== "object") return undefined;
-  const direct = (settings as { n_ctx?: unknown }).n_ctx;
-  const params = (settings as { params?: unknown }).params;
-  const nested = params && typeof params === "object"
-    ? (params as { n_ctx?: unknown }).n_ctx
-    : undefined;
-  const value = direct ?? nested;
-  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : undefined;
-}
-
-function baseUrl(config: Config): string {
-  return String(config.url ?? "http://localhost:8080").replace(/\/$/, "");
-}
-
-function headers(config: Config): Record<string, string> {
-  return {
-    "Content-Type": "application/json",
-    ...(config.api_key ? { Authorization: `Bearer ${config.api_key}` } : {}),
-  };
-}
-
-async function checkedJson(response: Response): Promise<Record<string, unknown>> {
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`llama-server respondeu ${response.status}: ${body.slice(0, 500)}`);
-  }
-  return (await response.json()) as Record<string, unknown>;
-}
-
-function toolPayload(request: LlmCallOptions): unknown[] | undefined {
-  if (!request.tools.length) return undefined;
-  return request.tools.map((tool) => ({
-    type: "function",
-    function: { name: tool.name, description: tool.description, parameters: tool.parameters },
-  }));
-}
-
-function modelKey(id: string): string {
-  const cut = Math.max(id.lastIndexOf("/"), id.lastIndexOf("\\"));
-  return cut === -1 ? id : id.slice(cut + 1);
-}
-
-function validToolArguments(argumentsText: string): string {
-  const plain = argumentsText.trim().replace(/^```(?:json)?\s*|\s*```$/gi, "").trim();
-  const candidates = [argumentsText.trim(), plain, plain.replace(/,\s*([}\]])/g, "$1")];
-  for (const candidate of candidates) {
-    if (!candidate) continue;
-    try {
-      JSON.parse(candidate);
-      return candidate;
-    } catch {
-      // Try the next low-risk normalization. Never invent tool arguments.
-    }
-  }
-  return argumentsText;
-}
-
-const LLAMA_TOOL_OVERRIDES: ToolOverrides = {
-  edit_file: {
-    name: "edit_file",
-    description:
-      "Edits an existing file using one JSON object with path and blocks. blocks MUST contain exact delimiters: <<< SEARCH\\ntext to find\\n>>>\\n<<< REPLACE\\nreplacement text\\n>>>. Read the file first. Do not use markdown fences, *** patches, shell commands, or conversational text.",
-    parameters: {
-      type: "object",
-      properties: {
-        path: { type: "string", description: "File path to edit" },
-        blocks: {
-          type: "string",
-          description:
-            "Exact SEARCH/REPLACE blocks. Example: <<< SEARCH\\nold text\\n>>>\\n<<< REPLACE\\nnew text\\n>>>",
-        },
-      },
-      required: ["path", "blocks"],
-      additionalProperties: false,
-    },
-  },
-  write_file: {
-    name: "write_file",
-    description:
-      "Writes a complete file. Return one valid JSON object with exactly {\"path\":\"...\",\"content\":\"...\"}. Escape newlines inside content as \\n; do not use markdown fences.",
-    parameters: {
-      type: "object",
-      properties: {
-        path: { type: "string", description: "Workspace-relative or absolute file path" },
-        content: { type: "string", description: "Complete file content; preserve it as a JSON string" },
-      },
-      required: ["path", "content"],
-      additionalProperties: false,
-    },
-  },
-};
-
-function toolOverrides(): ToolOverrides {
-  return LLAMA_TOOL_OVERRIDES;
-}
-
-async function* streamChatCompletions(request: LlmCallOptions, config: Config): AsyncGenerator<LlmChunk> {
+async function* streamChatCompletions(request: LlmCallOptions, config: LlamaConfig): AsyncGenerator<LlmChunk> {
   const root = baseUrl(config);
   const fetchOptions = config.timeout_ms ? { signal: AbortSignal.timeout(config.timeout_ms) } : {};
   const tools = toolPayload(request);
@@ -203,7 +99,7 @@ async function* streamChatCompletions(request: LlmCallOptions, config: Config): 
   }
 }
 
-export function createAdapter(config: Config = {}): ProviderAdapter {
+export function createAdapter(config: LlamaConfig = {}): ProviderAdapter {
   // ponytail: llama-server lists models by full path, but the picker wants only the name.
   // prepare_call maps the name back to the full id because the server rejects anything else.
   const modelIds = new Map<string, string>();
@@ -251,7 +147,7 @@ export function createAdapter(config: Config = {}): ProviderAdapter {
 }
 
 const register: Plugin = (ctx) => {
-  ctx.registerProvider("llama.cpp", createAdapter(ctx.config as Config));
+  ctx.registerProvider("llama.cpp", createAdapter(ctx.config as LlamaConfig));
 };
 
 export default register;
