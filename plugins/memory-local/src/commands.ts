@@ -12,10 +12,15 @@ export function memoryTools(file: string, state: { retrieval: boolean }): ToolDe
     tool("memory_ignore", "Ignore a pending memory.", { id: "string" }, async (args) => update(file, String(args.id), { status: "ignored" })),
     tool("memory_archive", "Archive a memory without deleting it.", { id: "string" }, async (args) => update(file, String(args.id), { status: "archived" })),
     tool("memory_edit", "Edit a memory; edited entries remain pending.", { id: "string", content: "string" }, async (args) => update(file, String(args.id), { content: String(args.content ?? ""), status: "pending" })),
-    tool("memory_forget", "Permanently delete a memory.", { id: "string" }, async (args) => { const entries = loadEntries(file); saveEntries(file, entries.filter((entry) => entry.id !== String(args.id))); return { output: "Memory forgotten" }; }),
+    tool("memory_forget", "Permanently delete a memory after explicit confirmation.", { id: "string", confirm: "boolean" }, async (args) => {
+      if (args.confirm !== true) return { output: "ERROR CONFIRMATION_REQUIRED — pass confirm=true to permanently forget a memory" };
+      const entries = loadEntries(file); const next = entries.filter((entry) => entry.id !== String(args.id)); saveEntries(file, next);
+      return { output: next.length === entries.length ? "Memory not found" : "Memory forgotten" };
+    }),
     tool("memory_pending", "List pending memory suggestions.", {}, async () => output(loadEntries(file).filter((entry) => entry.status === "pending"))),
     tool("memory_status", "Show local memory status.", {}, async () => ({ output: `Memory plugin: enabled\nRetrieval: ${state.retrieval ? "enabled" : "disabled"}\nEntries: ${loadEntries(file).length}\nNetwork: disabled` })),
     tool("memory_diagnostics", "Show safe local memory diagnostics.", {}, async () => ({ output: `Storage: ${file}\nRetrieval: ${state.retrieval ? "enabled" : "disabled"}\nEmbedding: lexical fallback\nNetwork: disabled` })),
+    tool("memory_conflicts", "List memories marked as conflicting.", {}, async () => output(loadEntries(file).filter((entry) => entry.conflict === true))),
     tool("memory_retrieval", "Enable or disable retrieval for this session.", { enabled: "boolean" }, async (args) => { state.retrieval = args.enabled === true; return { output: `Retrieval ${state.retrieval ? "enabled" : "disabled"}` }; }),
   ];
 }

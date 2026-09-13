@@ -23,7 +23,8 @@ describe("local memory plugin", () => {
     expect((await tools.memory_search.execute({ query: "bun test" })).output).toContain("Use bun test");
     await tools.memory_archive.execute({ id });
     expect((await tools.memory_search.execute({ query: "bun test" })).output).toContain("No memories");
-    await tools.memory_forget.execute({ id });
+    expect((await tools.memory_forget.execute({ id })).output).toContain("CONFIRMATION_REQUIRED");
+    await tools.memory_forget.execute({ id, confirm: true });
     expect((await tools.memory_show.execute({ id })).output).toContain("No memories");
   });
 
