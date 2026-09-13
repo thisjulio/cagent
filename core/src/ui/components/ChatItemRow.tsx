@@ -40,7 +40,7 @@ function AssistantRow({ it, streaming, showAgentLabel }: { it: ChatItem; streami
     );
   }
   return (
-    <box paddingX={2} marginBottom={1} width="100%" flexDirection="column" flexShrink={0}>
+    <box paddingX={2} width="100%" flexDirection="column" flexShrink={0}>
       {showAgentLabel ? <text fg="#d97757">cagent{it.subagent ? ` → @${it.subagent}` : ""} <span attributes={TextAttributes.DIM}>{time(it.timestamp)}</span></text> : null}
       <box paddingLeft={showAgentLabel ? 0 : 0} flexDirection="row">
         <text fg="#d97757">└─ </text>
@@ -55,10 +55,10 @@ function AssistantRow({ it, streaming, showAgentLabel }: { it: ChatItem; streami
 function ThinkingRow({ it }: { it: ChatItem }) {
   const content = it.content ?? "";
   const visible = content.length > MAX_THINKING_CHARS ? content.slice(-MAX_THINKING_CHARS) : content;
-  const allLines = visible.split("\n");
+  const allLines = visible.replace(/\n+$/, "").split("\n");
   const lines = allLines.slice(-MAX_THINKING_LINES);
   return (
-    <box paddingX={2} marginBottom={1} width="100%" flexDirection="column" flexShrink={0}>
+    <box paddingX={2} width="100%" flexDirection="column" flexShrink={0}>
       <text>
         <span fg="#d97757">├─ </span><strong fg="#ffffff">thinking</strong>
       </text>

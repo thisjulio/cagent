@@ -51,6 +51,7 @@ describe("OpenTUI render", () => {
     expect(out).toContain("├─");
     expect(out).toContain("│");
     expect(out).toContain("private reasoning");
+    expect(out).not.toContain("private reasoning\n\n");
     act(() => setup.renderer.destroy());
   });
 

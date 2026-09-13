@@ -30,7 +30,10 @@ export function InputArea({
 
   useEffect(() => {
     const current = textarea.current;
-    if (current && current.plainText !== input) current.setText(input);
+    if (current && current.plainText !== input) {
+      current.setText(input);
+      current.cursorOffset = input.length;
+    }
   }, [input, inputKey]);
 
   return (
@@ -69,7 +72,10 @@ export function InputArea({
             if (key.name === "up" && textarea.current?.cursorOffset === 0 && onUpArrow) {
               key.preventDefault();
               const recalled = onUpArrow();
-              if (recalled !== undefined) textarea.current?.setText(recalled);
+              if (recalled !== undefined && textarea.current) {
+                textarea.current.setText(recalled);
+                textarea.current.cursorOffset = recalled.length;
+              }
             }
           }}
           placeholder="type your next instruction"
@@ -91,5 +97,8 @@ export function InputArea({
 async function paste(textarea: TextareaRenderable | null, plain: boolean): Promise<void> {
   if (!textarea) return;
   const value = await readClipboard();
-  if (value !== undefined) textarea.insertText(plain ? value : value);
+  if (value !== undefined) {
+    textarea.insertText(plain ? value : value);
+    textarea.cursorOffset = textarea.plainText.length;
+  }
 }
