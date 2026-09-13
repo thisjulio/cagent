@@ -37,11 +37,11 @@ async function generatePKCE(): Promise<{ verifier: string; challenge: string }> 
   const bytes: number[] = [];
   while (bytes.length < 43) {
     for (const byte of crypto.getRandomValues(new Uint8Array(43))) {
-      if (byte < limit) bytes.push(byte);
+      if (byte < limit) bytes.push(byte % chars.length);
       if (bytes.length === 43) break;
     }
   }
-  const verifier = bytes.map((byte) => chars[byte % chars.length]).join("");
+  const verifier = bytes.map((byte) => chars[byte]).join("");
   const challenge = base64UrlEncode(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier)));
   return { verifier, challenge };
 }
