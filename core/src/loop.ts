@@ -157,7 +157,9 @@ export async function runTurn(opts: TurnOpts): Promise<TurnResult> {
       if (opts.interrupted?.()) break;
     }
   }
-  opts.bus.emit("turn.completed", workflowPayload(opts, { content: records.filter((record) => record.role === "assistant").map((record) => record.content).join("\n") }));
+  opts.bus.emit("turn.completed", workflowPayload(opts, {
+    content: [lastUserMessage(opts.messages), ...records.filter((record) => record.role === "assistant").map((record) => record.content)].filter(Boolean).join("\n"),
+  }));
   return { records, interrupted: opts.interrupted?.() ?? false, inputTokens };
   }, opts.traceAttributes);
 }

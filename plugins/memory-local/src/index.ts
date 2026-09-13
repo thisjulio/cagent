@@ -5,7 +5,7 @@ import { loadEntries, projectIdentity, saveEntries, storageFile } from "./storag
 import { rankEntries } from "./retrieval";
 
 const register: Plugin = (ctx) => {
-  const file = storageFile(ctx.config);
+  const file = typeof ctx.config.path === "string" ? storageFile(ctx.config) : ctx.storage.path("memory.json");
   const state = { retrieval: ctx.config.retrieval === true, capture: ctx.config.capture !== false };
   for (const tool of memoryTools(file, state)) ctx.registerTool(tool);
   ctx.on("turn.completed", (payload) => {

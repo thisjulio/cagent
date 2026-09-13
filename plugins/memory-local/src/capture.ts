@@ -2,7 +2,7 @@ import type { MemoryEntry, MemoryKind } from "./storage";
 
 const SECRET = /(api[_ -]?key|token|password|secret|bearer|private[_ -]?key|credential)\s*[:=]\s*\S+/i;
 const PERSONAL = /\b(?:cpf|ssn|email|e-mail|telefone|phone)\s*[:=]\s*\S+/i;
-const SIGNAL = /\b(always|never|use|run|prefer|decided|convention| padrão|decidimos|preferimos)\b/i;
+const SIGNAL = /\b(always|never|use|run|prefer|decided|convention|sempre|nunca|executar|padrão|decidimos|preferimos)\b/i;
 
 export function captureCandidates(text: string, source: string, project: string, existing: MemoryEntry[], limit = 2): MemoryEntry[] {
   return text.split(/[\n.!?]+/).map((part) => part.trim()).filter((part) => part.length >= 12 && part.length <= 500)
