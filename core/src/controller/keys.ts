@@ -24,6 +24,15 @@ export function onKey(c: Controller, key: InputKey, input: string): void {
     c.bump();
     return;
   }
+  const memory = s.chat?.findLast((item) => item.kind === "memory" && item.memoryStatus === "pending");
+  if (memory && key.return) {
+    c.toggleMemoryDetails();
+    return;
+  }
+  if (memory && input && ["a", "e", "i"].includes(input)) {
+    void c.reviewMemory(memory.memoryId ?? "", input === "a" ? "approve" : input === "i" ? "ignore" : "edit");
+    return;
+  }
   if (s.modelPicker) {
     if (key.escape) {
       c.observability?.recordEvent("model_picker.cancelled");
