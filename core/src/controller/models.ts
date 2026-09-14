@@ -3,21 +3,42 @@ import type { Controller } from "./controller";
 
 // ponytail: providers that fail list_models are ignored; duplicate model names across providers use the first registration.
 export async function openModelPicker(c: Controller): Promise<void> {
-  const entries = await Promise.all(
-    [...c.deps.registry.providers()].map(async ([route, a]) => {
-      try {
-        return { route, models: await a.list_models() };
-      } catch {
-        return null;
-      }
-    }),
-  );
+  const entries = await discoverModels(c);
   c.state.modelPicker = { entries: entries.filter((e) => e !== null), query: "" };
   c.observability?.recordEvent("model_picker.opened", {
     "provider.count": c.deps.registry.providers().length,
     "model.count": c.state.modelPicker.entries.reduce((count, entry) => count + entry.models.length, 0),
   });
   c.bump();
+}
+
+export async function initializeModel(c: Controller, configured?: string): Promise<void> {
+  const entries = await discoverModels(c);
+  const configuredEntry = configured && entries.find((e) => e.route === splitRoute(configured)[0] && e.models.includes(splitRoute(configured)[1]));
+  const first = entries.find((entry) => entry.models.length);
+  const route = configured ? (configuredEntry ? configured : "") : first ? `${first.route}/${first.models[0]}` : "";
+  if (!route) {
+    c.state.notice = configured ? `Configured model is unavailable: ${configured}` : "No models available";
+    c.bump();
+    return;
+  }
+  const [provider, model] = splitRoute(route);
+  const adapter = c.registry.provider(provider);
+  if (!adapter) return;
+  c.adapter = adapter;
+  c.state.model = route;
+  c.state.contextWindow = (await adapter.context_window?.(model)) ?? c.state.contextWindow;
+  c.state.tokens = c.estimateCurrentTokens();
+  c.bump();
+}
+
+async function discoverModels(c: Controller): Promise<{ route: string; models: string[] }[]> {
+  const entries = await Promise.all(
+    [...c.registry.providers()].map(async ([route, a]) => {
+      try { return { route, models: await a.list_models() }; } catch { return null; }
+    }),
+  );
+  return entries.filter((entry): entry is { route: string; models: string[] } => entry !== null);
 }
 
 export async function pickModel(c: Controller, route: string): Promise<void> {

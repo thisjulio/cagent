@@ -96,4 +96,9 @@ if [[ "$modify_path" == true && ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
   esac
 fi
 
-echo "Run: $APP"
+if [[ ":$PATH:" == *":$INSTALL_DIR:"* ]]; then
+  echo "Run: $APP"
+else
+  echo "Open a new terminal, or run: export PATH=\"$INSTALL_DIR:\$PATH\""
+  echo "Then run: $APP"
+fi

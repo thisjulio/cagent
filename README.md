@@ -19,13 +19,17 @@ curl -fsSL https://raw.githubusercontent.com/thisjulio/cagent/main/install.sh | 
 ```
 
 The installer detects the architecture, downloads the latest release binary,
-verifies its SHA-256 checksum, and installs `cagent` in `~/.local/bin`. Open a
-new terminal after installation, or run:
+verifies its SHA-256 checksum, and installs `cagent` in `~/.local/bin`. It adds
+that directory to the shell startup file, but a script cannot change the `PATH`
+of the shell that called it. Open a new terminal after installation, or run:
 
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
 cagent
 ```
+
+You can also run the installed binary immediately with
+`"$HOME/.local/bin/cagent"`.
 
 To install a specific version:
 

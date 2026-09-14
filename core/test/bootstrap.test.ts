@@ -33,4 +33,14 @@ describe("resolveRoute", () => {
     registry.registerProvider("openai", adapter);
     await expect(resolveRoute({} as ControllerDeps["config"], registry)).resolves.toBe("openai/m1");
   });
+
+  it("without config: keeps the first registered provider when others are available", async () => {
+    const registry = new Registry();
+    registry.registerProvider("openai", adapter);
+    registry.registerProvider("llama.cpp", {
+      ...adapter,
+      list_models: async () => ["local-model"],
+    });
+    await expect(resolveRoute({} as ControllerDeps["config"], registry)).resolves.toBe("openai/m1");
+  });
 });

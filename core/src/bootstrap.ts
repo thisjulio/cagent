@@ -24,14 +24,20 @@ import type { CliOptions } from "./cli-args";
 import fs from "node:fs";
 import path from "node:path";
 import { createLocalObservability } from "./local-telemetry";
+import { initializeModel } from "./controller/models";
 
 export async function resolveRoute(config: AppConfig, registry: Registry): Promise<string> {
   if (config.model) {
     const [prov, model] = splitRoute(config.model);
     const adapter = registry.provider(prov);
     if (!adapter) throw new Error(`provider not found: ${prov}`);
-    const models = await adapter.list_models();
-    if (!models.includes(model)) throw new Error(`model ${model} does not exist in provider ${prov} (available: ${models.join(", ")})`);
+    try {
+      const models = await adapter.list_models();
+      if (!models.includes(model)) throw new Error(`model ${model} does not exist in provider ${prov} (available: ${models.join(", ")})`);
+    } catch (error) {
+      if (!isNetworkError(error)) throw error;
+      console.error(`Unable to list ${prov} models; using configured model ${model}.`);
+    }
     return config.model;
   }
   const first = registry.llmRoute();
@@ -39,6 +45,11 @@ export async function resolveRoute(config: AppConfig, registry: Registry): Promi
   const models = await registry.provider(first)!.list_models();
   if (!models.length) throw new Error("(no provider - nothing to do)");
   return `${first}/${models[0]}`;
+}
+
+function isNetworkError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  return /unable to connect|network|fetch failed|timed out|timeout/i.test(error.message);
 }
 
 function contextFiles(options: CliOptions): string {
@@ -99,16 +110,15 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
     skills.byName = refreshed.byName;
   } : undefined;
   if (skills) registry.registerTool(createReadSkillTool(skills));
-  let route: string;
-  try {
+  let route = "";
+  let adapter = registry.provider(registry.llmRoute() ?? "");
+  if (options.headless) {
     route = await resolveRoute(config, registry);
-  } catch (e) {
-    console.error(e instanceof Error ? e.message : String(e));
-    process.exit(1);
+    adapter = registry.provider(splitRoute(route)[0]);
   }
-  const adapter = registry.provider(splitRoute(route)[0])!;
-  telemetry.recordEvent("route.resolved", { "model.route": route });
-  const contextWindow = await adapter.context_window?.(splitRoute(route)[1]);
+  if (!adapter) throw new Error("(no provider - nothing to do)");
+  if (route) telemetry.recordEvent("route.resolved", { "model.route": route });
+  const contextWindow = route ? await adapter.context_window?.(splitRoute(route)[1]) : 60_000;
   let ask: ToolAsk = async () => true;
   const executeSubagent = createSubagentExecutor({
     find: (name) => registry.subagent(name),
@@ -178,6 +188,10 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
   }
   const renderer = await createCliRenderer({ exitOnCtrlC: false });
   createRoot(renderer).render(React.createElement(App, { c }));
+  void initializeModel(c, config.model).catch((error) => {
+    c.state.notice = error instanceof Error ? error.message : String(error);
+    c.bump();
+  });
 }
 
 async function runHeadless(c: Controller, options: CliOptions, telemetry: Observability): Promise<void> {

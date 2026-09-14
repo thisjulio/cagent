@@ -131,7 +131,7 @@ export class Controller {
   }
 
   async submit(text: string): Promise<void> {
-    if (!text || this.state.busy) return;
+    if (!text || !this.state.model || this.state.busy) return;
     this.state.input = "";
     this.state.inputKey += 1;
     if (text.startsWith("$") && text.slice(1).trim()) {
