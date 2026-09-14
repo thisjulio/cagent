@@ -31,13 +31,14 @@ export async function submitMessage(controller: Controller, text: string): Promi
     controller.session.append({ ts: Date.now(), type: "meta", payload: { kind: "title", title } });
     controller.bump();
   });
+  await titlePromise;
   const timer = setInterval(() => { if (state.turnStartedAt) { state.elapsedMs = Date.now() - state.turnStartedAt; controller.bump(); } }, 500);
-  await Promise.all([executeTurn({ state, adapter: controller.adapter, model: splitRoute(state.model)[1], messages: controller.messages, tools: taskAwareTools(controller), allowlist: controller.config.allowlist, ask: controller.ask, bus: controller.bus, hooks: controller.registry.hooks, session: controller.session, interrupted: () => controller.isInterrupted(), signal: controller.signal, maxTurns: controller.maxTurns, maxToolCalls: controller.maxToolCalls, onText: controller.onText, onReasoning: controller.onReasoning, bump: controller.bump, bumpStream: () => controller.bumpStreamNow(), observability: controller.observability, onContextLimit: () => {
+  await executeTurn({ state, adapter: controller.adapter, model: splitRoute(state.model)[1], messages: controller.messages, tools: taskAwareTools(controller), allowlist: controller.config.allowlist, ask: controller.ask, bus: controller.bus, hooks: controller.registry.hooks, session: controller.session, interrupted: () => controller.isInterrupted(), signal: controller.signal, maxTurns: controller.maxTurns, maxToolCalls: controller.maxToolCalls, onText: controller.onText, onReasoning: controller.onReasoning, bump: controller.bump, bumpStream: () => controller.bumpStreamNow(), observability: controller.observability, onContextLimit: () => {
     if (controller.config.compact_auto === false) {
       controller.state.notice = "automatic compaction disabled; use /compact";
       controller.bump();
       return Promise.resolve();
     }
     return compact(controller, true);
-  }, traceAttributes: { "turn.id": turnId } }), titlePromise]).finally(() => clearInterval(timer));
+  }, traceAttributes: { "turn.id": turnId } }).finally(() => clearInterval(timer));
 }

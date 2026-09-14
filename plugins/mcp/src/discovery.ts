@@ -1,6 +1,5 @@
 import fs from "node:fs";
 import path from "node:path";
-import os from "node:os";
 import type { McpServerConfig } from "./types.ts";
 
 // ponytail: Discovers MCP servers from .mcp.json files in Claude Code/Codex format.
@@ -44,13 +43,14 @@ function parseMcpJson(filePath: string): McpServerConfig[] {
   }
 }
 
-export function discoverMcpServers(cwd: string): McpServerConfig[] {
+export function discoverMcpServers(cwd: string, globalHome?: string): McpServerConfig[] {
   // Project-level .mcp.json takes precedence
   const projectConfig = path.join(cwd, ".mcp.json");
   const projectServers = parseMcpJson(projectConfig);
   if (projectServers.length > 0) return projectServers;
 
   // Fallback to global ~/.mcp.json
-  const globalConfig = path.join(os.homedir(), ".mcp.json");
+  if (!globalHome) return [];
+  const globalConfig = path.join(globalHome, ".mcp.json");
   return parseMcpJson(globalConfig);
 }

@@ -3,7 +3,8 @@ import { runSlash } from "../commands/commands";
 import { inputSuggestions } from "../commands/suggest";
 import { Session } from "../session";
 import type { ToolAsk } from "../tools";
-import { generateTitle, openSessions, renameSession, startNewSession, restoreSession, toChatItems, toTitle, compact } from "./sessions";
+import { generateTitle, toChatItems, toTitle } from "./sessions";
+import { compactSession, newSession, open, rename, resumeSession } from "./session-actions";
 import { openModelPicker, pickModel } from "./models";
 import { toolDenied, toolPost, toolPre, toolStream } from "./tool-events";
 import { onKey } from "./keys";
@@ -182,42 +183,15 @@ export class Controller {
     toggleToolExpandAction(this.state, index, () => this.bump());
   }
 
-  newSession(): void {
-    startNewSession(this);
-  }
+  newSession(): void { newSession(this); }
 
-  resumeSession(id: string): void {
-    restoreSession(this, id);
-  }
+  resumeSession(id: string): void { resumeSession(this, id); }
 
-  renameSession(name: string): void {
-    renameSession(this, name);
-  }
+  renameSession(name: string): void { rename(this, name); }
 
-  openSessions(): void {
-    openSessions(this);
-  }
+  openSessions(): void { open(this); }
 
-  compact(instructions?: string): Promise<void> {
-    if (this.state.busy) return Promise.resolve();
-    this.state.busy = true;
-    this.state.turnStartedAt = Date.now();
-    this.state.elapsedMs = 0;
-    this.bump();
-    const timer = setInterval(() => {
-      if (this.state.turnStartedAt) {
-        this.state.elapsedMs = Date.now() - this.state.turnStartedAt;
-        this.bump();
-      }
-    }, 500);
-    return compact(this, true, instructions).finally(() => {
-      clearInterval(timer);
-      this.state.busy = false;
-      this.state.elapsedMs = this.state.turnStartedAt ? Date.now() - this.state.turnStartedAt : 0;
-      this.state.turnStartedAt = null;
-      this.bump();
-    });
-  }
+  compact(instructions?: string): Promise<void> { return compactSession(this, instructions); }
 
   openModelPicker(): Promise<void> {
     return openModelPicker(this);

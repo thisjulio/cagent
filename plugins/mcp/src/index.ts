@@ -102,7 +102,7 @@ const register: Plugin = async (ctx) => {
   // ponytail: Merge config servers with .mcp.json discovered servers.
   // Config servers take precedence for the same name.
   const configServers = resolveServers(ctx.config);
-  const discovered = discoverMcpServers(process.cwd());
+  const discovered = discoverMcpServers(process.cwd(), process.env.CAGENT_MCP_GLOBAL_HOME);
   const allServers = mergeServers(discovered, configServers);
   if (allServers.length === 0) return;
   const logLevel = (ctx.config.log_level as "silent" | "error" | "warn" | "info" | "debug") || "silent";
