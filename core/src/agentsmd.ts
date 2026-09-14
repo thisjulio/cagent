@@ -2,7 +2,6 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-// ponytail: walk up parent directories for the first AGENTS.md/CLAUDE.md (AGENTS wins in the same directory); nested precedence follows Codex if subprojects are imported.
 export function loadAgentsMd(cwd: string, instructions: string[] = []): string | null {
   const parts: string[] = [];
   for (const project of findProjectDocs(cwd)) {
@@ -11,10 +10,7 @@ export function loadAgentsMd(cwd: string, instructions: string[] = []): string |
   for (const rule of findScopedRules(cwd)) {
     parts.push(`# scoped rule (${rule.file})\n${rule.content}`);
   }
-  for (const file of [
-    path.join(os.homedir(), ".cagent", "AGENTS.md"),
-    path.join(os.homedir(), ".claude", "CLAUDE.md"),
-  ]) {
+  for (const file of [path.join(os.homedir(), ".cagent", "AGENTS.md")]) {
     if (fs.existsSync(file)) {
       parts.push(`# ${path.basename(file)} (global: ${file})\n${fs.readFileSync(file, "utf8")}`);
       break;
@@ -40,9 +36,7 @@ function findProjectDocs(cwd: string): { file: string; content: string }[] {
   const docs: { file: string; content: string }[] = [];
   for (const current of dirs) {
     const agents = path.join(current, "AGENTS.md");
-    const claude = path.join(current, "CLAUDE.md");
-    const file = fs.existsSync(agents) ? agents : fs.existsSync(claude) ? claude : null;
-    if (file) docs.push({ file, content: fs.readFileSync(file, "utf8") });
+    if (fs.existsSync(agents)) docs.push({ file: agents, content: fs.readFileSync(agents, "utf8") });
   }
   return docs;
 }
@@ -50,7 +44,7 @@ function findProjectDocs(cwd: string): { file: string; content: string }[] {
 function findScopedRules(cwd: string): { file: string; content: string }[] {
   const rules: { file: string; content: string }[] = [];
   for (const dir of ancestorDirs(cwd)) {
-    for (const root of [".cagent/rules", ".claude/rules"]) {
+    for (const root of [".cagent/rules"]) {
       const directory = path.join(dir, root);
       if (!fs.existsSync(directory)) continue;
       for (const file of walkMarkdown(directory).sort()) {

@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import crypto from "node:crypto";
-import { InMemoryObservability, type Attributes, type Observability, type Span } from "@cagent/sdk";
+import { noopObservability, type Attributes, type Observability, type Span } from "@cagent/sdk";
 
 type ResourceSnapshot = {
   rss_bytes: number;
@@ -153,5 +153,5 @@ export class LocalFileObservability implements Observability {
 }
 
 export function createLocalObservability(enabled: boolean, file?: string): Observability {
-  return enabled ? new LocalFileObservability(file) : new InMemoryObservability();
+  return enabled ? new LocalFileObservability(file) : noopObservability;
 }

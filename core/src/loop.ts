@@ -1,4 +1,4 @@
-import { applyToolOverrides, noopObservability, overrideNameMap, trace, type LlmCallOptions, type Message, type Observability, type ProviderAdapter, type ToolArgs, type ToolDefinition, type WorkflowEventPayload } from "@cagent/sdk";
+import { applyToolOverrides, noopObservability, overrideNameMap, trace, type LlmCallOptions, type Message, type Observability, type ProviderAdapter, type ToolArgs, type ToolDefinition, type ToolEvidence, type WorkflowEventPayload } from "@cagent/sdk";
 import type { EventBus } from "./events";
 import { runToolPipeline, type ToolAsk } from "./tools";
 import { appendCapped, MAX_RESPONSE_CHARS } from "./stream-buffer";
@@ -92,6 +92,7 @@ interface ToolLoopCtx {
   opts: TurnOpts;
   nameToCanonical: Record<string, string>;
   records: TurnRecord[];
+  evidence: ToolEvidence[];
 }
 
 async function runToolCall(ctx: ToolLoopCtx, tc: { id: string; name: string; arguments: string }): Promise<void> {
@@ -116,10 +117,12 @@ async function runToolCall(ctx: ToolLoopCtx, tc: { id: string; name: string; arg
     args,
     isError: result.isError,
   });
+  ctx.evidence.push(...(result.evidence ?? []));
   opts.bus.emit("tool.completed", workflowPayload(opts, {
     tool: tool?.name ?? tc.name,
     content: result.output.slice(0, 4000),
     isError: result.isError === true,
+    evidence: result.evidence,
   }));
 }
 
@@ -132,7 +135,7 @@ export async function runTurn(opts: TurnOpts): Promise<TurnResult> {
   const streamOpts: StreamOpts = { ...opts, tools: applyToolOverrides(opts.tools, overrides) };
   const records: TurnRecord[] = [];
   let inputTokens: number | undefined;
-  const ctx: ToolLoopCtx = { opts, nameToCanonical, records };
+  const ctx: ToolLoopCtx = { opts, nameToCanonical, records, evidence: [] };
   let turns = 0;
   let toolCalls = 0;
   const observability = opts.observability ?? noopObservability;
@@ -159,6 +162,8 @@ export async function runTurn(opts: TurnOpts): Promise<TurnResult> {
   }
   opts.bus.emit("turn.completed", workflowPayload(opts, {
     content: [lastUserMessage(opts.messages), ...records.filter((record) => record.role === "assistant").map((record) => record.content)].filter(Boolean).join("\n"),
+    toolContent: records.filter((record) => record.role === "tool" && !record.isError).map((record) => record.content).join("\n"),
+    evidence: ctx.evidence,
   }));
   return { records, interrupted: opts.interrupted?.() ?? false, inputTokens };
   }, opts.traceAttributes);

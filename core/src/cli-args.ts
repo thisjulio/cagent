@@ -70,7 +70,9 @@ export function parseCliArgs(args: string[], stdin = ""): CliOptions {
   }
   if (options.interactive && (options.nonInteractive || positional.length || stdin.trim())) throw new Error("--interactive cannot be combined with a prompt or --non-interactive");
   if (options.session && options.newSession) throw new Error("--session cannot be combined with --new-session");
-  if (options.maxTurns < 1 || options.maxToolCalls < 1) throw new Error("execution limits must be positive");
+  if (!Number.isInteger(options.maxTurns) || !Number.isInteger(options.maxToolCalls) || options.maxTurns < 1 || options.maxToolCalls < 1) {
+    throw new Error("execution limits must be positive integers");
+  }
   options.prompt = [stdin.trim(), ...positional].filter(Boolean).join("\n\n");
   return options;
 }

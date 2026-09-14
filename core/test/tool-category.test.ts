@@ -11,13 +11,14 @@ describe("classifyTool", () => {
     expect(classifyTool("search")).toBe("search");
     expect(classifyTool("search_ast")).toBe("search");
     expect(classifyTool("list_files")).toBe("search");
+    expect(classifyTool("memory_search")).toBe("search");
   });
 
   it("keeps specialized tools in their own categories", () => {
     expect(classifyTool("skill")).toBe("skill");
     expect(classifyTool("cagent-development")).toBe("generic");
     expect(classifyTool("subagent")).toBe("agent");
-    expect(classifyTool("mcp-filesystem-read_file")).toBe("mcp");
+    expect(classifyTool("mcp-filesystem-read_file")).toBe("read");
   });
 
   it("uses generic only for genuinely unknown tools", () => {

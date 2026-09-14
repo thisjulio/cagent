@@ -17,28 +17,23 @@ describe("buildSystemPrompt", () => {
 });
 
 describe("scoped rules", () => {
-  it("loads native and Claude rules with matching paths", () => {
+  it("loads native rules with matching paths", () => {
     const root = fs.mkdtempSync("/tmp/cagent-rules-");
     const target = path.join(root, "src");
     fs.mkdirSync(path.join(target, "nested"), { recursive: true });
     fs.mkdirSync(path.join(root, ".cagent/rules"), { recursive: true });
-    fs.mkdirSync(path.join(root, ".claude/rules"), { recursive: true });
     fs.writeFileSync(path.join(root, ".cagent/rules/base.md"), "native rule");
-    fs.writeFileSync(path.join(root, ".claude/rules/ts.md"), "---\npaths: [src/**]\n---\nClaude rule");
-    fs.writeFileSync(path.join(root, ".claude/rules/docs.md"), "---\npaths: [docs/**]\n---\nWrong rule");
     const loaded = loadAgentsMd(path.join(target, "nested"))!;
     expect(loaded).toContain("native rule");
-    expect(loaded).toContain("Claude rule");
-    expect(loaded).not.toContain("Wrong rule");
   });
 });
 
-describe("AGENTS.md: CLAUDE.md fallback + config instructions", () => {
+describe("AGENTS.md + config instructions", () => {
   const dir = fs.mkdtempSync("/tmp/cagent-md-");
-  fs.writeFileSync(path.join(dir, "CLAUDE.md"), "claude rule");
+  fs.writeFileSync(path.join(dir, "AGENTS.md"), "native rule");
   fs.writeFileSync(path.join(dir, "extra.md"), "extra rules");
   const p = buildSystemPrompt(dir, new Map(), ["extra.md"]);
-  expect(p).toContain("claude rule");
+  expect(p).toContain("native rule");
   expect(p).toContain("extra rules");
 });
 

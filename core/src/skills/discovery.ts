@@ -6,8 +6,6 @@ import type { SkillCatalog, SkillRecord } from "./types";
 
 export function discoverSkills(cwd: string, roots: string[] = []): SkillCatalog {
   const candidates = roots.length ? roots : [
-    ".claude/skills",
-    path.join(os.homedir(), ".claude", "skills"),
     ".cagent/skills",
     path.join(os.homedir(), ".cagent", "skills"),
   ];

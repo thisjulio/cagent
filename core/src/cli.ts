@@ -9,7 +9,8 @@ export async function runCli(args: string[]): Promise<boolean> {
     await upgrade();
     return true;
   }
-  const stdin = args.includes("--help") || args.includes("-h") || args.includes("--version")
+  const hasPromptArgument = args.includes("--prompt") || args.includes("-p") || args.some((arg) => !arg.startsWith("-"));
+  const stdin = args.includes("--help") || args.includes("-h") || args.includes("--version") || hasPromptArgument
     ? ""
     : process.stdin.isTTY ? "" : await Bun.stdin.text();
   const options = parseCliArgs(args, stdin);
@@ -20,5 +21,8 @@ export async function runCli(args: string[]): Promise<boolean> {
     return true;
   }
   await bootstrap({ headless: options });
+  if (options.nonInteractive) {
+    process.exit(0);
+  }
   return true;
 }

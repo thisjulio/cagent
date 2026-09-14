@@ -19,7 +19,7 @@ export async function runToolPipeline(
   hooks?: { run(event: import("@cagent/sdk").HookEvent): Promise<HookResponse[]> },
   signal?: AbortSignal,
   observability: Observability = noopObservability,
-): Promise<{ output: string; isError?: boolean }> {
+): Promise<import("@cagent/sdk").ToolResult> {
   const before = await hooks?.run({ phase: "before_tool", tool: tool.name, args }) ?? [];
   const blocking = before.find((response) => response.action === "deny" || response.action === "ask");
   if (blocking) {
