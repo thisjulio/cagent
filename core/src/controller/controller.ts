@@ -181,23 +181,6 @@ export class Controller {
     toggleToolExpandAction(this.state, index, () => this.bump());
   }
 
-  async reviewMemory(id: string, action: "approve" | "ignore" | "edit"): Promise<void> {
-    const tool = this.registry.tool(action === "approve" ? "memory_approve" : action === "ignore" ? "memory_ignore" : "memory_edit");
-    if (!tool) return;
-    const result = await tool.execute({ id, ...(action === "edit" ? { content: this.state.chat.find((item) => item.memoryId === id)?.content ?? "" } : {}) });
-    const item = this.state.chat.find((entry) => entry.memoryId === id);
-    if (item && (action === "approve" || action === "ignore")) item.memoryStatus = action === "approve" ? "approved" : "ignored";
-    this.state.notice = result.output;
-    this.bump();
-  }
-
-  toggleMemoryDetails(): void {
-    const item = [...this.state.chat].reverse().find((entry) => entry.kind === "memory" && entry.memoryStatus === "pending");
-    if (!item) return;
-    item.expanded = !item.expanded;
-    this.bump();
-  }
-
   newSession(): void {
     startNewSession(this);
   }
@@ -215,7 +198,7 @@ export class Controller {
   }
 
   compact(): Promise<void> {
-    return compact(this);
+    return compact(this, true);
   }
 
   openModelPicker(): Promise<void> {

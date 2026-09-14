@@ -70,7 +70,7 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
   const started = performance.now();
   const loaded = loadConfig(process.cwd());
   const telemetry = options.observability ?? createLocalObservability(
-    (options.headless?.telemetry ?? options.cli?.telemetry ?? loaded.observability?.enabled) === true,
+    options.headless?.telemetry === true || options.cli?.telemetry === true || loaded.observability?.enabled === true,
     loaded.observability?.file,
   );
   telemetry.recordEvent("app.start", { interactive: !options.headless });
@@ -87,6 +87,7 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
     loaders: options.pluginLoaders,
     observability: telemetry,
   });
+  if (options.headless) telemetry.recordEvent("headless.submit.ready");
   for (const agent of discoverSubagents(process.cwd()).agents) registry.registerSubagent(agent);
   const skills = config.skills?.enabled === false ? undefined : addBuiltinSkills(
     discoverSkills(process.cwd(), config.skills?.roots),
@@ -160,31 +161,26 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
   bus.on("tools/stdout", (p) => c.onToolStream(p));
   bus.on("tools/stderr", (p) => c.onToolStream(p, "[stderr] "));
   bus.on("plugin/activity", (p) => {
-    const event = p as { plugin?: string; content?: string; attributes?: { memory?: { id?: string; content?: string; scope?: string; kind?: string } } };
-    const memory = event.attributes?.memory;
+    const event = p as { content?: string };
     if (event.content) {
       c.state.chat.push({
         kind: "meta",
-        content: event.plugin === "memory-local" && memory ? `memory learned: ${memory.content}` : event.content,
+        content: event.content,
         timestamp: Date.now(),
-        memoryStatus: "pending",
-        memoryScope: memory?.scope,
-        memoryKind: memory?.kind,
-        memoryId: memory?.id,
       });
       c.state.chatVersion++;
       c.bump();
     }
   });
   if (options.headless) {
-    await runHeadless(c, options.headless);
+    await runHeadless(c, options.headless, telemetry);
     return;
   }
   const renderer = await createCliRenderer({ exitOnCtrlC: false });
   createRoot(renderer).render(React.createElement(App, { c }));
 }
 
-async function runHeadless(c: Controller, options: CliOptions): Promise<void> {
+async function runHeadless(c: Controller, options: CliOptions, telemetry: Observability): Promise<void> {
   if (!options.prompt) throw new Error("a prompt is required in non-interactive mode");
   const context = contextFiles(options);
   const prompt = context ? `${context}\n\n${options.prompt}` : options.prompt;
@@ -217,7 +213,10 @@ async function runHeadless(c: Controller, options: CliOptions): Promise<void> {
   process.once("SIGTERM", onSignal);
   const timeout = setTimeout(() => c.interrupt(), options.timeoutMs);
   try {
+    telemetry.recordEvent("headless.submit.start", { prompt_length: prompt.length });
     await c.submit(prompt);
+    await new Promise((resolve) => setTimeout(resolve, 5_000));
+    telemetry.recordEvent("headless.submit.finished", { busy: c.state.busy });
     if (options.output === "jsonl") {
       for (const item of c.state.chat) {
         const event = { type: item.kind, content: item.content, tool: item.toolName, error: item.isError };
@@ -231,5 +230,6 @@ async function runHeadless(c: Controller, options: CliOptions): Promise<void> {
     clearTimeout(timeout);
     process.removeListener("SIGINT", onSignal);
     process.removeListener("SIGTERM", onSignal);
+    await new Promise((resolve) => setTimeout(resolve, 50));
   }
 }

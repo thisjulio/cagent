@@ -1,8 +1,10 @@
 export type ToolArgs = Record<string, unknown>;
 
+export type ToolEvidence = { path: string; symbol?: string; line?: number; commit?: string; kind?: "code" | "test" | "adr" | "docs" };
 export interface ToolResult {
   output: string;
   isError?: boolean;
+  evidence?: ToolEvidence[];
 }
 
 export {

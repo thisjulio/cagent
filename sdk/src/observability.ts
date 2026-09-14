@@ -45,6 +45,7 @@ export type MetricRecord = {
 };
 
 export class InMemoryObservability implements Observability {
+  private static readonly MAX_RECORDS = 10_000;
   readonly spans: SpanRecord[] = [];
   readonly metrics: MetricRecord[] = [];
   readonly events: { name: string; attributes?: Attributes }[] = [];
@@ -53,7 +54,7 @@ export class InMemoryObservability implements Observability {
     const id = crypto.randomUUID();
     const record: SpanRecord = { id, name, attributes: { ...attributes }, events: [] };
     const started = performance.now();
-    this.spans.push(record);
+    appendBounded(this.spans, record);
     return {
       id,
       setAttribute: (key, value) => { record.attributes[key] = value; },
@@ -68,12 +69,17 @@ export class InMemoryObservability implements Observability {
   }
 
   recordMetric(name: string, value: number, attributes?: Attributes): void {
-    this.metrics.push({ name, value, attributes });
+    appendBounded(this.metrics, { name, value, attributes });
   }
 
   recordEvent(name: string, attributes?: Attributes): void {
-    this.events.push({ name, attributes });
+    appendBounded(this.events, { name, attributes });
   }
+}
+
+function appendBounded<T>(records: T[], record: T): void {
+  records.push(record);
+  if (records.length > InMemoryObservability.MAX_RECORDS) records.splice(0, records.length - InMemoryObservability.MAX_RECORDS);
 }
 
 export async function trace<T>(

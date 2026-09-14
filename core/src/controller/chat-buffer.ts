@@ -2,17 +2,12 @@ import type { ChatItem, UIState } from "./state";
 
 export const MAX_CHAT_ITEMS = 400;
 
-export function clearScrollback(): void {
-  if (process.stdout.isTTY) process.stdout.write("\x1b[3J\x1b[2J\x1b[H");
-}
-
 export function appendChat(state: UIState, item: ChatItem): void {
   if (item.timestamp === undefined) item.timestamp = Date.now();
   state.chat.push(item);
   if (state.chat.length <= MAX_CHAT_ITEMS) return;
   state.chat.splice(0, state.chat.length - MAX_CHAT_ITEMS);
   state.chatVersion += 1;
-  clearScrollback();
 }
 
 export function appendToolLog(state: UIState, tool: UIState["toolLog"][number]): void {

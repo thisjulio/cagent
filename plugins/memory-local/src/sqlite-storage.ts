@@ -23,9 +23,12 @@ export function openStore(file: string): SqliteStore {
       id TEXT PRIMARY KEY, content TEXT NOT NULL, scope TEXT NOT NULL, kind TEXT NOT NULL,
       status TEXT NOT NULL, confidence REAL NOT NULL, source TEXT NOT NULL, project TEXT,
       conflict INTEGER NOT NULL DEFAULT 0, supersedes TEXT, normalized_text TEXT, embedding_model TEXT,
-      embedding_dimension INTEGER, embedding TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+      embedding_dimension INTEGER, embedding TEXT, evidence TEXT, invalidated_at TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL
     );
     CREATE VIRTUAL TABLE IF NOT EXISTS entries_fts USING fts5(id UNINDEXED, content);`);
+  for (const column of ["evidence TEXT", "invalidated_at TEXT"]) {
+    try { db.exec(`ALTER TABLE entries ADD COLUMN ${column}`); } catch { /* Existing schema already migrated. */ }
+  }
   db.exec(`CREATE TRIGGER IF NOT EXISTS entries_ai AFTER INSERT ON entries BEGIN
     INSERT INTO entries_fts(id, content) VALUES (new.id, new.content);
   END;
@@ -52,9 +55,9 @@ function wrap(db: Database.Database): SqliteStore {
     close: () => db.close(),
     entries: () => (db.prepare("SELECT * FROM entries ORDER BY created_at").all() as Record<string, unknown>[]).map(fromRow),
     replace: (entry) => {
-      db.prepare(`INSERT INTO entries (id,content,scope,kind,status,confidence,source,project,conflict,supersedes,normalized_text,embedding_model,embedding_dimension,embedding,created_at,updated_at)
-        VALUES (@id,@content,@scope,@kind,@status,@confidence,@source,@project,@conflict,@supersedes,@normalizedText,@embeddingModel,@embeddingDimension,@embedding,@createdAt,@updatedAt)
-        ON CONFLICT(id) DO UPDATE SET content=@content,scope=@scope,kind=@kind,status=@status,confidence=@confidence,source=@source,project=@project,conflict=@conflict,supersedes=@supersedes,normalized_text=@normalizedText,embedding_model=@embeddingModel,embedding_dimension=@embeddingDimension,embedding=@embedding,updated_at=@updatedAt`).run({ ...entry, conflict: entry.conflict ? 1 : 0, supersedes: entry.supersedes ?? null, project: entry.project ?? null, normalizedText: entry.normalizedText ?? entry.content.toLocaleLowerCase(), embeddingModel: entry.embeddingModel ?? null, embeddingDimension: entry.embeddingDimension ?? null, embedding: entry.embedding ? JSON.stringify(entry.embedding) : null });
+      db.prepare(`INSERT INTO entries (id,content,scope,kind,status,confidence,source,project,conflict,supersedes,normalized_text,embedding_model,embedding_dimension,embedding,evidence,invalidated_at,created_at,updated_at)
+        VALUES (@id,@content,@scope,@kind,@status,@confidence,@source,@project,@conflict,@supersedes,@normalizedText,@embeddingModel,@embeddingDimension,@embedding,@evidence,@invalidatedAt,@createdAt,@updatedAt)
+        ON CONFLICT(id) DO UPDATE SET content=@content,scope=@scope,kind=@kind,status=@status,confidence=@confidence,source=@source,project=@project,conflict=@conflict,supersedes=@supersedes,normalized_text=@normalizedText,embedding_model=@embeddingModel,embedding_dimension=@embeddingDimension,embedding=@embedding,evidence=@evidence,invalidated_at=@invalidatedAt,updated_at=@updatedAt`).run({ ...entry, conflict: entry.conflict ? 1 : 0, supersedes: entry.supersedes ?? null, project: entry.project ?? null, normalizedText: entry.normalizedText ?? entry.content.toLocaleLowerCase(), embeddingModel: entry.embeddingModel ?? null, embeddingDimension: entry.embeddingDimension ?? null, embedding: entry.embedding ? JSON.stringify(entry.embedding) : null, evidence: entry.evidence ? JSON.stringify(entry.evidence) : null, invalidatedAt: entry.invalidatedAt ?? null });
     },
     remove: (id) => db.prepare("DELETE FROM entries WHERE id = ?").run(id),
     lexical: (query, limit = 5) => (db.prepare(`SELECT e.* FROM entries_fts f JOIN entries e ON e.id = f.id
@@ -64,5 +67,5 @@ function wrap(db: Database.Database): SqliteStore {
 }
 
 function fromRow(row: Record<string, unknown>): MemoryEntry {
-  return { id: String(row.id), content: String(row.content), scope: row.scope as MemoryEntry["scope"], kind: row.kind as MemoryEntry["kind"], status: row.status as MemoryEntry["status"], confidence: Number(row.confidence), source: String(row.source), project: row.project ? String(row.project) : undefined, conflict: row.conflict === 1, supersedes: row.supersedes ? String(row.supersedes) : undefined, normalizedText: row.normalized_text ? String(row.normalized_text) : undefined, embeddingModel: row.embedding_model ? String(row.embedding_model) : undefined, embeddingDimension: row.embedding_dimension ? Number(row.embedding_dimension) : undefined, embedding: row.embedding ? JSON.parse(String(row.embedding)) : undefined, createdAt: String(row.created_at), updatedAt: String(row.updated_at) };
+  return { id: String(row.id), content: String(row.content), scope: row.scope as MemoryEntry["scope"], kind: row.kind as MemoryEntry["kind"], status: row.status as MemoryEntry["status"], confidence: Number(row.confidence), source: String(row.source), project: row.project ? String(row.project) : undefined, conflict: row.conflict === 1, supersedes: row.supersedes ? String(row.supersedes) : undefined, normalizedText: row.normalized_text ? String(row.normalized_text) : undefined, embeddingModel: row.embedding_model ? String(row.embedding_model) : undefined, embeddingDimension: row.embedding_dimension ? Number(row.embedding_dimension) : undefined, embedding: row.embedding ? JSON.parse(String(row.embedding)) : undefined, evidence: row.evidence ? JSON.parse(String(row.evidence)) : undefined, invalidatedAt: row.invalidated_at ? String(row.invalidated_at) : undefined, createdAt: String(row.created_at), updatedAt: String(row.updated_at) };
 }

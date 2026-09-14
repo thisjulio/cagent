@@ -9,6 +9,7 @@ import { App } from "../src/ui/components/App";
 import { EventBus } from "../src/events";
 import { Registry } from "../src/registry";
 import { Controller, type ControllerDeps } from "../src/controller/controller";
+import { appendChat } from "../src/controller/chat-buffer";
 
 function deps(): ControllerDeps {
   return {
@@ -39,6 +40,24 @@ describe("OpenTUI render", () => {
     expect(out).toContain("tok");
     expect(out).toContain("%");
     act(() => setup.renderer.destroy());
+  });
+
+  it("does not write terminal clear sequences when chat history is capped", () => {
+    const c = new Controller(deps());
+    const state = c.state;
+    const originalWrite = process.stdout.write;
+    const writes: string[] = [];
+    process.stdout.write = ((chunk: string | Uint8Array) => {
+      writes.push(String(chunk));
+      return true;
+    }) as typeof process.stdout.write;
+    try {
+      for (let i = 0; i < 401; i++) appendChat(state, { kind: "meta", content: `item ${i}` });
+      expect(state.chat.length).toBe(400);
+      expect(writes).toEqual([]);
+    } finally {
+      process.stdout.write = originalWrite;
+    }
   });
 
   it("renders thinking content", async () => {

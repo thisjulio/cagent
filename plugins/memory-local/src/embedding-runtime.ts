@@ -3,7 +3,7 @@ import crypto from "node:crypto";
 import { pipeline, env } from "@huggingface/transformers";
 
 export const MODEL_ID = "intfloat/multilingual-e5-small";
-export const EMBEDDING_DIMENSION = 384;
+const EMBEDDING_DIMENSION = 384;
 
 env.allowRemoteModels = false;
 env.allowLocalModels = true;
@@ -16,7 +16,7 @@ export async function createEmbeddingRuntime(modelPath?: string): Promise<Embedd
   const metadata: EmbeddingMetadata = { model: MODEL_ID, dimension: EMBEDDING_DIMENSION, normalization: "l2", artifactHash: modelPath ? hashArtifact(modelPath) : undefined };
   return {
     embed: async (text) => {
-      if (!extractor) extractor = await pipeline("feature-extraction", modelPath ?? MODEL_ID, { local_files_only: true });
+      if (!extractor) extractor = await pipeline("feature-extraction", modelPath ?? MODEL_ID, { local_files_only: true, dtype: "int8" });
       const output = await (extractor as (input: string, options: Record<string, unknown>) => Promise<{ data: Float32Array; dims: number[] }>)(`query: ${text}`, { pooling: "mean", normalize: true });
       return Array.from(output.data);
     },

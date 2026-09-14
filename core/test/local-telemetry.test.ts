@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { LocalFileObservability } from "../src/local-telemetry";
+import { LocalFileObservability, createLocalObservability } from "../src/local-telemetry";
 
 describe("local telemetry", () => {
   test("writes spans, metrics and events as JSONL", () => {
@@ -24,5 +24,14 @@ describe("local telemetry", () => {
     expect(records[0].attributes["process.user_cpu_us"]).toBeNumber();
     expect(records[1].value).toBe(2);
     expect(fs.statSync(file).mode & 0o777).toBe(0o600);
+  });
+
+  test("does not retain records when telemetry is disabled", () => {
+    const telemetry = createLocalObservability(false);
+    telemetry.recordEvent("test.disabled");
+    telemetry.recordMetric("test.disabled", 1);
+    telemetry.startSpan("test.disabled").end();
+    expect(telemetry).toBeDefined();
+    expect("events" in telemetry).toBe(false);
   });
 });

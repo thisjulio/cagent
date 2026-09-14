@@ -34,6 +34,11 @@ export function toChatItems(records: LoadedRecord[]): ChatItem[] {
   });
 }
 
+function removeOrphanedToolOutputs(messages: Controller["messages"]): Controller["messages"] {
+  const firstMessage = messages.findIndex((message) => message.role !== "tool");
+  return firstMessage === -1 ? [] : messages.slice(firstMessage);
+}
+
 export function sanitizeTitle(value: string): string {
   return value
     .trim()
@@ -217,7 +222,7 @@ export async function compact(c: Controller, force = false): Promise<void> {
     c.bump();
     return;
   }
-  const rest = c.messages.slice(c.messages.length - keep);
+  const rest = removeOrphanedToolOutputs(c.messages.slice(c.messages.length - keep));
   c.messages.length = 1;
   c.messages.push({ role: "user", content: `[previous conversation summary]\n${summary}` }, ...rest);
   c.session.append({ ts: Date.now(), type: "meta", payload: { kind: "compacted", summary } });

@@ -12,7 +12,25 @@ export function ChatItemRow({ it, index, controller, streaming, showAgentLabel }
   if (it.kind === "assistant") return <AssistantRow it={it} streaming={streaming} showAgentLabel={showAgentLabel} />;
   if (it.kind === "thinking") return <ThinkingRow it={it} showAgentLabel={showAgentLabel} />;
   if (it.kind === "tool") return <ToolRow it={it} onClick={() => controller.toggleToolExpand(index)} showAgentLabel={showAgentLabel} />;
+  if (it.kind === "meta") return <MetaRow it={it} />;
   return <text attributes={TextAttributes.DIM}>{it.content}</text>;
+}
+
+function MetaRow({ it }: { it: ChatItem }) {
+  const compacted = it.content.match(/^compacted:\s*(.+)$/);
+  return (
+    <box paddingX={2} marginTop={1} marginBottom={1} width="100%" flexDirection="column" flexShrink={0}>
+      <text>
+        <span fg="#d97757">├─ </span>
+        <strong fg="#a78bfa">{compacted ? "context compacted" : "info"}</strong>
+        {it.timestamp ? <span attributes={TextAttributes.DIM}> {time(it.timestamp)}</span> : null}
+      </text>
+      <text>
+        <span fg="#d97757">│  </span>
+        <span attributes={TextAttributes.DIM}>{compacted ? compacted[1] : it.content}</span>
+      </text>
+    </box>
+  );
 }
 
 function time(ts?: number): string {
@@ -94,9 +112,7 @@ function ToolRow({ it, onClick, showAgentLabel }: { it: ChatItem; onClick: () =>
       <text>
         <span fg="#d97757">├─ </span><span fg={color}>{status}</span><span fg="#d97757"> </span>
         <strong>{categoryLabel(it.toolCategory ?? "generic")}</strong>
-        {it.toolCategory === "mcp" && it.toolName ? (
-          <span attributes={TextAttributes.DIM}> · {it.toolName}</span>
-        ) : null}
+        {it.toolName ? <span attributes={TextAttributes.DIM}> · {it.toolName}</span> : null}
         {it.cmd ? (
           <span attributes={TextAttributes.DIM}> · {it.expanded ? it.cmd : it.cmd.length > 40 ? it.cmd.slice(0, 40) + "..." : it.cmd}</span>
         ) : null}
