@@ -26,6 +26,19 @@ function deps(permissions = false, configOverrides: Record<string, unknown> = {}
 }
 
 describe("controller", () => {
+  it("defaults automatic compaction to 60% of the model context window", () => {
+    const c = new Controller({ ...deps(), contextWindow: 100_000 });
+
+    expect(c.state.contextWindow).toBe(100_000);
+    expect(c.state.threshold).toBe(60_000);
+  });
+
+  it("uses the configured compaction percentage", () => {
+    const c = new Controller({ ...deps(false, { compact_threshold_percent: 75 }), contextWindow: 100_000 });
+
+    expect(c.state.threshold).toBe(75_000);
+  });
+
   it("/skill activates the skill before submitting its prompt", async () => {
     const d = deps();
     const events: string[] = [];

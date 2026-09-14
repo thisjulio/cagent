@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 import { encodingForModel, getEncoding } from "js-tiktoken";
 import type { LlmCallOptions, LlmChunk, ProviderAdapter } from "@cagent/sdk";
-import { fetchCodexModels } from "./codex";
+import { fetchCodexModelRecords } from "./codex";
 import { pkceLogin, persistCreds, readCreds, refreshCreds, type AuthState } from "./oauth";
 import { streamApi } from "./stream-api";
 import { streamCodex } from "./stream-codex";
@@ -46,6 +46,7 @@ function makeAuthResolver(opts: AdapterOptions): () => Promise<AuthState> {
 
 export function createAdapter(opts: AdapterOptions): ProviderAdapter {
   const getAuth = makeAuthResolver(opts);
+  const contextWindows = new Map<string, number>();
 
   const getClient = async (): Promise<OpenAI> => {
     if (opts.client) return opts.client;
@@ -58,15 +59,25 @@ export function createAdapter(opts: AdapterOptions): ProviderAdapter {
       try { const encoder = (() => { try { return encodingForModel(model as never); } catch { return getEncoding("o200k_base"); } })(); return messages.reduce((n, m) => n + encoder.encode(m.content).length, 0); } catch { return undefined; }
     },
     async context_window(model: string): Promise<number | undefined> {
-      return ({ "gpt-5.6-luna": 1_000_000, "gpt-5": 400_000, "gpt-5-mini": 400_000, "gpt-4.1": 1_047_576, "gpt-4o": 128_000 } as Record<string, number>)[model];
+      return contextWindows.get(model);
     },
     async list_models(): Promise<string[]> {
       const auth = await getAuth();
       if (auth.kind === "api") {
         const res = await (await getClient()).models.list();
+        for (const model of res.data as unknown as Record<string, unknown>[]) {
+          const window = model.context_window ?? model.context_length ?? model.max_context_length;
+          if (typeof model.id === "string" && typeof window === "number") contextWindows.set(model.id, window);
+        }
         return res.data.map((m) => m.id).sort();
       }
-      return fetchCodexModels(auth.access!, auth.account_id);
+      const models = await fetchCodexModelRecords(auth.access!, auth.account_id);
+      for (const model of models) {
+        const id = model.id ?? model.slug;
+        const window = model.context_window ?? model.context_length ?? model.max_context_length;
+        if (id && typeof window === "number") contextWindows.set(id, window);
+      }
+      return models.map((m) => m.id ?? m.slug).filter((s): s is string => Boolean(s)).sort();
     },
 
     async prepare_call(options: LlmCallOptions): Promise<LlmCallOptions> {

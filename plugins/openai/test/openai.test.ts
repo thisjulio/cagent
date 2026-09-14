@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { OpenAI } from "openai";
-import { createAdapter, fetchCodexModels } from "../src/index";
+import { createAdapter, fetchCodexModelRecords, fetchCodexModels } from "../src/index";
 
 function fakeClient(): OpenAI {
   const chunks = [
@@ -24,7 +24,7 @@ function fakeClient(): OpenAI {
         }),
       },
     },
-    models: { list: async () => ({ data: [{ id: "gpt-5.4-mini" }] }) },
+    models: { list: async () => ({ data: [{ id: "gpt-5.4-mini", context_window: 400_000 }] }) },
   } as unknown as OpenAI;
 }
 
@@ -42,9 +42,34 @@ describe("openai adapter", () => {
     expect(finish?.usage).toEqual({ input_tokens: 7, output_tokens: 2 });
   });
 
+  test("fetchCodexModelRecords preserves context-window metadata", async () => {
+    const orig = globalThis.fetch;
+    try {
+      globalThis.fetch = (async () => new Response(JSON.stringify({
+        models: [{ slug: "gpt-x", context_window: 123_456 }],
+      }), { status: 200 })) as typeof fetch;
+      expect(await fetchCodexModelRecords("tok")).toEqual([{ slug: "gpt-x", context_window: 123_456 }]);
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+
   test("list_models returns the API catalog", async () => {
     const adapter = createAdapter({ config: {}, client: fakeClient() });
     expect(await adapter.list_models()).toEqual(["gpt-5.4-mini"]);
+  });
+
+  test("uses context-window metadata returned by the model catalog", async () => {
+    const adapter = createAdapter({ config: {}, client: fakeClient() });
+
+    expect(await adapter.list_models()).toEqual(["gpt-5.4-mini"]);
+    expect(await adapter.context_window?.("gpt-5.4-mini")).toBe(400_000);
+  });
+
+  test("does not guess a context window for an unknown model", async () => {
+    const adapter = createAdapter({ config: {}, client: fakeClient() });
+
+    expect(await adapter.context_window?.("future-model")).toBeUndefined();
   });
 
   test("fetchCodexModels hits the codex backend and returns slugs sorted", async () => {

@@ -1,7 +1,9 @@
 import type { LlmCallOptions } from "@cagent/sdk";
 
+export type CodexModel = { id?: string; slug?: string; context_window?: number; context_length?: number; max_context_length?: number };
+
 // The ChatGPT token's model catalog comes from the Codex backend, not public /v1/models.
-export async function fetchCodexModels(access: string, accountId?: string): Promise<string[]> {
+export async function fetchCodexModelRecords(access: string, accountId?: string): Promise<CodexModel[]> {
   const res = await fetch("https://chatgpt.com/backend-api/codex/models?client_version=1.0.0", {
     headers: {
       authorization: `Bearer ${access}`,
@@ -9,8 +11,12 @@ export async function fetchCodexModels(access: string, accountId?: string): Prom
     },
   });
   if (!res.ok) throw new Error(`model listing failed: ${res.status}`);
-  const data = (await res.json()) as { models: { id?: string; slug?: string }[] };
-  return data.models.map((m) => m.id ?? m.slug).filter((s) => s).sort();
+  const data = (await res.json()) as { models: CodexModel[] };
+  return data.models;
+}
+
+export async function fetchCodexModels(access: string, accountId?: string): Promise<string[]> {
+  return (await fetchCodexModelRecords(access, accountId)).map((m) => m.id ?? m.slug).filter((s): s is string => Boolean(s)).sort();
 }
 
 function jwtClaims(token: string): Record<string, unknown> | undefined {
