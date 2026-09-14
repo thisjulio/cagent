@@ -39,6 +39,20 @@ describe("controller", () => {
     expect(c.state.threshold).toBe(75_000);
   });
 
+  it("compacts history without losing the recent messages", async () => {
+    const c = new Controller(deps(false, { compact_keep_tokens: 2_000 }));
+    c.messages.push(
+      { role: "user", content: "old ".repeat(750) },
+      { role: "assistant", content: "recent ".repeat(750) },
+      { role: "user", content: "latest ".repeat(750) },
+    );
+
+    await expect(c.compact()).resolves.toBeUndefined();
+
+    expect(c.messages[1]?.content).toContain("[context checkpoint handoff]");
+    expect(c.messages.slice(-2).map((message) => message.content)).toEqual(["recent ".repeat(750), "latest ".repeat(750)]);
+  });
+
   it("/skill activates the skill before submitting its prompt", async () => {
     const d = deps();
     const events: string[] = [];

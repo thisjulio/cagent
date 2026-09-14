@@ -1,4 +1,6 @@
+import { streamOnce } from "../loop";
 import { Session, estimateTokens } from "../session";
+import { splitRoute } from "../route";
 import type { ChatItem } from "./state";
 import type { Controller } from "./controller";
 import { MAX_CHAT_ITEMS } from "./chat-buffer";
@@ -31,24 +33,6 @@ export function toChatItems(records: LoadedRecord[]): ChatItem[] {
     if (p.kind === "compacted") return [{ kind: "meta", content: "conversation compacted" }];
     return [];
   });
-}
-
-function summaryForDisplay(previous: string, chunk: string): string {
-  const marker = "\n\n";
-  const current = previous.split(marker)[1] ?? "";
-  return `${current}${chunk}`.slice(-6000);
-}
-
-function boundedCompactionInput(messages: Controller["messages"], toolLimit: number): Controller["messages"] {
-  return messages.map((message) => {
-    if (message.role !== "tool" || typeof message.content !== "string" || message.content.length <= toolLimit * 4) return message;
-    return { ...message, content: `${message.content.slice(0, toolLimit * 4)}\n[older tool output pruned]` };
-  });
-}
-
-function removeOrphanedToolOutputs(messages: Controller["messages"]): Controller["messages"] {
-  const firstMessage = messages.findIndex((message) => message.role !== "tool");
-  return firstMessage === -1 ? [] : messages.slice(firstMessage);
 }
 
 export function sanitizeTitle(value: string): string {

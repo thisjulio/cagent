@@ -4,6 +4,24 @@ import { splitRoute } from "../route";
 import type { Controller } from "./controller";
 import { appendChat } from "./chat-buffer";
 
+function summaryForDisplay(previous: string, chunk: string): string {
+  const marker = "\n\n";
+  const current = previous.split(marker)[1] ?? "";
+  return `${current}${chunk}`.slice(-6000);
+}
+
+function boundedCompactionInput(messages: Controller["messages"], toolLimit: number): Controller["messages"] {
+  return messages.map((message) => {
+    if (message.role !== "tool" || typeof message.content !== "string" || message.content.length <= toolLimit * 4) return message;
+    return { ...message, content: `${message.content.slice(0, toolLimit * 4)}\n[older tool output pruned]` };
+  });
+}
+
+function removeOrphanedToolOutputs(messages: Controller["messages"]): Controller["messages"] {
+  const firstMessage = messages.findIndex((message) => message.role !== "tool");
+  return firstMessage === -1 ? [] : messages.slice(firstMessage);
+}
+
 export async function compact(c: Controller, force = false, instructions?: string): Promise<void> {
   const s = c.state;
   const threshold = s.threshold;
