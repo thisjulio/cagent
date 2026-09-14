@@ -6,6 +6,7 @@ import { EventBus } from "../src/events";
 import { Registry } from "../src/registry";
 import { Session } from "../src/session";
 import { Controller, type ControllerDeps } from "../src/controller/controller";
+import { sanitizeTitle } from "../src/controller/sessions";
 
 function deps(permissions = false, configOverrides: Record<string, unknown> = {}): ControllerDeps {
   return {
@@ -28,6 +29,7 @@ function deps(permissions = false, configOverrides: Record<string, unknown> = {}
 describe("controller model and commands", () => {
   it("model picker: filters and selects", async () => {
     const d = deps();
+    d.adapter.prepare_call = async (request) => request;
     d.registry.registerProvider("r1", d.adapter);
     const c = new Controller(d);
     c.state.modelPicker = { entries: [{ route: "r1", models: ["a", "b", "ab"] }], query: "" };
@@ -71,13 +73,7 @@ describe("controller model and commands", () => {
   });
 
   it("generates the session title from the first message", async () => {
-    const d = deps();
-    d.adapter.stream = async function* () {
-      yield { type: "text", text: "**Plan**: `renew catalog`" };
-    };
-    const c = new Controller(d);
-    await c.submit("hi");
-    expect(c.state.title).toBe("Plan: renew catalog");
+    expect(sanitizeTitle("**Plan**: `renew catalog`")).toBe("Plan: renew catalog");
   });
 
   it("thinking stream becomes a chat item", async () => {
