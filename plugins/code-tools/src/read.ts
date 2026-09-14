@@ -43,7 +43,7 @@ export function readTool(ctx: PluginContext) {
       const limit = Math.min(MAX_LIMIT, Math.max(1, Math.trunc(Number(args.limit ?? DEFAULT_LIMIT))));
       const slice = lines.slice(offset - 1, offset - 1 + limit);
       const out = slice.map((l, i) => `${offset + i}\t${l}`).join("\n");
-      return { output: out || `empty file (${lines.length} line(s))` };
+      return { output: out || `empty file (${lines.length} line(s))`, evidence: [{ path: abs, line: offset, kind: "code" }] };
     },
   );
 }

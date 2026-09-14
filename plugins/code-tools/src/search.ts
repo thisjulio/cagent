@@ -19,6 +19,13 @@ async function rgSearch(pattern: string, abs: string, max: number): Promise<stri
   return lines.slice(0, max).join("\n") || "no results";
 }
 
+function evidenceFromOutput(output: string) {
+  return output.split("\n").map((line) => {
+    const match = line.match(/^(.+?):(\d+):/);
+    return match ? { path: match[1], line: Number(match[2]), kind: "code" as const } : undefined;
+  }).filter((item): item is { path: string; line: number; kind: "code" } => Boolean(item));
+}
+
 // ponytail: JS fallback ignores .gitignore negations; rg is the default path.
 async function jsSearch(pattern: string, abs: string, max: number): Promise<string> {
   const ROOT = root();
@@ -75,10 +82,11 @@ export function searchTool(ctx: PluginContext) {
       }
       if (fs.existsSync(RG_BIN)) {
         const out = await rgSearch(pattern, abs, max);
-        if (out) return { output: out };
+        if (out) return { output: out, evidence: evidenceFromOutput(out) };
       }
       try {
-        return { output: await jsSearch(pattern, abs, max) };
+        const output = await jsSearch(pattern, abs, max);
+        return { output, evidence: evidenceFromOutput(output) };
       } catch (e) {
         return { output: errorText("E_PARSE", `${target}: ${e instanceof Error ? e.message : String(e)}`), isError: true };
       }

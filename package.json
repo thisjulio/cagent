@@ -10,6 +10,7 @@
     "test": "bun test",
     "typecheck": "tsc --noEmit --noCheck",
     "lint": "biome check --linter-enabled=true --formatter-enabled=false .",
+    "knip": "knip",
     "format": "biome format --write .",
     "graph:update": "graphify update .",
     "build:release": "bun build release.ts --compile --outfile dist/cagent",
@@ -21,6 +22,7 @@
     "@types/react": "^19.3.0",
     "bun-types": "^1.4.2",
     "husky": "^9.1.7",
+    "knip": "^6.35.1",
     "typescript": "^7.0.2"
   }
 }

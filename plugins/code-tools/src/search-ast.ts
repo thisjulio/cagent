@@ -28,6 +28,13 @@ function languageFor(file: string, requested?: string): Lang | undefined {
   return LANGUAGES[(requested ?? path.extname(file).slice(1)).toLowerCase()];
 }
 
+function evidenceFromOutput(output: string) {
+  return output.split("\n").map((line) => {
+    const match = line.match(/^(.+?):(\d+):/);
+    return match ? { path: match[1], line: Number(match[2]), kind: "code" as const } : undefined;
+  }).filter((item): item is { path: string; line: number; kind: "code" } => Boolean(item));
+}
+
 function filesFor(target: string): string[] {
   if (fs.statSync(target).isFile()) return [target];
   return fg.sync("**/*", {
@@ -85,7 +92,8 @@ export function searchAstTool(ctx: PluginContext) {
         return { output: errorText("E_PATH", `${target}: ${e instanceof Error ? e.message : String(e)}`), isError: true };
       }
       try {
-        return { output: searchFiles(filesFor(abs), pattern, language, max).join("\n") || "no results" };
+        const output = searchFiles(filesFor(abs), pattern, language, max).join("\n") || "no results";
+        return { output, evidence: evidenceFromOutput(output) };
       } catch (e) {
         return { output: errorText("E_SEARCH", `${target}: ${e instanceof Error ? e.message : String(e)}`), isError: true };
       }

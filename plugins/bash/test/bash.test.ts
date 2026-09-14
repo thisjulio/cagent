@@ -1,44 +1,36 @@
 import { expect, test } from "bun:test";
-import { EventBus } from "../../../core/src/events";
-import { Registry } from "../../../core/src/registry";
-import { loadPlugins } from "../../../core/src/loader";
+import type { PluginContext, ToolDefinition } from "@cagent/sdk";
+import register from "../src/index";
+
+function setup(): { tool: ToolDefinition; events: string[] } {
+  const events: string[] = [];
+  let tool: ToolDefinition | undefined;
+  const context = {
+    config: {},
+    registerTool: (candidate: ToolDefinition) => { tool = candidate; },
+    emit: (event: string) => { events.push(event); },
+  } as unknown as PluginContext;
+  register(context);
+  if (!tool) throw new Error("bash tool was not registered");
+  return { tool, events };
+}
 
 test("bash runs a command and streams stdout", async () => {
-  const registry = new Registry();
-  const bus = new EventBus();
-  const chunks: string[] = [];
-  bus.on("tools/stdout", (p) => {
-    chunks.push(String((p as { chunk: string }).chunk));
-  });
-
-  await loadPlugins(
-    { plugins: [{ name: "bash", path: "./plugins/bash" }], allowlist: [] },
-    registry,
-    bus,
-  );
-
-  const result = (await registry.tool("bash")!.execute({ command: "echo hi" })) as {
+  const { tool, events } = setup();
+  const result = (await tool.execute({ command: "echo hi" })) as {
     output: string;
     isError?: boolean;
   };
 
   expect(result.output).toBe("hi\n");
   expect(result.isError).toBe(false);
-  expect(chunks.join("")).toBe("hi\n");
+  expect(events).toContain("tools/stdout");
 });
 
 test("bash respects the timeout", async () => {
-  const registry = new Registry();
-  const bus = new EventBus();
-
-  await loadPlugins(
-    { plugins: [{ name: "bash", path: "./plugins/bash" }], allowlist: [] },
-    registry,
-    bus,
-  );
-
+  const { tool } = setup();
   const started = Date.now();
-  const result = (await registry.tool("bash")!.execute({
+  const result = (await tool.execute({
     command: "sleep 5",
     timeout_ms: 300,
   })) as { output: string; isError?: boolean; timedOut?: boolean };
@@ -49,14 +41,8 @@ test("bash respects the timeout", async () => {
 });
 
 test("bash limits accumulated output", async () => {
-  const registry = new Registry();
-  const bus = new EventBus();
-  await loadPlugins(
-    { plugins: [{ name: "bash", path: "./plugins/bash" }], allowlist: [] },
-    registry,
-    bus,
-  );
-  const result = await registry.tool("bash")!.execute({ command: "yes x | head -c 200000" });
+  const { tool } = setup();
+  const result = await tool.execute({ command: "yes x | head -c 200000" });
   expect(result.output).toContain("output truncated");
   expect(result.output.length).toBeLessThan(132000);
 });

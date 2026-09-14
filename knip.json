@@ -1,0 +1,16 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "core/scripts/snap.tsx",
+    "release.ts",
+    "plugins/mcp/src/mock-server.ts",
+    "plugins/mcp/src/transport-http.ts"
+  ],
+  "ignoreFiles": [
+    "core/scripts/snap.tsx",
+    "plugins/mcp/src/mock-server.ts",
+    "plugins/mcp/src/transport-http.ts"
+  ],
+  "ignoreBinaries": ["graphify"],
+  "ignoreDependencies": ["graphify"]
+}
