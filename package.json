@@ -13,7 +13,7 @@
     "knip": "knip",
     "format": "biome format --write .",
     "graph:update": "graphify update .",
-    "build:release": "bun build release.ts --compile --outfile dist/cagent",
+    "build:release": "bun scripts/build-release.ts && bun build release.ts --compile --outfile dist/cagent",
     "prepare": "husky"
   },
   "devDependencies": {

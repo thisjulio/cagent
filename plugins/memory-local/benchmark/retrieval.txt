@@ -1,1 +1,0 @@
-/bin/sh: linha 1: /usr/bin/time: Arquivo ou diretório inexistente

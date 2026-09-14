@@ -1,18 +1,14 @@
-import bash from "./plugins/bash/src/index";
-import codeTools from "./plugins/code-tools/src/index";
-import llamaCpp from "./plugins/llama.cpp/src/index";
-import mcp from "./plugins/mcp/src/index";
-import openai from "./plugins/openai/src/index";
-import stub from "./plugins/stub/src/index";
+import { pluginLoaders } from "./release-plugins";
 import { bootstrap } from "./core/src/bootstrap";
 import { runCli } from "./core/src/cli";
 
+const defaultPlugins = Object.keys(pluginLoaders)
+  .filter((name) => name !== "stub")
+  .map((name) => ({ name }));
+
 async function main() {
   if (await runCli(process.argv.slice(2))) return;
-  await bootstrap({
-    defaultPlugins: [{ name: "bash" }, { name: "code-tools" }, { name: "openai" }, { name: "llama.cpp" }],
-    pluginLoaders: { bash, "code-tools": codeTools, "llama.cpp": llamaCpp, mcp, openai, stub },
-  });
+  await bootstrap({ defaultPlugins, pluginLoaders });
 }
 
 main().catch((error) => {

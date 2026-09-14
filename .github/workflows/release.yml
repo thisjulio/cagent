@@ -43,6 +43,7 @@ jobs:
       - run: |
           mkdir -p dist
           version="${GITHUB_REF_NAME#v}"
+          bun scripts/build-release.ts
           bun build release.ts --compile --target=${{ matrix.target }} --define CAGENT_VERSION="\"$version\"" --define CAGENT_RELEASE=true --outfile=dist/${{ matrix.asset }}
           chmod +x dist/${{ matrix.asset }}
       - uses: actions/upload-artifact@v4
