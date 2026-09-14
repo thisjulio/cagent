@@ -31,8 +31,10 @@ export function App({ c }: { c: Controller }) {
 
     if (key.ctrl && key.name === "c" && !key.shift && !overlay) {
       c.observability?.recordEvent("keyboard.ctrl_c", { busy: s.busy, cleared_input: s.input.length > 0 });
-      if (s.input.length > 0) c.setInput("");
-      else {
+      if (s.input.length > 0) {
+        c.setInput("");
+        s.inputKey += 1;
+      } else {
         renderer.destroy();
         process.exit(0);
       }
