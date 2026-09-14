@@ -17,6 +17,9 @@ export interface AppConfig {
   model?: string;
   compact_threshold_tokens?: number;
   compact_threshold_percent?: number;
+  compact_auto?: boolean;
+  compact_keep_tokens?: number;
+  compact_prune_tool_tokens?: number;
   retry_attempts?: number;
   permissions?: boolean;
   log_level?: "silent" | "error" | "warn" | "info" | "debug";
@@ -47,6 +50,9 @@ export function loadConfig(cwd: string): AppConfig {
     model: (local.model as string | undefined) ?? (global.model as string | undefined) ?? process.env.CAGENT_MODEL,
     compact_threshold_tokens: (local.compact_threshold_tokens as number | undefined) ?? (global.compact_threshold_tokens as number | undefined),
     compact_threshold_percent: (local.compact_threshold_percent as number | undefined) ?? (global.compact_threshold_percent as number | undefined),
+    compact_auto: (local.compact_auto as boolean | undefined) ?? (global.compact_auto as boolean | undefined) ?? true,
+    compact_keep_tokens: (local.compact_keep_tokens as number | undefined) ?? (global.compact_keep_tokens as number | undefined),
+    compact_prune_tool_tokens: (local.compact_prune_tool_tokens as number | undefined) ?? (global.compact_prune_tool_tokens as number | undefined) ?? 2000,
     retry_attempts: (local.retry_attempts as number | undefined) ?? (global.retry_attempts as number | undefined),
     permissions: (local.permissions as boolean | undefined) ?? (global.permissions as boolean | undefined) ?? true,
     log_level: (local.log_level as AppConfig["log_level"]) ?? (global.log_level as AppConfig["log_level"]) ?? "silent",

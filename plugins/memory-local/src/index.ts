@@ -46,6 +46,8 @@ const register: Plugin = (ctx) => {
         createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), evidence: candidate.evidence,
       }))];
       for (const candidate of raw) store.replace(candidate);
+      for (const candidate of raw) ctx.activity(`memory learned`, { id: candidate.id, content: candidate.content });
+      await new Promise<void>((resolve) => setTimeout(resolve, 0));
       const learned = await Promise.all(raw.map(async (candidate) => {
         try {
           const active = await getRuntime();
@@ -56,7 +58,6 @@ const register: Plugin = (ctx) => {
         }
       }));
       for (const candidate of learned) store.replace(candidate);
-      for (const candidate of learned) ctx.activity(`memory learned`, { id: candidate.id, content: candidate.content });
     }
   };
   ctx.on("tool.completed", (payload) => {

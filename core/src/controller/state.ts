@@ -46,6 +46,7 @@ export type UIState = {
   busy: boolean;
   input: string;
   notice: string;
+  compacting: boolean;
   pendingAsk: { tool: string; cmd: string } | null;
   modelPicker: { entries: { route: string; models: string[] }[]; query: string } | null;
   sessionList: { id: string; updated: string; title: string }[] | null;

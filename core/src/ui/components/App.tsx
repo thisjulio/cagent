@@ -78,7 +78,7 @@ export function App({ c }: { c: Controller }) {
   const lastLog = s.toolLog[s.toolLog.length - 1];
   const running = lastLog?.running ? lastLog.tool : undefined;
   const overlay = s.helpOpen || s.modelPicker || s.sessionList || s.pendingAsk;
-  const status = s.pendingAsk ? "permission" : s.busy ? "working" : "ready";
+  const status = s.compacting ? "compacting" : s.pendingAsk ? "permission" : s.busy ? "working" : "ready";
   return (
     <box flexDirection="column" width="100%" height="100%">
       <box
@@ -89,7 +89,7 @@ export function App({ c }: { c: Controller }) {
         justifyContent="space-between"
       >
         <text fg="#d97757">{formatHeaderTitle(s.title, terminalWidth())}</text>
-        <text fg={s.busy ? "#d97757" : "#777777"}>{s.busy ? `◌ working ${(s.elapsedMs / 1000).toFixed(1)}s` : status}</text>
+        <text fg={s.busy ? "#d97757" : "#777777"}>{s.busy ? "working" : status}</text>
       </box>
       <ChatViewport chat={s.chat} busy={s.busy} controller={c} />
       <TaskPanel tasks={s.tasks} />

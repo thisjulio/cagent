@@ -85,6 +85,7 @@ export class Controller {
       busy: false,
       input: "",
       notice: "",
+      compacting: false,
       pendingAsk: null,
       modelPicker: null,
       sessionList: null,
@@ -197,8 +198,25 @@ export class Controller {
     openSessions(this);
   }
 
-  compact(): Promise<void> {
-    return compact(this, true);
+  compact(instructions?: string): Promise<void> {
+    if (this.state.busy) return Promise.resolve();
+    this.state.busy = true;
+    this.state.turnStartedAt = Date.now();
+    this.state.elapsedMs = 0;
+    this.bump();
+    const timer = setInterval(() => {
+      if (this.state.turnStartedAt) {
+        this.state.elapsedMs = Date.now() - this.state.turnStartedAt;
+        this.bump();
+      }
+    }, 500);
+    return compact(this, true, instructions).finally(() => {
+      clearInterval(timer);
+      this.state.busy = false;
+      this.state.elapsedMs = this.state.turnStartedAt ? Date.now() - this.state.turnStartedAt : 0;
+      this.state.turnStartedAt = null;
+      this.bump();
+    });
   }
 
   openModelPicker(): Promise<void> {

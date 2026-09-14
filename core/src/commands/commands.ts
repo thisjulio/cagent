@@ -7,7 +7,11 @@ type SlashHandler = (c: Controller, arg: string) => void | Promise<void>;
 
 // ponytail: the dispatch map replaces the if chain in submit; a new command is a new entry, without touching the controller.
 const commands: Record<string, SlashHandler> = {
-  "/compact": (c) => c.compact(),
+  "/compact": (c, arg) => {
+    appendChat(c.state, { kind: "user", content: `/compact${arg.trim() ? ` ${arg.trim()}` : ""}` });
+    c.bump();
+    return c.compact(arg.trim() || undefined);
+  },
   "/sessions": (c) => c.openSessions(),
   "/session": (c) => c.openSessions(),
   "/new": (c) => c.newSession(),

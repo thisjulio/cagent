@@ -9,6 +9,7 @@ export function InputArea({
   inputKey,
   busy,
   running,
+  activityLabel,
   suggest,
   active,
   onChange,
@@ -20,6 +21,7 @@ export function InputArea({
   inputKey: number;
   busy: boolean;
   running?: string;
+  activityLabel?: string;
   suggest?: string[];
   active: boolean;
   onChange: (v: string) => void;
@@ -47,7 +49,7 @@ export function InputArea({
   return (
     <box height={7} flexDirection="column" flexShrink={0} border={["top"]} borderColor="#444444" justifyContent="flex-start" paddingX={1}>
       <box height={1}>
-        {busy ? <ActivitySpinner label={running ? `prompt · running ${running}` : "prompt · processing"} /> : null}
+        {busy ? <ActivitySpinner label={activityLabel ?? (running ? `prompt · running ${running}` : "prompt · processing")} /> : null}
       </box>
       <box border borderStyle="rounded" borderColor="#d97757" paddingX={1} width="100%" height={4} flexDirection="row">
         <text fg="#d97757" width={2} flexShrink={0}>{"> "}</text>
