@@ -2,8 +2,9 @@ import { upgrade } from "./upgrade";
 import { parseCliArgs, cliHelp } from "./cli-args";
 import { bootstrap } from "./bootstrap";
 import { VERSION } from "./version";
+import type { BootstrapOptions } from "./bootstrap";
 
-export async function runCli(args: string[]): Promise<boolean> {
+export async function runCli(args: string[], bootstrapOptions: BootstrapOptions = {}): Promise<boolean> {
   if (args[0] === "upgrade") {
     if (args.length > 1) throw new Error("usage: cagent upgrade");
     await upgrade();
@@ -17,10 +18,10 @@ export async function runCli(args: string[]): Promise<boolean> {
   if (options.help) { console.log(cliHelp); return true; }
   if (options.version) { console.log(`cagent ${VERSION}`); return true; }
   if (options.interactive || (!options.nonInteractive && !options.prompt)) {
-    await bootstrap({ cli: options });
+    await bootstrap({ ...bootstrapOptions, cli: options });
     return true;
   }
-  await bootstrap({ headless: options });
+  await bootstrap({ ...bootstrapOptions, headless: options });
   if (options.nonInteractive) {
     process.exit(0);
   }

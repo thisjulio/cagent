@@ -7,8 +7,9 @@ const defaultPlugins = Object.keys(pluginLoaders)
   .map((name) => ({ name }));
 
 async function main() {
-  if (await runCli(process.argv.slice(2))) return;
-  await bootstrap({ defaultPlugins, pluginLoaders });
+  const bootstrapOptions = { defaultPlugins, pluginLoaders };
+  if (await runCli(process.argv.slice(2), bootstrapOptions)) return;
+  await bootstrap(bootstrapOptions);
 }
 
 main().catch((error) => {

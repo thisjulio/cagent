@@ -33,7 +33,7 @@ export async function loadPlugins(
   for (const p of config.plugins) {
     if (p.enabled === false) continue;
     const source = p.path ?? p.name;
-    const builtin = options.loaders?.[p.name];
+    const builtin = options.loaders?.[p.name] ?? options.loaders?.[path.basename(source)];
     const spec = source.startsWith(".") ? pathToFileURL(path.resolve(source)).href : source;
     const mod = builtin ? undefined : ((await import(spec)) as Record<string, unknown>);
     const plugin = builtin ?? (mod?.default ?? mod?.register) as Plugin | undefined;
