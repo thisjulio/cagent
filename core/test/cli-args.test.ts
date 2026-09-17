@@ -13,10 +13,11 @@ describe("CLI arguments", () => {
   });
 
   test("parses common options", () => {
-    const result = parseCliArgs(["--yes", "--output", "jsonl", "--timeout", "2m", "task"]);
+    const result = parseCliArgs(["--yes", "--output", "jsonl", "--timeout", "2m", "--variant", "ilow", "task"]);
     expect(result.permissionMode).toBe("auto");
     expect(result.output).toBe("jsonl");
     expect(result.timeoutMs).toBe(120000);
+    expect(result.variant).toBe("ilow");
   });
 
   test("rejects conflicting sessions", () => {

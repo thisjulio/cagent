@@ -87,6 +87,7 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
   telemetry.recordEvent("app.start", { interactive: !options.headless });
   const config = loaded.plugins.length || !options.defaultPlugins ? loaded : { ...loaded, plugins: options.defaultPlugins };
   if (options.headless?.model) config.model = options.headless.model;
+  if (options.headless?.variant) config.variant = options.headless.variant;
   if (options.headless?.logLevel) config.log_level = options.headless.logLevel;
   const telemetryOverride = options.headless?.telemetry ?? options.cli?.telemetry;
   if (telemetryOverride !== undefined) {

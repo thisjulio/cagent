@@ -3,15 +3,7 @@ import { createTasks, removeTask, updateTask, type TaskStatus } from "../tasks";
 import type { Controller } from "./controller";
 
 export function taskAwareTools(controller: Controller): ToolDefinition[] {
-  return controller.registry.tools().map((tool) => tool.name === "tasks" ? tool : {
-    ...tool,
-    execute: async (args: ToolArgs) => {
-      if (!controller.state.tasks.some((task) => task.status === "in_progress")) {
-        return { output: "blocked: mark exactly one task in_progress before using other tools", isError: true };
-      }
-      return tool.execute(args);
-    },
-  });
+  return controller.registry.tools();
 }
 
 export function resetCompletedTasks(controller: Controller): void {

@@ -16,6 +16,7 @@ export type CliOptions = {
   maxToolCalls: number;
   timeoutMs: number;
   model?: string;
+  variant?: string;
   logLevel?: "silent" | "error" | "warn" | "info" | "debug";
   telemetry?: boolean;
   help: boolean;
@@ -55,6 +56,7 @@ export function parseCliArgs(args: string[], stdin = ""): CliOptions {
     else if (arg === "--max-tool-calls") options.maxToolCalls = Number(next());
     else if (arg === "--timeout") options.timeoutMs = duration(next());
     else if (arg === "--model") options.model = next();
+    else if (arg === "--variant") options.variant = next();
     else if (arg === "--log-level") {
       const value = next() as NonNullable<CliOptions["logLevel"]>;
       if (!["silent", "error", "warn", "info", "debug"].includes(value)) {
@@ -97,7 +99,8 @@ Options:
       --max-tool-calls N  Maximum tool calls (default: 50)
       --timeout DURATION  For example 10m (default: 10m)
       --model ROUTE       Select a model route
-      --log-level LEVEL   Control startup logs: silent (default), error, warn, info, debug
+      --variant NAME      Select a model reasoning variant
+      --log-level LEVEL   Control startup logs: silent (default), error, info, debug
       --telemetry         Enable local telemetry for this run
       --no-telemetry      Disable local telemetry for this run
   -h, --help              Show this help

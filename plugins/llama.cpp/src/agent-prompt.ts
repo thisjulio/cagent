@@ -3,9 +3,6 @@ import type { Message } from "@cagent/sdk";
 const TURN_REMINDER = [
   "[reminder]",
   "Call one tool in this message, or give the final answer. Never both.",
-  "Keep exactly one task `in_progress`.",
-  "Do not complete a task without output from a tool you ran.",
-  "Before the final answer, call `tasks` and read the list.",
 ].join("\n");
 
 export const LLAMA_AGENT_PROMPT = [

@@ -1,7 +1,7 @@
 import { TextAttributes } from "@opentui/core";
 import type { ChatItem } from "../../controller/state";
-import { Markdown, plainLine } from "../render/markdown";
 import type { Controller } from "../../controller/controller";
+import { Markdown, plainLine } from "../render/markdown";
 import { categoryLabel } from "../../tool-category";
 
 const MAX_THINKING_LINES = 12;
