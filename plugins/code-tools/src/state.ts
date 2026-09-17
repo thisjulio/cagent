@@ -16,10 +16,12 @@ export function hash(s: string): string {
 const reads = new Map<string, { hash: string; mtimeMs: number }>();
 const failures = new Map<string, number>();
 const lastWrite = new Map<string, string>();
+const lineAnchor = new Set<string>();
 
 export function recordRead(absPath: string): void {
   const buf = fs.readFileSync(absPath);
   reads.set(absPath, { hash: hash(buf.toString("utf8")), mtimeMs: fs.statSync(absPath).mtimeMs });
+  lineAnchor.add(absPath);
 }
 
 export function getRead(absPath: string): { hash: string; mtimeMs: number } | undefined {
@@ -43,6 +45,11 @@ export function clearFailures(absPath: string): void {
 
 export function recordWrite(absPath: string, content: string): void {
   lastWrite.set(absPath, hash(content));
+  lineAnchor.delete(absPath);
+}
+
+export function hasLineAnchor(absPath: string): boolean {
+  return lineAnchor.has(absPath);
 }
 
 // ponytail: reverted = hash differs between the last write and the next read.

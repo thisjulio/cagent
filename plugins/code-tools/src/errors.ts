@@ -8,7 +8,8 @@ export type ErrorCode =
   | "E_PARSE"
   | "E_REPEATED_FAILURE"
   | "E_WRITE"
-  | "E_SEARCH";
+  | "E_SEARCH"
+  | "E_RANGE";
 
 // Convention: the first line is always `ERROR <CODE> - <detail>` (detail starts with the path).
 export function errorText(code: ErrorCode, detail: string): string {

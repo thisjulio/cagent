@@ -11,7 +11,8 @@ import { ensureShadow, shadowCommit } from "./git-shadow";
 import { parseSearchReplace } from "./parse-search-replace";
 import type { PatchFile } from "./parse-apply-patch";
 import { parseApplyPatch } from "./parse-apply-patch";
-import { bumpFailure, clearFailures, fileHash, getRead, recordRead, recordWrite, root } from "./state";
+import { applyRanges, type LineRange } from "./apply-lines";
+import { bumpFailure, clearFailures, fileHash, getRead, hasLineAnchor, recordRead, recordWrite, root } from "./state";
 import type { Region } from "./parse-search-replace";
 
 function num(v: unknown, d: number): number {
@@ -27,6 +28,7 @@ interface Target {
   path: string;
   regions?: Region[];
   file?: PatchFile;
+  ranges?: LineRange[];
 }
 
 async function processTarget(t: Target, o: { seed: string; blocks: number; patch: number; out: string[] }): Promise<boolean> {
@@ -54,13 +56,29 @@ async function processTarget(t: Target, o: { seed: string; blocks: number; patch
     o.out.push(errorText("E_STALE", `${t.path}: file changed since the last read_file`));
     return false;
   }
+  if (t.ranges && !hasLineAnchor(abs)) {
+    o.out.push(errorText("E_STALE", `${t.path}: line numbers are not current - call read_file on ${t.path} and use the numbers it returns`));
+    return false;
+  }
   const body = original.startsWith("\uFEFF") ? original.slice(1) : original;
   const eol = body.includes("\r\n") ? "\r\n" : "\n";
   const oldLines = body.length ? body.split(eol) : [];
-  const applied = t.regions ? applyRegions(oldLines, t.regions, o.blocks) : applyHunks(oldLines, t.file!, o.patch);
+  const applied = t.ranges
+    ? applyRanges(oldLines, t.ranges)
+    : t.regions
+      ? applyRegions(oldLines, t.regions, o.blocks)
+      : applyHunks(oldLines, t.file!, o.patch);
   if (applied.error) {
     const n = bumpFailure(abs, o.seed);
-    o.out.push(errorText(n >= 3 ? "E_REPEATED_FAILURE" : applied.error.code, n >= 3 ? `${t.path}: 3 consecutive failures with the same target - read the file and reformulate the edit` : n === 2 ? `${t.path}: use read_file on ${t.path} to see the current content` : `${t.path}: target ${JSON.stringify(applied.error.search.slice(0, 80))}`));
+    const detail = "message" in applied.error
+      ? applied.error.message
+      : `target ${JSON.stringify(applied.error.search.slice(0, 80))}`;
+    o.out.push(errorText(
+      n >= 3 ? "E_REPEATED_FAILURE" : applied.error.code,
+      n >= 3 ? `${t.path}: 3 consecutive failures with the same target - read the file and reformulate the edit`
+        : n === 2 ? `${t.path}: use read_file on ${t.path} to see the current content`
+          : `${t.path}: ${detail}`,
+    ));
     return false;
   }
   const next = (original.startsWith("\uFEFF") ? "\uFEFF" : "") + applied.lines.join(eol);
@@ -76,6 +94,30 @@ async function processTarget(t: Target, o: { seed: string; blocks: number; patch
   const diff = unifiedDiff(oldLines, applied.lines).split("\n");
   o.out.push(`OK ${rel(abs)}\n${diff.slice(0, 100).join("\n")}${diff.length > 100 ? "\n…" : ""}`);
   return true;
+}
+
+async function applyTargets(
+  targets: Target[],
+  o: { seed: string; blocks: number; patch: number },
+  ctx: PluginContext,
+  label: string,
+): Promise<{ output: string; isError: boolean }> {
+  const tscBefore = await tscErrors(root());
+  const out: string[] = [];
+  let ok = 0;
+  for (const t of targets) if (await processTarget(t, { ...o, out })) ok++;
+
+  const fmt = await runFormat(root());
+  const tscAfter = await tscErrors(root());
+  const newErrors = tscAfter.filter((l) => !tscBefore.includes(l));
+  if (fmt) out.push(`format:\n${fmt.slice(0, 500)}`);
+  if (newErrors.length) out.push(`new tsc errors:\n${newErrors.slice(0, 20).join("\n")}`);
+  if (ok) {
+    await ensureShadow();
+    await shadowCommit(`${label} ${ok} file(s)`);
+  }
+  ctx.emit("code-tools/edit", { ok, failed: targets.length - ok, newErrors });
+  return { output: out.join("\n"), isError: ok === 0 };
 }
 
 async function runEdit(args: ToolArgs, ctx: PluginContext, blocks: number, patch: number): Promise<{ output: string; isError: boolean }> {
@@ -98,22 +140,7 @@ async function runEdit(args: ToolArgs, ctx: PluginContext, blocks: number, patch
     ? [{ path: inputPath ?? ".", regions }]
     : (patchFiles ?? []).map((f) => ({ path: f.path, file: f }));
 
-  const tscBefore = await tscErrors(root());
-  const out: string[] = [];
-  let ok = 0;
-  for (const t of targets) if (await processTarget(t, { seed, blocks, patch, out })) ok++;
-
-  const fmt = await runFormat(root());
-  const tscAfter = await tscErrors(root());
-  const newErrors = tscAfter.filter((l) => !tscBefore.includes(l));
-  if (fmt) out.push(`format:\n${fmt.slice(0, 500)}`);
-  if (newErrors.length) out.push(`new tsc errors:\n${newErrors.slice(0, 20).join("\n")}`);
-  if (ok) {
-    await ensureShadow();
-    await shadowCommit(`edit ${ok} file(s)`);
-  }
-  ctx.emit("code-tools/edit", { ok, failed: targets.length - ok, newErrors });
-  return { output: out.join("\n"), isError: ok === 0 };
+  return applyTargets(targets, { seed, blocks, patch }, ctx, "edit");
 }
 
 export function editFileTool(ctx: PluginContext) {
@@ -132,5 +159,80 @@ export function editFileTool(ctx: PluginContext) {
       },
     },
     (args: ToolArgs) => runEdit(args, ctx, thresholdBlocks, thresholdPatch),
+  );
+}
+
+function int(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isInteger(value)) return value;
+  if (typeof value === "string" && /^\d+$/.test(value.trim())) return Number(value.trim());
+  return undefined;
+}
+
+function parseRanges(args: ToolArgs): { ranges?: LineRange[]; error?: string } {
+  const raw = args.edits ?? args.ranges ?? (args.start_line !== undefined ? args : undefined);
+  if (raw === undefined) return { error: 'provide "edits": [{"start_line": 1, "end_line": 1, "content": "..."}]' };
+
+  const items = Array.isArray(raw) ? raw : [raw];
+  const ranges: LineRange[] = [];
+  for (const item of items) {
+    if (!item || typeof item !== "object") return { error: "each entry in 'edits' must be an object with start_line, end_line and content" };
+    const rec = item as Record<string, unknown>;
+    const start = int(rec.start_line ?? rec.start);
+    const end = int(rec.end_line ?? rec.end ?? rec.start_line ?? rec.start);
+    if (start === undefined || end === undefined) return { error: "start_line and end_line must be whole numbers, as shown by read_file" };
+    if (typeof rec.content !== "string") return { error: `the entry for lines ${start}-${end} has no 'content' - send "" to delete those lines` };
+    ranges.push({ start, end, content: rec.content });
+  }
+  if (!ranges.length) return { error: "'edits' is empty" };
+  return { ranges };
+}
+
+export function replaceLinesTool(ctx: PluginContext) {
+  return defineTool(
+    "replace_lines",
+    [
+      "Replaces ranges of lines in a file you have just read with read_file.",
+      "The line numbers come from the read_file output. Call read_file first.",
+      "Send one entry per region you are changing, all numbered from that same read_file output.",
+      "content is the new text for those lines; an empty string deletes them.",
+      "After this tool succeeds the line numbers are out of date: call read_file again before editing this file.",
+    ].join(" "),
+    {
+      type: "object",
+      properties: {
+        path: { type: "string", description: "File path, as shown by read_file" },
+        edits: {
+          type: "array",
+          minItems: 1,
+          items: {
+            type: "object",
+            properties: {
+              start_line: { type: "integer", minimum: 1, description: "First line to replace. Inclusive." },
+              end_line: { type: "integer", minimum: 1, description: "Last line to replace. Inclusive. Same as start_line to replace one line." },
+              content: { type: "string", description: 'New text for those lines. Empty string ("") deletes them.' },
+            },
+            required: ["start_line", "end_line", "content"],
+            additionalProperties: false,
+          },
+        },
+      },
+      required: ["path", "edits"],
+      additionalProperties: false,
+    },
+    async (args: ToolArgs) => {
+      const inputPath = typeof args.path === "string" ? args.path.trim() : "";
+      if (!inputPath) return { output: errorText("E_PARSE", "provide 'path'"), isError: true };
+
+      const parsed = parseRanges(args);
+      if (parsed.error) return { output: errorText("E_PARSE", `${inputPath}: ${parsed.error}`), isError: true };
+
+      const ranges = parsed.ranges!;
+      return applyTargets(
+        [{ path: inputPath, ranges }],
+        { seed: JSON.stringify(ranges), blocks: 0, patch: 0 },
+        ctx,
+        "replace-lines",
+      );
+    },
   );
 }
