@@ -28,6 +28,38 @@ describe("llama.cpp adapter", () => {
     expect(withTools).toBeGreaterThan(withoutTools);
     expect(withoutTools).toBeGreaterThan(1);
   });
+
+  test("replaces unrecoverable streamed tool arguments with valid JSON", async () => {
+    const orig = globalThis.fetch;
+    const event = {
+      choices: [{
+        delta: {
+          tool_calls: [{
+            index: 0,
+            id: "call-1",
+            function: { name: "bash", arguments: '{"command":"export async function submitMessage(controller: Controller, text: string): Promise<void> {' },
+          }],
+        },
+      }],
+    };
+    globalThis.fetch = (async () =>
+      new Response(
+          `data: ${JSON.stringify(event)}\n\n` +
+          "data: [DONE]\n\n",
+        { headers: { "Content-Type": "text/event-stream" } },
+      )) as typeof fetch;
+    try {
+      const adapter = createAdapter();
+      const chunks = [];
+      for await (const chunk of adapter.stream({ model: "qwen", messages: [], tools: [] })) chunks.push(chunk);
+      expect(chunks).toContainEqual({
+        type: "tool-call",
+        tool_call: { id: "call-1", name: "bash", arguments: "{}" },
+      });
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
   test("adds the coding-agent prompt without replacing the existing system prompt", () => {
     const messages = addAgentPrompt([
       { role: "system", content: "Project rules" },

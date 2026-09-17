@@ -1,6 +1,7 @@
 import { describe, test, expect } from "bun:test";
 import { detectImagePaths, isImagePath } from "../src/controller/image-detection";
 import { filterExistingImagePaths, processImage, detectMimeType, validateImagePath } from "../src/controller/image-processor";
+import { buildImageContent } from "../src/controller/submit-image";
 import { writeFileSync, mkdtempSync, rmSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -126,6 +127,56 @@ describe("image-processor", () => {
     expect(controller.state.chat).toHaveLength(2);
 
     rmSync(sessionDir, { recursive: true });
+  });
+});
+
+describe("buildImageContent", () => {
+  test("returns plain text when no image paths are present", () => {
+    const result = buildImageContent("just text here");
+    expect(result).not.toBeNull();
+    expect(result!.content).toBe("just text here");
+    expect(result!.imagePaths).toEqual([]);
+  });
+
+  test("returns null when more than 5 valid images", () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), "cagent-test-"));
+    const paths: string[] = [];
+    for (let i = 0; i < 6; i++) {
+      const p = join(tmpDir, `img${i}.png`);
+      writeFileSync(p, "image");
+      paths.push(p);
+    }
+    const text = paths.join(" ");
+    const result = buildImageContent(text);
+    expect(result).toBeNull();
+    rmSync(tmpDir, { recursive: true });
+  });
+
+  test("handles mixed existing and missing image paths", () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), "cagent-test-"));
+    const existing = join(tmpDir, "exists.png");
+    writeFileSync(existing, "image");
+    const missing = join(tmpDir, "missing.png");
+    const text = `see ${existing} and ${missing}`;
+    const result = buildImageContent(text);
+    expect(result).not.toBeNull();
+    expect(result!.imagePaths).toEqual([existing]);
+    rmSync(tmpDir, { recursive: true });
+  });
+
+  test("builds content parts with images", () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), "cagent-test-"));
+    const imgPath = join(tmpDir, "test.png");
+    const pngBytes = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60E6KwAAAABJRU5ErkJggg==", "base64");
+    writeFileSync(imgPath, pngBytes);
+    const result = buildImageContent(`look at ${imgPath}`);
+    expect(result).not.toBeNull();
+    expect(Array.isArray(result!.content)).toBe(true);
+    const parts = result!.content as Array<{ type: string }>;
+    expect(parts.length).toBe(2);
+    expect(parts[0].type).toBe("text");
+    expect(parts[1].type).toBe("image_url");
+    rmSync(tmpDir, { recursive: true });
   });
 });
 

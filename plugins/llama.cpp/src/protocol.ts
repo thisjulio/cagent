@@ -49,5 +49,7 @@ export function validToolArguments(argumentsText: string): string {
     if (!candidate) continue;
     try { JSON.parse(candidate); return candidate; } catch { /* Try the next low-risk normalization. */ }
   }
-  return argumentsText;
+  // Never resend malformed arguments: llama-server parses assistant tool calls
+  // as JSON before it can return a useful tool error.
+  return "{}";
 }

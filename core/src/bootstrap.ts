@@ -124,17 +124,18 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
   if (route) telemetry.recordEvent("route.resolved", { "model.route": route });
   const contextWindow = route ? await adapter.context_window?.(splitRoute(route)[1]) : 60_000;
   let ask: ToolAsk = async () => true;
-  let c: Controller;
+  let currentModel = route;
+  const getModelRoute = (): string => currentModel;
   const executeSubagent = createSubagentExecutor({
     find: (name) => registry.subagent(name),
     registry,
-    model: () => c.state.model,
+    model: getModelRoute,
     tools: registry.tools(),
     allowlist: config.allowlist,
     ask: (...args) => ask(...args),
     bus,
   });
-  c = new Controller({
+  const c = new Controller({
     config,
     registry,
     bus,
