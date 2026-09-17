@@ -103,6 +103,15 @@ async function runAgentTurn(
     interrupted: host.interrupted, maxTurns: host.maxTurns, maxToolCalls: host.maxToolCalls,
     observability: host.observability ?? noopObservability,
     traceAttributes: host.traceAttributes,
+    onToolOutput: (content) => {
+      host.state.tokens = estimateTokens(host.messages);
+      host.bumpStream();
+    },
+    onUsage: (usage) => {
+      if (usage.inputTokens !== undefined) host.state.inputTokens = usage.inputTokens;
+      if (usage.outputTokens !== undefined) host.state.outputTokens = usage.outputTokens;
+      host.bumpStream();
+    },
   });
 }
 

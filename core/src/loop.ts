@@ -11,6 +11,8 @@ export interface StreamOpts {
   tools: ToolDefinition[];
   onText?: (text: string) => void;
   onReasoning?: (text: string) => void;
+  onToolOutput?: (content: string) => void;
+  onUsage?: (usage: { inputTokens?: number; outputTokens?: number }) => void;
   interrupted?: () => boolean;
   attempts?: number;
   observability?: Observability;
@@ -42,7 +44,10 @@ export async function streamOnce(
       for await (const chunk of opts.adapter.stream(request)) {
         chunks++;
         firstTokenAt ??= performance.now();
-        if (chunk.type === "finish") inputTokens = chunk.usage?.input_tokens;
+        if (chunk.type === "finish") {
+          inputTokens = chunk.usage?.input_tokens;
+          opts.onUsage?.({ inputTokens: chunk.usage?.input_tokens, outputTokens: chunk.usage?.output_tokens });
+        }
         if (opts.interrupted?.()) break;
         if (chunk.type === "text") {
           text = appendCapped(text, chunk.text, MAX_RESPONSE_CHARS);
@@ -119,6 +124,7 @@ async function runToolCall(ctx: ToolLoopCtx, tc: { id: string; name: string; arg
     args,
     isError: result.isError,
   });
+  opts.onToolOutput?.(result.output);
   ctx.evidence.push(...(result.evidence ?? []));
   opts.bus.emit("tool.completed", workflowPayload(opts, {
     tool: tool?.name ?? tc.name,

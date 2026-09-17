@@ -82,6 +82,8 @@ export class Controller {
       model: deps.model,
       variant: deps.variant,
       tokens: this.estimateTokens(),
+      inputTokens: 0,
+      outputTokens: 0,
       contextWindow,
       threshold,
       busy: false,

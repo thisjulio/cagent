@@ -125,7 +125,7 @@ export function App({ c }: { c: Controller }) {
       <box height={1} flexShrink={0}>
         <text attributes={TextAttributes.DIM}>{s.notice}</text>
       </box>
-<StatusBar model={s.model} variant={s.variant} tokens={s.tokens} contextWindow={s.contextWindow ?? s.threshold} />
+<StatusBar model={s.model} variant={s.variant} tokens={s.tokens} inputTokens={s.inputTokens} outputTokens={s.outputTokens} contextWindow={s.contextWindow ?? s.threshold} />
     </box>
   );
 }
