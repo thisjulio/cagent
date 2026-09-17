@@ -135,6 +135,7 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
     bus,
     adapter,
     model: route,
+    variant: config.variant,
     contextWindow,
     sessionId: options.headless?.session,
     maxTurns: options.headless?.maxTurns,

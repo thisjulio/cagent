@@ -79,6 +79,9 @@ export function createAdapter(opts: AdapterOptions): ProviderAdapter {
       }
       return models.map((m) => m.id ?? m.slug).filter((s): s is string => Boolean(s)).sort();
     },
+    async supported_variants(_model: string): Promise<string[]> {
+      return ["low", "medium", "high"];
+    },
 
     async prepare_call(options: LlmCallOptions): Promise<LlmCallOptions> {
       const model = options.model || (opts.config.model as string | undefined) || process.env.CAGENT_MODEL;

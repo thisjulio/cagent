@@ -6,6 +6,7 @@ import { appendCapped, MAX_RESPONSE_CHARS } from "./stream-buffer";
 export interface StreamOpts {
   adapter: ProviderAdapter;
   model: string;
+  variant?: string;
   messages: Message[];
   tools: ToolDefinition[];
   onText?: (text: string) => void;
@@ -26,6 +27,7 @@ export async function streamOnce(
       const observability = opts.observability ?? noopObservability;
       const request: LlmCallOptions = await trace(observability, "provider.prepare_call", () => opts.adapter.prepare_call({
         model: opts.model,
+        variant: opts.variant,
         messages: opts.messages,
         tools: opts.tools,
       }), { "provider.model": opts.model, ...opts.traceAttributes });

@@ -24,7 +24,7 @@ export async function* streamCodex(request: LlmCallOptions, access: string, acco
       tool_choice: "auto",
       stream: true,
       store: false,
-      reasoning: { effort: "low", summary: "detailed" },
+      reasoning: { effort: request.variant ?? "low", summary: "detailed" },
       ...(request.tools.length
         ? {
             tools: request.tools.map((t) => t.name === "apply_patch"

@@ -6,12 +6,13 @@ import type { ToolAsk } from "../tools";
 import { appendChat } from "./chat-buffer";
 import type { UIState } from "./state";
 import { appendCapped, MAX_VISIBLE_STREAM_CHARS } from "../stream-buffer";
-import type { Task } from "../tasks";
+import { shouldContinueTaskWorkflow, taskSignature } from "./task-continuation";
 
 export type TurnHost = {
   state: UIState;
   adapter: ProviderAdapter;
   model: string;
+  variant?: string;
   messages: Message[];
   tools: ToolDefinition[];
   allowlist: string[];
@@ -36,21 +37,27 @@ export async function executeTurn(host: TurnHost): Promise<void> {
   let thinkingContent = "";
   let streamedTokens = 0;
   try {
-    let turn = await runAgentTurnWithRecovery(host, () => thinkingContent, (value) => { thinkingContent = value; }, () => streamedTokens, (value) => { streamedTokens = value; });
-    let continuations = 0;
     let previousTasks = taskSignature(host.state.tasks);
-    while (shouldContinueTasks(host.state.tasks, host.interrupted) && continuations < 2) {
+    let turn = await runAgentTurnWithRecovery(host, () => thinkingContent, (value) => { thinkingContent = value; }, () => streamedTokens, (value) => { streamedTokens = value; });
+    const records = [...turn.records];
+    let continuations = 0;
+    while (continuations < 2 && shouldContinueTaskWorkflow({
+      tasks: host.state.tasks,
+      previousSignature: previousTasks,
+      assistantText: lastAssistantText(turn.records),
+      interrupted: host.interrupted(),
+    })) {
       const currentTasks = taskSignature(host.state.tasks);
-      if (continuations > 0 && currentTasks === previousTasks) break;
       host.messages.push({
         role: "user",
         content: "Checklist tasks remain unfinished. Continue with the next pending task. Mark exactly one task in_progress before using other tools. Do not summarize yet.",
       });
       turn = await runAgentTurnWithRecovery(host, () => thinkingContent, (value) => { thinkingContent = value; }, () => streamedTokens, (value) => { streamedTokens = value; });
+      records.push(...turn.records);
       continuations++;
       previousTasks = currentTasks;
     }
-    persistTurn(host, turn.records, thinkingContent);
+    persistTurn(host, records, thinkingContent);
     for (const item of host.state.chat) if (item.kind === "tool" && item.running) item.running = false;
     if (turn.inputTokens !== undefined) host.state.tokens = turn.inputTokens;
     host.state.notice = turn.interrupted ? "[interrupted - type to steer]" : "";
@@ -97,7 +104,7 @@ async function runAgentTurn(
   setTokens: (value: number) => void,
 ) {
   return runTurn({
-    adapter: host.adapter, model: host.model, messages: host.messages, tools: host.tools,
+    adapter: host.adapter, model: host.model, variant: host.variant, messages: host.messages, tools: host.tools,
     allowlist: host.allowlist, ask: host.ask, bus: host.bus, hooks: host.hooks, signal: host.signal,
     onText: (text) => {
       appendText(host, text);
@@ -118,14 +125,8 @@ async function runAgentTurn(
   });
 }
 
-function taskSignature(tasks: Task[]): string {
-  return tasks.map((task) => `${task.id}:${task.status}:${task.evidence ?? ""}`).join("|");
-}
-
-function shouldContinueTasks(tasks: Task[], interrupted: () => boolean): boolean {
-  return !interrupted() && tasks.length > 0 &&
-    tasks.some((task) => task.status === "pending") &&
-    !tasks.some((task) => task.status === "blocked");
+function lastAssistantText(records: TurnRecord[]): string {
+  return records.findLast((record) => record.role === "assistant")?.content ?? "";
 }
 
 function appendText(host: TurnHost, text: string): void {

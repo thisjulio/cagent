@@ -38,6 +38,17 @@ const commands: Record<string, SlashHandler> = {
     c.bump();
   },
   "/model": (c) => c.openModelPicker(),
+  "/variant": (c, arg) => {
+    const val = arg.trim();
+    if (!val) {
+      c.state.notice = c.state.variant ? `variant: ${c.state.variant}` : "no variant set";
+      c.bump();
+      return;
+    }
+    c.state.variant = val;
+    c.state.notice = `variant set to: ${val}`;
+    c.bump();
+  },
   "/help": (c) => {
     c.observability?.recordEvent("help.opened");
     c.state.helpOpen = true;

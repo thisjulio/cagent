@@ -40,6 +40,7 @@ export type UIState = {
   chatVersion: number;
   toolLog: ToolLogEntry[];
   model: string;
+  variant?: string;
   tokens: number;
   contextWindow: number;
   threshold: number;
@@ -79,6 +80,7 @@ export interface ControllerDeps {
   bus: EventBus;
   adapter: ProviderAdapter;
   model: string;
+  variant?: string;
   contextWindow?: number;
   systemPrompt: string;
   sessionDir?: string;

@@ -163,12 +163,14 @@ export interface LlmCallOptions {
   model: string;
   messages: Message[];
   tools: ToolDefinition[];
+  variant?: string;
 }
 
 export interface ProviderAdapter {
   list_models(): Promise<string[]>;
   context_window?(model: string): Promise<number | undefined>;
   estimate_tokens?(model: string, messages: Message[]): number | undefined;
+  supported_variants?(model: string): Promise<string[]>;
   tool_overrides?(): ToolOverrides;
   prepare_call(options: LlmCallOptions): Promise<LlmCallOptions>;
   stream(request: LlmCallOptions): AsyncGenerator<LlmChunk>;

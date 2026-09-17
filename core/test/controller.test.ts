@@ -26,11 +26,11 @@ function deps(permissions = false, configOverrides: Record<string, unknown> = {}
 }
 
 describe("controller", () => {
-  it("defaults automatic compaction to 60% of the model context window", () => {
+  it("defaults automatic compaction to 80% of the model context window", () => {
     const c = new Controller({ ...deps(), contextWindow: 100_000 });
 
     expect(c.state.contextWindow).toBe(100_000);
-    expect(c.state.threshold).toBe(60_000);
+    expect(c.state.threshold).toBe(80_000);
   });
 
   it("uses the configured compaction percentage", () => {

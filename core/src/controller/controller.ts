@@ -70,7 +70,7 @@ export class Controller {
     const loaded = this.session.load();
     this.messages = mergeSystemMessages(deps.systemPrompt, loaded.messages);
     const contextWindow = deps.contextWindow ?? 60_000;
-    const configuredPercent = deps.config.compact_threshold_percent ?? 60;
+    const configuredPercent = deps.config.compact_threshold_percent ?? 80;
     const percent = Math.min(100, Math.max(1, configuredPercent));
     const threshold = deps.config.compact_threshold_tokens ?? Math.floor(contextWindow * percent / 100);
     const s: UIState = {
@@ -80,6 +80,7 @@ export class Controller {
       toolLog: [],
       title: toTitle(loaded.records),
       model: deps.model,
+      variant: deps.variant,
       tokens: this.estimateTokens(),
       contextWindow,
       threshold,
