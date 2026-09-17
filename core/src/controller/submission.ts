@@ -7,10 +7,29 @@ import { resetCompletedTasks, taskAwareTools } from "./task-actions";
 import { compact, generateTitle } from "./sessions";
 import type { Controller } from "./controller";
 import { workflowEvent } from "@cagent/sdk";
+import { detectImagePaths } from "./image-detection";
+import { processImage, validateImagePath } from "./image-processor";
+import type { ContentPart } from "@cagent/sdk";
 
 export async function submitMessage(controller: Controller, text: string): Promise<void> {
   const state = controller.state;
   const turnId = crypto.randomUUID();
+  const imagePaths = detectImagePaths(text);
+
+  if (imagePaths.length > 5) {
+    rejectSubmission(controller, "Maximum 5 images per message");
+    return;
+  }
+
+  for (const path of imagePaths) {
+    try {
+      validateImagePath(path);
+    } catch (e) {
+      rejectSubmission(controller, `Image attachment not found: ${path}`);
+      return;
+    }
+  }
+
   resetCompletedTasks(controller);
   appendChat(state, { kind: "user", content: text });
   state.busy = true;
@@ -18,7 +37,24 @@ export async function submitMessage(controller: Controller, text: string): Promi
   state.elapsedMs = 0;
   controller.resetTurn();
   controller.session.append({ ts: Date.now(), type: "user", payload: { content: text } });
-  controller.messages.push({ role: "user", content: text });
+
+  let content: string | ContentPart[] = text;
+
+  if (imagePaths.length > 0) {
+    const parts: ContentPart[] = [{ type: "text", text }];
+    for (const path of imagePaths) {
+      try {
+        const { dataUrl, mimeType } = processImage(path);
+        parts.push({ type: "image_url", image_url: { url: dataUrl, mime_type: mimeType } });
+      } catch (e) {
+        rejectSubmission(controller, `Error loading image ${path}: ${e instanceof Error ? e.message : String(e)}`);
+        return;
+      }
+    }
+    content = parts;
+  }
+
+  controller.messages.push({ role: "user", content });
   controller.bus.emit("message.submitted", workflowEvent({ content: text }, { sessionId: controller.session.id }));
   controller.envStamp = addEnvironmentContext(controller.messages, controller.envStamp);
   if (controller.config.compact_auto !== false && state.tokens !== undefined && state.tokens >= state.threshold) {
@@ -40,4 +76,9 @@ export async function submitMessage(controller: Controller, text: string): Promi
     }
     return compact(controller, true);
   }, traceAttributes: { "turn.id": turnId } }).finally(() => clearInterval(timer));
+}
+
+function rejectSubmission(controller: Controller, message: string): void {
+  controller.state.notice = message;
+  controller.bump();
 }

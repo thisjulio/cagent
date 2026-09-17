@@ -52,7 +52,16 @@ export function toInputItems(messages: LlmCallOptions["messages"]): unknown[] {
         output: m.content ?? "",
       });
     } else {
-      items.push({ type: "message", role: m.role, content: [{ type: "input_text", text: m.content ?? "" }] });
+      if (typeof m.content === "string") {
+        items.push({ type: "message", role: m.role, content: [{ type: "input_text", text: m.content }] });
+      } else {
+        const parts = m.content.map((part) => {
+          if (part.type === "text") return { type: "input_text", text: part.text };
+          if (part.type === "image_url") return { type: "input_image", image_url: part.image_url.url };
+          return part;
+        });
+        items.push({ type: "message", role: m.role, content: parts });
+      }
     }
   }
   return items;

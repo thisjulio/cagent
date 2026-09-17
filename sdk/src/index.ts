@@ -123,16 +123,25 @@ export function overrideNameMap(overrides: ToolOverrides): Record<string, string
   return map;
 }
 
+export type ContentPart =
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string; mime_type?: string } };
+
+export function toContentParts(content: string | ContentPart[]): ContentPart[] {
+  if (typeof content === "string") return [{ type: "text", text: content }];
+  return content;
+}
+
 export type Message = {
   role: "system" | "user" | "assistant" | "tool";
-  content: string;
+  content: string | ContentPart[];
   tool_calls?: { id: string; name: string; arguments: string }[];
   tool_call_id?: string;
 };
 
 export type WireMessage = {
   role: "system" | "user" | "assistant" | "tool";
-  content: string;
+  content: string | any[];
   tool_calls?: { id: string; type: "function"; function: { name: string; arguments: string } }[];
   tool_call_id?: string;
 };
@@ -141,6 +150,13 @@ export type WireMessage = {
 export function toChatMessages(messages: Message[]): WireMessage[] {
   return messages.map((m) => {
     const out: WireMessage = { role: m.role, content: m.content };
+    if (typeof m.content === "object") {
+      out.content = m.content.map((part) => {
+        if (part.type === "text") return { type: "text", text: part.text };
+        if (part.type === "image_url") return { type: "image_url", image_url: { url: part.image_url.url } };
+        return part;
+      });
+    }
     if (m.tool_call_id) out.tool_call_id = m.tool_call_id;
     if (m.tool_calls?.length) {
       out.tool_calls = m.tool_calls.map((tc) => ({

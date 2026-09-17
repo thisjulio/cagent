@@ -55,8 +55,12 @@ export function createAdapter(opts: AdapterOptions): ProviderAdapter {
   };
 
   return {
+
     estimate_tokens(model: string, messages) {
-      try { const encoder = (() => { try { return encodingForModel(model as never); } catch { return getEncoding("o200k_base"); } })(); return messages.reduce((n, m) => n + encoder.encode(m.content).length, 0); } catch { return undefined; }
+      try {
+        const encoder = (() => { try { return encodingForModel(model as never); } catch { return getEncoding("o200k_base"); } })();
+        return messages.reduce((n, m) => n + encoder.encode(typeof m.content === "string" ? m.content : m.content.map(p => p.type === "text" ? p.text : "[image]").join(" ")).length, 0);
+      } catch { return undefined; }
     },
     async context_window(model: string): Promise<number | undefined> {
       return contextWindows.get(model);

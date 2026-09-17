@@ -3,6 +3,7 @@ import type { ChatItem } from "../../controller/state";
 import type { Controller } from "../../controller/controller";
 import { Markdown, plainLine } from "../render/markdown";
 import { categoryLabel } from "../../tool-category";
+import { detectImagePaths } from "../../controller/image-detection";
 
 const MAX_THINKING_LINES = 12;
 const MAX_THINKING_CHARS = 2400;
@@ -38,12 +39,22 @@ function time(ts?: number): string {
 }
 
 function UserRow({ it }: { it: ChatItem }) {
+  const imagePaths = detectImagePaths(it.content);
+  const textWithoutImages = imagePaths.length > 0
+    ? it.content.replace(/(\.{0,2}\/[^\s"']+\.(?:png|jpe?g|gif|webp))/gi, "").trim()
+    : it.content;
   return (
     <box paddingX={2} marginTop={1} marginBottom={1} width="100%" flexDirection="column" flexShrink={0}>
       <text fg="#d97757">You <span attributes={TextAttributes.DIM}>{time(it.timestamp)}</span></text>
       <text>
-        <span fg="#d97757">└─ </span>{it.content}
+        <span fg="#d97757">└─ </span>{textWithoutImages || " "}
       </text>
+      {imagePaths.map((path) => (
+        <text key={`img-${path}`}>
+          <span fg="#d97757">    </span>
+          <span fg="#a78bfa">[Image: {path}]</span>
+        </text>
+      ))}
     </box>
   );
 }

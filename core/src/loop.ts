@@ -177,8 +177,11 @@ export async function runTurn(opts: TurnOpts): Promise<TurnResult> {
   }, opts.traceAttributes);
 }
 
-function lastUserMessage(messages: Message[]): string {
-  return [...messages].reverse().find((message) => message.role === "user")?.content ?? "";
+function lastUserMessage(messages: Message[]): string | undefined {
+  const userMsg = [...messages].reverse().find((message) => message.role === "user");
+  if (!userMsg) return "";
+  if (typeof userMsg.content === "string") return userMsg.content;
+  return userMsg.content.map((p) => p.type === "text" ? p.text : "[image]").join(" ");
 }
 
 function workflowPayload(opts: TurnOpts, data: Record<string, unknown>): WorkflowEventPayload {

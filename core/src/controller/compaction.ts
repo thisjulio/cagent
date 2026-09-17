@@ -25,7 +25,7 @@ function removeOrphanedToolOutputs(messages: Controller["messages"]): Controller
 export async function compact(c: Controller, force = false, instructions?: string): Promise<void> {
   const s = c.state;
   const threshold = s.threshold;
-  const est = estimateTokens(c.messages);
+  const est = Math.max(s.tokens ?? 0, estimateTokens(c.messages));
   if (!force && est < threshold) {
     c.observability?.recordEvent("compaction.skipped", { reason: "below_threshold", tokens: est, threshold });
     s.notice = `no compaction (${est} < ${threshold} tokens)`;
