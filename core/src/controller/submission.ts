@@ -21,15 +21,16 @@ export async function submitMessage(controller: Controller, text: string): Promi
   }
 
   const { content, imagePaths } = imageContent;
-
   resetCompletedTasks(controller);
-  appendChat(state, { kind: "user", content: text, imagePaths });
+  appendChat(state, { kind: "user", content: text, imagePaths, turnId });
   state.busy = true;
   state.turnStartedAt = Date.now();
   state.elapsedMs = 0;
+  state.currentTurnId = turnId;
   controller.resetTurn();
   controller.session.append({
     ts: Date.now(),
+    turnId,
     type: "user",
     payload: { content: text, imagePaths },
   });
@@ -48,7 +49,7 @@ export async function submitMessage(controller: Controller, text: string): Promi
   });
   await titlePromise;
   const timer = setInterval(() => { if (state.turnStartedAt) { state.elapsedMs = Date.now() - state.turnStartedAt; controller.bump(); } }, 500);
-  await executeTurn({ state, adapter: controller.adapter, model: splitRoute(state.model)[1], variant: state.variant, messages: controller.messages, tools: taskAwareTools(controller), allowlist: controller.config.allowlist, ask: controller.ask, bus: controller.bus, hooks: controller.registry.hooks, session: controller.session, interrupted: () => controller.isInterrupted(), signal: controller.signal, maxTurns: controller.maxTurns, maxToolCalls: controller.maxToolCalls, onText: controller.onText, onReasoning: controller.onReasoning, bump: controller.bump, bumpStream: () => controller.bumpStreamNow(), observability: controller.observability, onContextLimit: () => {
+  await executeTurn({ state, adapter: controller.adapter, model: splitRoute(state.model)[1], variant: state.variant, messages: controller.messages, tools: taskAwareTools(controller), allowlist: controller.config.allowlist, ask: controller.ask, bus: controller.bus, hooks: controller.registry.hooks, session: controller.session, interrupted: () => controller.isInterrupted(), signal: controller.signal, maxTurns: controller.maxTurns, maxToolCalls: controller.maxToolCalls, onText: controller.onText, onReasoning: controller.onReasoning, bump: controller.bump, bumpStream: () => controller.bumpStreamNow(), observability: controller.observability, turnId, onContextLimit: () => {
     if (controller.config.compact_auto === false) {
       controller.state.notice = "automatic compaction disabled; use /compact";
       controller.bump();

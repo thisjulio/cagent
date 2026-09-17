@@ -30,6 +30,7 @@ export type TurnHost = {
   observability?: Observability;
   traceAttributes?: Record<string, string | number | boolean>;
   onContextLimit?: () => Promise<void>;
+  turnId?: string;
 };
 
 export async function executeTurn(host: TurnHost): Promise<void> {
@@ -143,17 +144,18 @@ function appendReasoning(host: TurnHost, text: string): void {
 }
 
 function persistTurn(host: TurnHost, records: TurnRecord[], thinking: string): void {
-  if (thinking) host.session.append({ ts: Date.now(), type: "thinking", payload: { content: thinking } });
+  if (thinking) host.session.append({ ts: Date.now(), turnId: host.turnId, type: "thinking", payload: { content: thinking } });
   for (const record of records) {
     if (record.role === "assistant") {
-      host.session.append({ ts: Date.now(), type: "assistant", payload: { content: record.content, ...(record.tool_calls ? { tool_calls: record.tool_calls } : {}) } });
+      host.session.append({ ts: Date.now(), turnId: host.turnId, type: "assistant", payload: { content: record.content, ...(record.tool_calls ? { tool_calls: record.tool_calls } : {}) } });
     } else {
-      host.session.append({ ts: Date.now(), type: "tool", payload: { tool_call_id: record.tool_call_id, content: record.content, isError: record.isError, toolName: record.toolName } });
+      host.session.append({ ts: Date.now(), turnId: host.turnId, type: "tool", payload: { tool_call_id: record.tool_call_id, content: record.content, isError: record.isError, toolName: record.toolName } });
     }
   }
   if (host.state.tokens !== undefined) {
     host.session.append({
       ts: Date.now(),
+      turnId: host.turnId,
       type: "meta",
       payload: { kind: "usage", tokens: host.state.tokens, inputTokens: host.state.inputTokens, outputTokens: host.state.outputTokens },
     });

@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import type { Controller } from "./controller";
 import type { SkillActivation } from "../skills/types";
 import { formatSkillToolOutput } from "../skills/tool-result";
@@ -20,6 +21,7 @@ export async function invokeSkill(
 }
 
 function appendSkillActivation(controller: Controller, name: string, activation: SkillActivation): void {
+  const turnId = crypto.randomUUID();
   const id = `skill-${controller.session.id}-${controller.nextSkillCallId()}`;
   const toolCall = { id, name: "skill", arguments: JSON.stringify({ name }) };
   const output = formatSkillToolOutput(name, activation.directory, activation.content);
@@ -27,7 +29,7 @@ function appendSkillActivation(controller: Controller, name: string, activation:
   controller.messages.push({ role: "tool", tool_call_id: id, content: output });
   toolPre(controller.state, { tool: "skill", args: { name } });
   toolPost(controller.state, { tool: "skill", result: { output } });
-  controller.session.append({ ts: Date.now(), type: "meta", payload: { kind: "skill-activated", format: "tool-v1", name, source: "user" } });
-  controller.session.append({ ts: Date.now(), type: "assistant", payload: { content: "", tool_calls: [toolCall] } });
-  controller.session.append({ ts: Date.now(), type: "tool", payload: { tool_call_id: id, content: output, toolName: "skill" } });
+  controller.session.append({ ts: Date.now(), turnId, type: "meta", payload: { kind: "skill-activated", format: "tool-v1", name, source: "user" } });
+  controller.session.append({ ts: Date.now(), turnId, type: "assistant", payload: { content: "", tool_calls: [toolCall] } });
+  controller.session.append({ ts: Date.now(), turnId, type: "tool", payload: { tool_call_id: id, content: output, toolName: "skill" } });
 }

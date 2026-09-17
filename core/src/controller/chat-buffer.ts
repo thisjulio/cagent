@@ -4,6 +4,7 @@ export const MAX_CHAT_ITEMS = 400;
 
 export function appendChat(state: UIState, item: ChatItem): void {
   if (item.timestamp === undefined) item.timestamp = Date.now();
+  if (state.currentTurnId && !item.turnId) item.turnId = state.currentTurnId;
   state.chat.push(item);
   if (state.chat.length <= MAX_CHAT_ITEMS) return;
   state.chat.splice(0, state.chat.length - MAX_CHAT_ITEMS);

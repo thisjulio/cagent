@@ -11,6 +11,7 @@ import type { SubagentRequest } from "../subagents/executor";
 export type ChatItem = {
   kind: "user" | "assistant" | "tool" | "meta" | "thinking";
   content: string;
+  turnId?: string;
   imagePaths?: string[];
   subagent?: string;
   subagentHeader?: boolean;
@@ -62,6 +63,7 @@ export type UIState = {
   turnStartedAt: number | null;
   elapsedMs: number;
   lastEscTime: number;
+  currentTurnId?: string;
 }
 
 export type InputKey = {

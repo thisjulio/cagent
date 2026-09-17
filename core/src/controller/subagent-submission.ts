@@ -1,12 +1,14 @@
+import crypto from "node:crypto";
 import type { Controller } from "./controller";
 import { appendChat } from "./chat-buffer";
 
 export async function submitSubagent(controller: Controller, name: string, task: string, original: string): Promise<void> {
+  const turnId = crypto.randomUUID();
   controller.observability?.recordEvent("subagent.started", { "subagent.name": name, "task.length": task.length });
   const s = controller.state;
   s.input = "";
   appendChat(s, { kind: "user", content: original });
-  controller.session.append({ ts: Date.now(), type: "user", payload: { content: original } });
+  controller.session.append({ ts: Date.now(), turnId, type: "user", payload: { content: original } });
   controller.session.append({ ts: Date.now(), type: "meta", payload: { kind: "subagent-start", name } });
   appendChat(s, { kind: "assistant", content: "", subagent: name, subagentHeader: true });
   s.busy = true;
@@ -25,7 +27,7 @@ export async function submitSubagent(controller: Controller, name: string, task:
       { role: "assistant", content: result },
     );
     appendChat(s, { kind: "assistant", content: result, subagent: name });
-    controller.session.append({ ts: Date.now(), type: "assistant", payload: { content: result, subagent: name } });
+    controller.session.append({ ts: Date.now(), turnId, type: "assistant", payload: { content: result, subagent: name } });
   } catch (error) {
     controller.observability?.recordEvent("subagent.failed", { "subagent.name": name, "error.type": error instanceof Error ? error.name : "unknown" });
     s.notice = `error: ${error instanceof Error ? error.message : String(error)}`;

@@ -1,17 +1,20 @@
-import type { ChatItem } from "../../controller/state";
-import { ChatItemRow } from "./ChatItemRow";
+import { chatToBlocks } from "../render/blocks";
+import { UserTurnBlockComponent } from "./UserTurnBlock";
+import { AgentTurnBlockComponent } from "./AgentTurnBlock";
+import { SystemBlockComponent } from "./SystemBlock";
 import type { Controller } from "../../controller/controller";
 
-// Offset 0 shows the end of the history; a positive offset reveals earlier lines.
 export function ChatViewport({
   chat,
   busy,
   controller,
 }: {
-  chat: ChatItem[];
+  chat: Parameters<typeof chatToBlocks>[0];
   busy: boolean;
   controller: Controller;
 }) {
+  const blocks = chatToBlocks(chat);
+
   return (
     <scrollbox
       flexGrow={1}
@@ -25,18 +28,20 @@ export function ChatViewport({
       justifyContent="flex-end"
       verticalScrollbarOptions={{ visible: false }}
     >
-      {chat.map((it, i) => {
-        const previous = chat[i - 1]?.kind;
-        const showAgentLabel = it.kind !== "user" && it.kind !== "meta" &&
-          previous !== "assistant" && previous !== "thinking" && previous !== "tool";
+      {blocks.map((block, index) => {
+        const isLast = index === blocks.length - 1;
+        if (block.type === "user-turn") {
+          return <UserTurnBlockComponent key={`user-${block.turnId}`} block={block} />;
+        }
+        if (block.type === "system") {
+          return <SystemBlockComponent key={`system-${block.turnId}`} block={block} />;
+        }
         return (
-          <ChatItemRow
-            key={i}
-            it={it}
-            index={i}
+          <AgentTurnBlockComponent
+            key={`agent-${block.turnId}`}
+            block={block}
+            streaming={busy && isLast}
             controller={controller}
-            streaming={busy && i === chat.length - 1}
-            showAgentLabel={showAgentLabel}
           />
         );
       })}

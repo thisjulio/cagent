@@ -6,6 +6,7 @@ import type { Message } from "@cagent/sdk";
 
 export type SessionRecord = {
   ts: number;
+  turnId?: string;
   type: "user" | "assistant" | "thinking" | "tool" | "meta";
   payload: Record<string, unknown>;
 };
@@ -41,6 +42,16 @@ export class Session {
       .split("\n")
       .filter(Boolean)
       .map((l) => JSON.parse(l) as SessionRecord);
+    // ponytail: infer turns for old sessions rather than failing or requiring migration
+    let turnSeq = 0;
+    let currentTurn: string | null = null;
+    for (const r of records) {
+      if (r.type === "user") {
+        turnSeq++;
+        currentTurn = `legacy-${turnSeq}`;
+      }
+      if (!r.turnId) r.turnId = currentTurn ?? `legacy-${turnSeq}`;
+    }
     const compacted = records.findLastIndex((r) => r.type === "meta" && r.payload.kind === "compacted");
     const effective = compacted === -1
       ? records
