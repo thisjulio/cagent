@@ -11,6 +11,7 @@ async function* streamChatCompletions(request: LlmCallOptions, config: LlamaConf
     model: request.model,
     messages: toChatMessages(request.messages),
     stream: true,
+    ...(request.variant ? { chat_template_kwargs: { reasoning_effort: request.variant } } : {}),
     ...(tools ? { tools } : {}),
   };
   const response = await fetch(`${root}/v1/chat/completions`, {

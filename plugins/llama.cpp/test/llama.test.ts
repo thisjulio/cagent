@@ -189,4 +189,22 @@ describe("llama.cpp adapter", () => {
       globalThis.fetch = orig;
     }
   });
+
+  test("forwards the reasoning variant as a chat template parameter", async () => {
+    const orig = globalThis.fetch;
+    let payload: Record<string, unknown> | undefined;
+    globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+      payload = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      return new Response('data: {"choices":[{"delta":{"content":"done"},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n', {
+        headers: { "Content-Type": "text/event-stream" },
+      });
+    }) as typeof fetch;
+    try {
+      const adapter = createAdapter();
+      for await (const _chunk of adapter.stream({ model: "qwen", messages: [], tools: [], variant: "ilow" })) {}
+      expect(payload?.chat_template_kwargs).toEqual({ reasoning_effort: "ilow" });
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
 });
