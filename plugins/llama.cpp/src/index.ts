@@ -1,4 +1,4 @@
-import { toChatMessages, type LlmCallOptions, type LlmChunk, type Plugin, type ProviderAdapter } from "@cagent/sdk";
+import { toChatMessages, type LlmCallOptions, type LlmChunk, type Plugin, type ProviderAdapter, type ToolDefinition } from "@cagent/sdk";
 import { addAgentPrompt } from "./agent-prompt";
 import { baseUrl, checkedJson, contextSize, headers, modelKey, toolPayload, validToolArguments, type LlamaConfig } from "./protocol";
 import { LLAMA_TOOL_OVERRIDES } from "./tools";
@@ -107,6 +107,17 @@ export function createAdapter(config: LlamaConfig = {}): ProviderAdapter {
   const modelIds = new Map<string, string>();
 
   return {
+    estimate_tokens(_model: string, messages, tools: ToolDefinition[] = []) {
+      const prepared = config.inject_agent_prompt === false
+        ? messages
+        : addAgentPrompt(messages, config.agent_prompt);
+      const content = prepared.reduce((total, message) =>
+        total + message.content.length + (message.tool_calls ? JSON.stringify(message.tool_calls).length : 0), 0);
+      const toolSchema = tools.length
+        ? JSON.stringify(tools.map((tool) => toolPayload({ model: "", messages: [], tools: [tool] })?.[0])).length
+        : 0;
+      return Math.ceil((content + toolSchema) / 4);
+    },
     tool_overrides: () => LLAMA_TOOL_OVERRIDES,
     async context_window(): Promise<number | undefined> {
       const response = await fetch(`${baseUrl(config)}/props`, {

@@ -1,5 +1,6 @@
 import { splitRoute } from "../route";
 import type { Controller } from "./controller";
+import { saveLastChoice, loadLastChoice } from "./model-persistence";
 
 // ponytail: providers that fail list_models are ignored; duplicate model names across providers use the first registration.
 export async function openModelPicker(c: Controller): Promise<void> {
@@ -15,8 +16,26 @@ export async function openModelPicker(c: Controller): Promise<void> {
 export async function initializeModel(c: Controller, configured?: string): Promise<void> {
   const entries = await discoverModels(c);
   const configuredEntry = configured && entries.find((e) => e.route === splitRoute(configured)[0] && e.models.includes(splitRoute(configured)[1]));
-  const first = entries.find((entry) => entry.models.length);
-  const route = configured ? (configuredEntry ? configured : "") : first ? `${first.route}/${first.models[0]}` : "";
+  
+  let route = "";
+  const last = loadLastChoice();
+  if (last?.model) {
+    const lastEntry = entries.find((e) => e.route === splitRoute(last.model)[0] && e.models.includes(splitRoute(last.model)[1]));
+    if (lastEntry) {
+      route = last.model;
+      if (last.variant) c.state.variant = last.variant;
+    }
+  }
+  
+  if (!route && configured && configuredEntry) {
+    route = configured;
+  }
+  
+  if (!route) {
+    const first = entries.find((entry) => entry.models.length);
+    route = first ? `${first.route}/${first.models[0]}` : "";
+  }
+  
   if (!route) {
     c.state.notice = configured ? `Configured model is unavailable: ${configured}` : "No models available";
     c.bump();
@@ -28,7 +47,9 @@ export async function initializeModel(c: Controller, configured?: string): Promi
   c.adapter = adapter;
   c.state.model = route;
   c.state.contextWindow = (await adapter.context_window?.(model)) ?? c.state.contextWindow;
-  c.state.tokens = c.estimateCurrentTokens();
+  c.state.tokens = undefined;
+  c.state.inputTokens = undefined;
+  c.state.outputTokens = undefined;
   c.bump();
 }
 
@@ -53,7 +74,10 @@ export async function pickModel(c: Controller, route: string): Promise<void> {
   c.state.model = route;
   c.state.modelPicker = null;
   c.state.contextWindow = (await a.context_window?.(model)) ?? c.state.contextWindow;
-  c.state.tokens = c.estimateCurrentTokens();
+  c.state.tokens = undefined;
+  c.state.inputTokens = undefined;
+  c.state.outputTokens = undefined;
   c.observability?.recordEvent("model_picker.selected", { "model.route": route });
+  saveLastChoice(route, c.state.variant);
   c.bump();
 }

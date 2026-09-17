@@ -1,7 +1,7 @@
 import { noopObservability, type Message, type Observability, type ProviderAdapter, type ToolDefinition } from "@cagent/sdk";
 import { runTurn, type TurnRecord } from "../loop";
 import type { EventBus } from "../events";
-import { estimateTokens, type Session } from "../session";
+import { type Session } from "../session";
 import type { ToolAsk } from "../tools";
 import { appendChat } from "./chat-buffer";
 import type { UIState } from "./state";
@@ -40,7 +40,9 @@ export async function executeTurn(host: TurnHost): Promise<void> {
     const records = [...turn.records];
     persistTurn(host, records, thinkingContent);
     for (const item of host.state.chat) if (item.kind === "tool" && item.running) item.running = false;
-    if (turn.inputTokens !== undefined) host.state.tokens = turn.inputTokens;
+    if (turn.inputTokens !== undefined && turn.outputTokens !== undefined) {
+      host.state.tokens = turn.inputTokens + turn.outputTokens;
+    }
     host.state.notice = turn.interrupted ? "[interrupted - type to steer]" : "";
   } catch (error) {
     host.observability?.recordEvent("agent.turn.error", { "error.type": error instanceof Error ? error.name : "unknown" });
@@ -50,7 +52,6 @@ export async function executeTurn(host: TurnHost): Promise<void> {
   host.state.busy = false;
   host.state.elapsedMs = host.state.turnStartedAt ? Date.now() - host.state.turnStartedAt : 0;
   host.state.turnStartedAt = null;
-  host.state.tokens = estimateTokens(host.messages);
   host.bump();
 }
 
@@ -89,27 +90,25 @@ async function runAgentTurn(
     allowlist: host.allowlist, ask: host.ask, bus: host.bus, hooks: host.hooks, signal: host.signal,
     onText: (text) => {
       appendText(host, text);
-      setTokens(getTokens() + Math.ceil(text.length / 4));
-      host.state.tokens = estimateTokens(host.messages) + getTokens();
       host.bumpStream(); host.onText?.(text);
     },
     onReasoning: (text) => {
       setThinking(appendCapped(getThinking(), text, MAX_VISIBLE_STREAM_CHARS));
       appendReasoning(host, text);
-      setTokens(getTokens() + Math.ceil(text.length / 4));
-      host.state.tokens = estimateTokens(host.messages) + getTokens();
       host.bumpStream(); host.onReasoning?.(text);
     },
     interrupted: host.interrupted, maxTurns: host.maxTurns, maxToolCalls: host.maxToolCalls,
     observability: host.observability ?? noopObservability,
     traceAttributes: host.traceAttributes,
     onToolOutput: (content) => {
-      host.state.tokens = estimateTokens(host.messages);
       host.bumpStream();
     },
     onUsage: (usage) => {
       if (usage.inputTokens !== undefined) host.state.inputTokens = usage.inputTokens;
       if (usage.outputTokens !== undefined) host.state.outputTokens = usage.outputTokens;
+      if (usage.inputTokens !== undefined && usage.outputTokens !== undefined) {
+        host.state.tokens = usage.inputTokens + usage.outputTokens;
+      }
       host.bumpStream();
     },
   });

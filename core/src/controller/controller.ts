@@ -21,7 +21,6 @@ import { submitMessage } from "./submission";
 import { submitShell as submitShellAction } from "./shell-submission";
 import { submitSubagent as submitSubagentAction } from "./subagent-submission";
 import { createStreamThrottle } from "./stream-throttle";
-import { estimateForModel } from "./token-estimation";
 
 export class Controller {
   state: UIState;
@@ -81,9 +80,9 @@ export class Controller {
       title: toTitle(loaded.records),
       model: deps.model,
       variant: deps.variant,
-      tokens: this.estimateTokens(),
-      inputTokens: 0,
-      outputTokens: 0,
+      tokens: undefined,
+      inputTokens: undefined,
+      outputTokens: undefined,
       contextWindow,
       threshold,
       busy: false,
@@ -103,14 +102,6 @@ export class Controller {
     };
     if (loaded.records.length) appendChat(s, { kind: "meta", content: `resuming session ${this.session.id} (${loaded.messages.length} messages)` });
     this.state = s;
-  }
-
-  private estimateTokens(): number {
-    return estimateForModel(this.adapter, this.deps.model, this.messages);
-  }
-
-  estimateCurrentTokens(): number {
-    return estimateForModel(this.adapter, this.state.model, this.messages);
   }
 
   onToolPre(p: unknown): void { toolPre(this.state, p); this.bump(); }

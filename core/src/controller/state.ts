@@ -41,9 +41,9 @@ export type UIState = {
   toolLog: ToolLogEntry[];
   model: string;
   variant?: string;
-  tokens: number;
-  inputTokens: number;
-  outputTokens: number;
+  tokens?: number;
+  inputTokens?: number;
+  outputTokens?: number;
   contextWindow: number;
   threshold: number;
   busy: boolean;

@@ -1,6 +1,7 @@
 import type { Controller } from "../controller/controller";
 import { expandCommand } from "./discovery";
 import { appendChat } from "../controller/chat-buffer";
+import { saveLastChoice } from "../controller/model-persistence";
 import type { Task } from "../tasks";
 
 type SlashHandler = (c: Controller, arg: string) => void | Promise<void>;
@@ -47,6 +48,9 @@ const commands: Record<string, SlashHandler> = {
     }
     c.state.variant = val;
     c.state.notice = `variant set to: ${val}`;
+    if (c.state.model) {
+      saveLastChoice(c.state.model, val);
+    }
     c.bump();
   },
   "/help": (c) => {

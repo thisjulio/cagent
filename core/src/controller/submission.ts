@@ -21,8 +21,7 @@ export async function submitMessage(controller: Controller, text: string): Promi
   controller.messages.push({ role: "user", content: text });
   controller.bus.emit("message.submitted", workflowEvent({ content: text }, { sessionId: controller.session.id }));
   controller.envStamp = addEnvironmentContext(controller.messages, controller.envStamp);
-  state.tokens = controller.estimateCurrentTokens();
-  if (controller.config.compact_auto !== false && controller.estimateCurrentTokens() >= state.threshold) {
+  if (controller.config.compact_auto !== false && state.tokens !== undefined && state.tokens >= state.threshold) {
     try { await compact(controller); } catch (error) { state.notice = `compaction failed: ${error instanceof Error ? error.message : String(error)}`; }
   }
   controller.bump();

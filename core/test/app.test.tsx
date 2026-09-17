@@ -32,6 +32,9 @@ function deps(): ControllerDeps {
 describe("OpenTUI render", () => {
   it("renders panes and the status bar", async () => {
     const c = new Controller(deps());
+    c.state.tokens = 100;
+    c.state.inputTokens = 90;
+    c.state.outputTokens = 10;
     const setup = await testRender(React.createElement(App, { c }), { width: 80, height: 24 });
     await act(async () => { await setup.flush(); });
     const out = setup.captureCharFrame();

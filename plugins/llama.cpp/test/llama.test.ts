@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, it, test } from "bun:test";
 import { addAgentPrompt, LLAMA_AGENT_PROMPT } from "../src/agent-prompt";
 import { createAdapter } from "../src/index";
 
@@ -14,6 +14,20 @@ function fakeModels(ids: string[]): typeof fetch {
 }
 
 describe("llama.cpp adapter", () => {
+  it("estimates injected prompt and tool schema tokens", () => {
+    const adapter = createAdapter();
+    const messages = [{ role: "user" as const, content: "hello" }];
+    const tools = [{
+      name: "search",
+      description: "Search the workspace",
+      parameters: { type: "object", properties: { query: { type: "string" } } },
+      execute: async () => ({ output: "" }),
+    }];
+    const withoutTools = adapter.estimate_tokens?.("model", messages) ?? 0;
+    const withTools = adapter.estimate_tokens?.("model", messages, tools) ?? 0;
+    expect(withTools).toBeGreaterThan(withoutTools);
+    expect(withoutTools).toBeGreaterThan(1);
+  });
   test("adds the coding-agent prompt without replacing the existing system prompt", () => {
     const messages = addAgentPrompt([
       { role: "system", content: "Project rules" },
