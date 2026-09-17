@@ -151,4 +151,11 @@ function persistTurn(host: TurnHost, records: TurnRecord[], thinking: string): v
       host.session.append({ ts: Date.now(), type: "tool", payload: { tool_call_id: record.tool_call_id, content: record.content, isError: record.isError, toolName: record.toolName } });
     }
   }
+  if (host.state.tokens !== undefined) {
+    host.session.append({
+      ts: Date.now(),
+      type: "meta",
+      payload: { kind: "usage", tokens: host.state.tokens, inputTokens: host.state.inputTokens, outputTokens: host.state.outputTokens },
+    });
+  }
 }

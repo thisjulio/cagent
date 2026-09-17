@@ -117,7 +117,14 @@ export function restoreSession(c: Controller, id: string): void {
   c.state.inputKey += 1;
   c.state.suggest = [];
   c.state.suggestIdx = -1;
-  c.state.tokens = estimateTokens(c.messages);
+  const usage = loaded.records.slice().reverse().find((r) => r.type === "meta" && (r.payload as Record<string, unknown>).kind === "usage")?.payload as Record<string, unknown> | undefined;
+  if (usage && typeof usage.tokens === "number") {
+    c.state.tokens = usage.tokens;
+    if (typeof usage.inputTokens === "number") c.state.inputTokens = usage.inputTokens;
+    if (typeof usage.outputTokens === "number") c.state.outputTokens = usage.outputTokens;
+  } else {
+    c.state.tokens = estimateTokens(c.messages);
+  }
   c.observability?.recordEvent("session.resumed", { "message.count": loaded.messages.length });
   c.bump();
 }
