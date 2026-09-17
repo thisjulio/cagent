@@ -104,16 +104,16 @@ describe("image-processor", () => {
     rmSync(tmpDir, { recursive: true });
   });
 
-  test("missing image attachment becomes a notice without starting a turn", async () => {
+  test("missing image path remains prompt text and starts a turn", async () => {
     const sessionDir = mkdtempSync(join(tmpdir(), "cagent-test-"));
     const controller = new Controller(controllerDeps(sessionDir));
 
     await expect(controller.submit("analise ./missing-image.png")).resolves.toBeUndefined();
 
-    expect(controller.state.notice).toBe("Image attachment not found: ./missing-image.png");
+    expect(controller.state.notice).toBe("");
     expect(controller.state.busy).toBe(false);
-    expect(controller.messages).toHaveLength(1);
-    expect(controller.state.chat).toHaveLength(0);
+    expect(controller.messages.some((message) => message.content === "analise ./missing-image.png")).toBe(true);
+    expect(controller.state.chat).toHaveLength(2);
 
     rmSync(sessionDir, { recursive: true });
   });

@@ -21,12 +21,13 @@ export async function submitMessage(controller: Controller, text: string): Promi
     return;
   }
 
+  const validImagePaths: string[] = [];
   for (const path of imagePaths) {
     try {
       validateImagePath(path);
-    } catch (e) {
-      rejectSubmission(controller, `Image attachment not found: ${path}`);
-      return;
+      validImagePaths.push(path);
+    } catch {
+      // A path-like mention is ordinary prompt text when no file exists.
     }
   }
 
@@ -40,9 +41,9 @@ export async function submitMessage(controller: Controller, text: string): Promi
 
   let content: string | ContentPart[] = text;
 
-  if (imagePaths.length > 0) {
+  if (validImagePaths.length > 0) {
     const parts: ContentPart[] = [{ type: "text", text }];
-    for (const path of imagePaths) {
+    for (const path of validImagePaths) {
       try {
         const { dataUrl, mimeType } = processImage(path);
         parts.push({ type: "image_url", image_url: { url: dataUrl, mime_type: mimeType } });
