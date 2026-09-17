@@ -5,10 +5,27 @@ export interface Hunk {
   newLines: string[];
 }
 
+function parseFile(path: string, op: Op, lines: string[]): PatchFile {
+  let movePath: string | undefined;
+  const moveIndex = lines.findIndex((line) => /^\*\*\* Move to:\s*/i.test(line.trim()));
+  if (moveIndex >= 0) {
+    movePath = lines[moveIndex].replace(/^\s*\*\*\* Move to:\s*/i, "").trim();
+    if (!movePath) throw new Error("move destination is empty");
+    lines = lines.slice(0, moveIndex).concat(lines.slice(moveIndex + 1));
+  }
+  return {
+    path,
+    op,
+    hunks: op === "add" ? addHunks(lines) : op === "delete" ? [] : updateHunks(lines),
+    ...(movePath ? { movePath } : {}),
+  };
+}
+
 export interface PatchFile {
   path: string;
   op: Op;
   hunks: Hunk[];
+  movePath?: string;
 }
 
 // Codex apply_patch format: *** Begin Patch / *** {Update|Add|Delete} File: <path> / @@ hunks / +,-,context lines.
@@ -31,11 +48,12 @@ function updateHunks(lines: string[]): Hunk[] {
     if (!cur) continue;
     if (line.startsWith("+")) cur.newLines.push(line.slice(1));
     else if (line.startsWith("-")) cur.oldLines.push(line.slice(1));
-    else {
-      const ctx = line === " " ? "" : line.slice(1);
+    else if (line.startsWith(" ")) {
+      const ctx = line.slice(1);
       cur.oldLines.push(ctx);
       cur.newLines.push(ctx);
     }
+    else throw new Error(`invalid patch line: ${line}`);
   }
   return hunks;
 }
@@ -59,15 +77,14 @@ export function parseApplyPatch(patch: string): PatchFile[] {
       const fileIdx = lines.findIndex((line) => !line.startsWith("@@") && line.trim().length > 0);
       if (fileIdx < 0) throw new Error("patch has no file path");
       const { path, op } = parsePathLine(lines[fileIdx]);
-      files.push({ path, op, hunks: updateHunks(lines.slice(fileIdx + 1)) });
+      files.push(parseFile(path, op, lines.slice(fileIdx + 1)));
       continue;
     }
     for (let i = 0; i < fileIndexes.length; i++) {
       const fileIdx = fileIndexes[i];
       const end = fileIndexes[i + 1] ?? lines.length;
       const { path, op } = parsePathLine(lines[fileIdx]);
-      const content = lines.slice(fileIdx + 1, end);
-      files.push({ path, op, hunks: op === "add" ? addHunks(content) : op === "delete" ? [] : updateHunks(content) });
+      files.push(parseFile(path, op, lines.slice(fileIdx + 1, end)));
     }
   }
   if (!files.length) throw new Error("no *** Begin patch block found");

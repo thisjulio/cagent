@@ -3,8 +3,20 @@ import type { ToolOverrides } from "@cagent/sdk";
 export const LLAMA_TOOL_OVERRIDES: ToolOverrides = {
   edit_file: {
     name: "edit_file",
-    description: "Edits an existing file using one JSON object with path and blocks. blocks MUST contain exact delimiters: <<< SEARCH\\ntext to find\\n>>>\\n<<< REPLACE\\nreplacement text\\n>>>. Read the file first. Do not use markdown fences, *** patches, shell commands, or conversational text.",
-    parameters: { type: "object", properties: { path: { type: "string", description: "File path to edit" }, blocks: { type: "string", description: "Exact SEARCH/REPLACE blocks. Example: <<< SEARCH\\nold text\\n>>>\\n<<< REPLACE\\nnew text\\n>>>" } }, required: ["path", "blocks"], additionalProperties: false },
+    description: [
+      "Applies a Codex-compatible patch.",
+      'Return one JSON object with exactly {"patch":"*** Begin Patch\\n...\\n*** End Patch"}.',
+      "Use *** Update File:, *** Add File:, *** Delete File:, optional *** Move to:, @@ hunks, and lines prefixed with +, -, or space.",
+      "Do not use markdown fences or conversational text.",
+    ].join(" "),
+    parameters: {
+      type: "object",
+      properties: {
+        patch: { type: "string", description: "Complete Codex apply_patch text, including Begin and End Patch markers" },
+      },
+      required: ["patch"],
+      additionalProperties: false,
+    },
   },
   write_file: {
     name: "write_file",

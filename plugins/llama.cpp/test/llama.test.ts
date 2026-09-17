@@ -48,11 +48,14 @@ describe("llama.cpp adapter", () => {
     }
   });
 
-  test("uses the native SEARCH/REPLACE schema for edit_file", () => {
+  test("uses the Codex-compatible patch schema for edit_file", () => {
     const override = createAdapter().tool_overrides?.().edit_file;
     expect(override?.name).toBe("edit_file");
-    expect(override?.parameters?.required).toEqual(["path", "blocks"]);
-    expect(override?.description).toContain("<<< SEARCH");
+    expect(override?.parameters?.required).toEqual(["patch"]);
+    expect(override?.parameters?.properties).toHaveProperty("patch");
+    expect(override?.parameters?.additionalProperties).toBe(false);
+    expect(override?.description).toContain("*** Begin Patch");
+    expect(override?.description).toContain("*** Update File:");
   });
 
   test("uses a strict JSON schema for write_file", () => {

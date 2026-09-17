@@ -84,4 +84,19 @@ gamma
     const p = parseApplyPatch(`*** Begin Patch\n*** Delete File: src/velho.ts\n*** End Patch`);
     expect(p).toEqual([{ path: "src/velho.ts", op: "delete", hunks: [] }]);
   });
+
+  it("patch: Move to keeps the destination separate from the update hunk", () => {
+    const p = parseApplyPatch(
+      `*** Begin Patch
+*** Update File: src/old.ts
+*** Move to: src/new.ts
+@@
+-old
++new
+*** End Patch`,
+    );
+    expect(p).toEqual([
+      { path: "src/old.ts", op: "update", movePath: "src/new.ts", hunks: [{ oldLines: ["old"], newLines: ["new"] }] },
+    ]);
+  });
 });

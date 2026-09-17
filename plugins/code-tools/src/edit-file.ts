@@ -35,6 +35,11 @@ async function processTarget(t: Target, o: { seed: string; blocks: number; patch
   let abs: string;
   try { abs = guardPath(t.path); } catch (e) { o.out.push(errorText("E_PATH", `${t.path}: ${e instanceof Error ? e.message : String(e)}`)); return false; }
   const op = t.file?.op ?? "update";
+  const moveAbs = t.file?.movePath ? guardPath(t.file.movePath) : undefined;
+  if (moveAbs && fs.existsSync(moveAbs)) {
+    o.out.push(errorText("E_EXISTS", `${t.file?.movePath}: move destination already exists`));
+    return false;
+  }
   if (op === "delete") {
     try { fs.rmSync(abs); } catch { o.out.push(errorText("E_NOT_FOUND", t.path)); return false; }
     recordWrite(abs, "");
@@ -84,15 +89,21 @@ async function processTarget(t: Target, o: { seed: string; blocks: number; patch
   const next = (original.startsWith("\uFEFF") ? "\uFEFF" : "") + applied.lines.join(eol);
   try {
     atomicWrite(abs, next);
+    if (moveAbs) {
+      if (fs.existsSync(moveAbs)) throw new Error(`move destination already exists: ${t.file?.movePath}`);
+      fs.mkdirSync(path.dirname(moveAbs), { recursive: true });
+      fs.renameSync(abs, moveAbs);
+    }
   } catch (e) {
     o.out.push(errorText("E_WRITE", `${t.path}: ${e instanceof Error ? e.message : String(e)}`));
     return false;
   }
-  recordRead(abs);
-  recordWrite(abs, next);
+  recordRead(moveAbs ?? abs);
+  recordWrite(moveAbs ?? abs, next);
   clearFailures(abs);
   const diff = unifiedDiff(oldLines, applied.lines).split("\n");
-  o.out.push(`OK ${rel(abs)}\n${diff.slice(0, 100).join("\n")}${diff.length > 100 ? "\n…" : ""}`);
+  const label = moveAbs ? `${rel(abs)} -> ${rel(moveAbs)}` : rel(abs);
+  o.out.push(`OK ${label}\n${diff.slice(0, 100).join("\n")}${diff.length > 100 ? "\n…" : ""}`);
   return true;
 }
 
