@@ -20,7 +20,7 @@ describe("llama.cpp adapter", () => {
       { role: "user", content: "Inspect this" },
     ]);
     expect(messages[0].content).toContain("Project rules");
-    expect(messages[0].content).toContain("Follow the available tool schemas exactly");
+    expect(messages[0].content).toContain("Use exact tool and argument names from the schema.");
     expect(messages[1]).toEqual({ role: "user", content: "Inspect this" });
   });
 
@@ -74,7 +74,7 @@ describe("llama.cpp adapter", () => {
         messages: [{ role: "user", content: "hi" }],
         tools: [],
       });
-      expect(prepared.messages[0]).toEqual({ role: "system", content: LLAMA_AGENT_PROMPT });
+      expect(prepared.messages[0]).toEqual({ role: "system", content: `${LLAMA_AGENT_PROMPT}\n\n[reminder]\nCall one tool in this message, or give the final answer. Never both.\nKeep exactly one task \`in_progress\`.\nDo not complete a task without output from a tool you ran.\nBefore the final answer, call \`tasks\` and read the list.` });
 
       const disabled = createAdapter({ inject_agent_prompt: false });
       const withoutPrompt = await disabled.prepare_call({
