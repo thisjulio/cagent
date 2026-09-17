@@ -192,6 +192,7 @@ export interface PluginContext {
   promptSection(name: string, content: string): void;
   registerCommandSource(source: CommandSource): void;
   registerCommand(command: PluginCommand): void;
+  registerSkillSource(source: SkillSource): void;
   contributeContext(input: ContextExtensionInput): Promise<ContextContribution[]>;
   activity(content: string, attributes?: Readonly<Record<string, string | number | boolean>>): void;
 }
@@ -211,4 +212,7 @@ export {
 export type CommandDefinition = { name: string; content: string; file: string };
 export interface CommandSource {
   discover(cwd: string): CommandDefinition[];
+}
+export interface SkillSource {
+  discover(cwd: string): string[];
 }

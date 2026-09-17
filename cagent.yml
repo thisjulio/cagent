@@ -23,6 +23,8 @@ plugins:
     path: ./plugins/codex-agents
   - name: claude-commands
     path: ./plugins/claude-commands
+  - name: claude-skills
+    path: ./plugins/claude-skills
   - name: claude-hooks
     path: ./plugins/claude-hooks
   - name: codex-prompts

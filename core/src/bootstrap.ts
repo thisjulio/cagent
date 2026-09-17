@@ -100,12 +100,13 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
   });
   if (options.headless) telemetry.recordEvent("headless.submit.ready");
   for (const agent of discoverSubagents(process.cwd()).agents) registry.registerSubagent(agent);
+  const pluginSkillRoots = loadedPlugins.skillSources.flatMap((source) => source.discover(process.cwd()));
   const skills = config.skills?.enabled === false ? undefined : addBuiltinSkills(
-    discoverSkills(process.cwd(), config.skills?.roots),
+    discoverSkills(process.cwd(), config.skills?.roots, pluginSkillRoots),
   );
   const commands = discoverCommands(process.cwd(), [createCommandSource(), ...loadedPlugins.commandSources]);
   const reloadSkills = skills ? () => {
-    const refreshed = addBuiltinSkills(discoverSkills(process.cwd(), config.skills?.roots));
+    const refreshed = addBuiltinSkills(discoverSkills(process.cwd(), config.skills?.roots, pluginSkillRoots));
     skills.skills = refreshed.skills;
     skills.byName = refreshed.byName;
   } : undefined;

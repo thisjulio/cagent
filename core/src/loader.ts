@@ -10,6 +10,7 @@ export interface LoadResult {
   contexts: PluginContext[];
   promptSections: Map<string, string>;
   commandSources: import("@cagent/sdk").CommandSource[];
+  skillSources: import("@cagent/sdk").SkillSource[];
   contextExtensions: import("@cagent/sdk").ContextExtension[];
 }
 
@@ -27,6 +28,7 @@ export async function loadPlugins(
   const contexts: PluginContext[] = [];
   const promptSections = new Map<string, string>();
   const commandSources: import("@cagent/sdk").CommandSource[] = [];
+  const skillSources: import("@cagent/sdk").SkillSource[] = [];
   const contextExtensions: import("@cagent/sdk").ContextExtension[] = [];
   const observability = options.observability ?? noopObservability;
 
@@ -66,6 +68,7 @@ export async function loadPlugins(
       promptSection: (name, content) => promptSections.set(name, content),
       registerContextExtension: (extension) => contextExtensions.push(extension),
       registerCommandSource: (source) => commandSources.push(source),
+      registerSkillSource: (source) => skillSources.push(source),
       registerCommand: (command) => registry.registerCommand(command),
       contributeContext: async (input) => {
         const results: import("@cagent/sdk").ContextContribution[] = [];
@@ -83,5 +86,5 @@ export async function loadPlugins(
     contexts.push(ctx);
   }
 
-  return { contexts, promptSections, commandSources, contextExtensions };
+  return { contexts, promptSections, commandSources, skillSources, contextExtensions };
 }

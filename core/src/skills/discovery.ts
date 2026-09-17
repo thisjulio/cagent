@@ -4,11 +4,13 @@ import os from "node:os";
 import { parseSkill } from "./frontmatter";
 import type { SkillCatalog, SkillRecord } from "./types";
 
-export function discoverSkills(cwd: string, roots: string[] = []): SkillCatalog {
-  const candidates = roots.length ? roots : [
+export function discoverSkills(cwd: string, roots: string[] = [], extraRoots: string[] = []): SkillCatalog {
+  const base = roots.length ? roots : [
     ".cagent/skills",
     path.join(os.homedir(), ".cagent", "skills"),
   ];
+  const seen = new Set<string>(base);
+  const candidates = [...base, ...extraRoots.filter((root) => !seen.has(root))];
   const byName = new Map<string, SkillRecord>();
   for (const root of candidates) {
     const directory = path.resolve(cwd, root);
