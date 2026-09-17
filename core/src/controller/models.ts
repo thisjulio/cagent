@@ -1,6 +1,7 @@
 import { splitRoute } from "../route";
 import type { Controller } from "./controller";
 import { saveLastChoice, loadLastChoice } from "./model-persistence";
+import { compactionThreshold } from "./compaction-threshold";
 
 // ponytail: providers that fail list_models are ignored; duplicate model names across providers use the first registration.
 export async function openModelPicker(c: Controller): Promise<void> {
@@ -16,7 +17,7 @@ export async function openModelPicker(c: Controller): Promise<void> {
 export async function initializeModel(c: Controller, configured?: string): Promise<void> {
   const entries = await discoverModels(c);
   const configuredEntry = configured && entries.find((e) => e.route === splitRoute(configured)[0] && e.models.includes(splitRoute(configured)[1]));
-  
+
   let route = "";
   const last = loadLastChoice();
   if (last?.model) {
@@ -26,16 +27,16 @@ export async function initializeModel(c: Controller, configured?: string): Promi
       if (last.variant) c.state.variant = last.variant;
     }
   }
-  
+
   if (!route && configured && configuredEntry) {
     route = configured;
   }
-  
+
   if (!route) {
     const first = entries.find((entry) => entry.models.length);
     route = first ? `${first.route}/${first.models[0]}` : "";
   }
-  
+
   if (!route) {
     c.state.notice = configured ? `Configured model is unavailable: ${configured}` : "No models available";
     c.bump();
@@ -44,12 +45,7 @@ export async function initializeModel(c: Controller, configured?: string): Promi
   const [provider, model] = splitRoute(route);
   const adapter = c.registry.provider(provider);
   if (!adapter) return;
-  c.adapter = adapter;
-  c.state.model = route;
-  c.state.contextWindow = (await adapter.context_window?.(model)) ?? c.state.contextWindow;
-  c.state.tokens = undefined;
-  c.state.inputTokens = undefined;
-  c.state.outputTokens = undefined;
+  await applyModelSelection(c, route, adapter);
   c.bump();
 }
 
@@ -70,14 +66,20 @@ export async function pickModel(c: Controller, route: string): Promise<void> {
   if (!entry) return;
   const a = c.deps.registry.provider(prov);
   if (!a) return;
-  c.adapter = a;
-  c.state.model = route;
   c.state.modelPicker = null;
-  c.state.contextWindow = (await a.context_window?.(model)) ?? c.state.contextWindow;
-  c.state.tokens = undefined;
-  c.state.inputTokens = undefined;
-  c.state.outputTokens = undefined;
+  await applyModelSelection(c, route, a);
   c.observability?.recordEvent("model_picker.selected", { "model.route": route });
   saveLastChoice(route, c.state.variant);
   c.bump();
+}
+
+async function applyModelSelection(c: Controller, route: string, adapter: Controller["adapter"]): Promise<void> {
+  const [, model] = splitRoute(route);
+  c.adapter = adapter;
+  c.state.model = route;
+  c.state.contextWindow = (await adapter.context_window?.(model)) ?? c.state.contextWindow;
+  c.state.threshold = compactionThreshold(c.state.contextWindow, c.config);
+  c.state.tokens = undefined;
+  c.state.inputTokens = undefined;
+  c.state.outputTokens = undefined;
 }

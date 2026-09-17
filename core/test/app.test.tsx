@@ -45,6 +45,17 @@ describe("OpenTUI render", () => {
     act(() => setup.renderer.destroy());
   });
 
+  it("keeps missing image paths as ordinary user text", async () => {
+    const c = new Controller(deps());
+    c.state.chat.push({ kind: "user", content: "analise ./missing-image.png" });
+    const setup = await testRender(React.createElement(App, { c }), { width: 80, height: 24 });
+    await act(async () => { await setup.flush(); });
+    const out = setup.captureCharFrame();
+    expect(out).toContain("analise ./missing-image.png");
+    expect(out).not.toContain("[Image: ./missing-image.png]");
+    act(() => setup.renderer.destroy());
+  });
+
   it("does not write terminal clear sequences when chat history is capped", () => {
     const c = new Controller(deps());
     const state = c.state;

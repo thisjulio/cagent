@@ -59,6 +59,30 @@ describe("controller model and commands", () => {
     expect(c.state.chat[c.state.chat.length - 1].content).toBe("do-llama");
   });
 
+  it("recalculates the compaction threshold when selecting a model with another context window", async () => {
+    const d = deps();
+    d.contextWindow = 100_000;
+    d.registry.registerProvider("openai", d.adapter);
+    d.registry.registerProvider("llama", {
+      list_models: async () => ["llama-1"],
+      context_window: async () => 50_000,
+      prepare_call: async (o) => o,
+      stream: async function* () {
+        yield { type: "text", text: "do-llama" };
+      },
+    });
+    const c = new Controller(d);
+    c.state.modelPicker = {
+      entries: [{ route: "llama", models: ["llama-1"] }],
+      query: "",
+    };
+
+    await c.pickModel("llama/llama-1");
+
+    expect(c.state.contextWindow).toBe(50_000);
+    expect(c.state.threshold).toBe(40_000);
+  });
+
   it("/model opens the picker", async () => {
     const c = new Controller(deps());
     c.setInput("/model");

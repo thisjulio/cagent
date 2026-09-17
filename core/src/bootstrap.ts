@@ -17,6 +17,7 @@ import { applySkillArguments } from "./skills/arguments";
 import { createTaskTool } from "./tasks/task-tool";
 import { createCommandSource, discoverCommands } from "./commands/discovery";
 import { discoverSubagents } from "./subagents/discovery";
+import { addBuiltinSubagents } from "./subagents/builtin";
 import { createSubagentExecutor } from "./subagents/executor";
 import { createSubagentTool } from "./subagents/tool";
 import type { ToolAsk } from "./tools";
@@ -100,7 +101,8 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
     observability: telemetry,
   });
   if (options.headless) telemetry.recordEvent("headless.submit.ready");
-  for (const agent of discoverSubagents(process.cwd()).agents) registry.registerSubagent(agent);
+  const subagents = addBuiltinSubagents(discoverSubagents(process.cwd()));
+  for (const agent of subagents.agents) registry.registerSubagent(agent);
   const pluginSkillRoots = loadedPlugins.skillSources.flatMap((source) => source.discover(process.cwd()));
   const skills = config.skills?.enabled === false ? undefined : addBuiltinSkills(
     discoverSkills(process.cwd(), config.skills?.roots, pluginSkillRoots),
@@ -122,16 +124,17 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
   if (route) telemetry.recordEvent("route.resolved", { "model.route": route });
   const contextWindow = route ? await adapter.context_window?.(splitRoute(route)[1]) : 60_000;
   let ask: ToolAsk = async () => true;
+  let c: Controller;
   const executeSubagent = createSubagentExecutor({
     find: (name) => registry.subagent(name),
     registry,
-    model: route,
+    model: () => c.state.model,
     tools: registry.tools(),
     allowlist: config.allowlist,
     ask: (...args) => ask(...args),
     bus,
   });
-  const c = new Controller({
+  c = new Controller({
     config,
     registry,
     bus,

@@ -14,7 +14,7 @@ export type SubagentExecutor = {
 export type SubagentExecutionDeps = {
   find: (name: string) => { instructions: string; model?: string; tools?: string[] } | undefined;
   registry: Registry;
-  model: string;
+  model: () => string;
   tools: ToolDefinition[];
   allowlist: string[];
   ask: ToolAsk;
@@ -37,7 +37,8 @@ export function createSubagentExecutor(deps: SubagentExecutionDeps): SubagentExe
       ...context,
       { role: "user", content: task },
     ];
-    const route = agent.model ?? deps.model;
+    const route = deps.model();
+    if (!route) return "subagent model is unavailable";
     const [provider, model] = splitRoute(route);
     const adapter = deps.registry.provider(provider);
     if (!adapter) return `subagent provider not found: ${provider}`;

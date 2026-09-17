@@ -53,6 +53,28 @@ describe("controller", () => {
     expect(c.messages.slice(-2).map((message) => message.content)).toEqual(["recent ".repeat(750), "latest ".repeat(750)]);
   });
 
+  it("automatically compacts from the current estimate before the next request", async () => {
+    const d = deps(false, { compact_threshold_tokens: 100, compact_keep_tokens: 1_000 });
+    let calls = 0;
+    d.adapter.estimate_tokens = () => 150;
+    d.adapter.stream = async function* () {
+      calls++;
+      yield { type: "text", text: "ok" };
+    };
+    const c = new Controller(d);
+    c.state.title = "Existing session";
+    c.messages.push(
+      ...Array.from({ length: 8 }, (_, index) => ({
+        role: index % 2 === 0 ? "user" as const : "assistant" as const,
+        content: `history ${index}`,
+      })),
+    );
+    await c.submit("first");
+
+    expect(calls).toBe(2);
+    expect(c.messages.some((message) => typeof message.content === "string" && message.content.includes("[context checkpoint handoff]"))).toBe(true);
+  });
+
   it("/skill activates the skill before submitting its prompt", async () => {
     const d = deps();
     const events: string[] = [];

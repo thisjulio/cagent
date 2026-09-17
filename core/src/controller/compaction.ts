@@ -1,8 +1,9 @@
 import { streamOnce } from "../loop";
-import { estimateTokens, serializeMessages } from "../session";
+import { serializeMessages } from "../session";
 import { splitRoute } from "../route";
 import type { Controller } from "./controller";
 import { appendChat } from "./chat-buffer";
+import { estimateForModel } from "./token-estimation";
 
 function summaryForDisplay(previous: string, chunk: string): string {
   const marker = "\n\n";
@@ -25,7 +26,10 @@ function removeOrphanedToolOutputs(messages: Controller["messages"]): Controller
 export async function compact(c: Controller, force = false, instructions?: string): Promise<void> {
   const s = c.state;
   const threshold = s.threshold;
-  const est = Math.max(s.tokens ?? 0, estimateTokens(c.messages));
+  const reason = force ? (instructions ? "manual_with_instructions" : "manual") : "threshold";
+  const estimate = (messages: Controller["messages"]): number =>
+    estimateForModel(c.adapter, s.model, messages);
+  const est = Math.max(s.tokens ?? 0, estimate(c.messages));
   if (!force && est < threshold) {
     c.observability?.recordEvent("compaction.skipped", { reason: "below_threshold", tokens: est, threshold });
     s.notice = `no compaction (${est} < ${threshold} tokens)`;
@@ -38,7 +42,7 @@ export async function compact(c: Controller, force = false, instructions?: strin
   let keptTokens = 0;
   while (keepStart > 1 && keptTokens < keepBudget) {
     keepStart -= 1;
-    keptTokens += estimateTokens([c.messages[keepStart]]);
+    keptTokens += estimate(c.messages.slice(keepStart, keepStart + 1));
   }
   if (keepStart <= 1) {
     c.observability?.recordEvent("compaction.skipped", { reason: "too_few_messages", "message.count": c.messages.length });
@@ -47,7 +51,17 @@ export async function compact(c: Controller, force = false, instructions?: strin
     return;
   }
   const old = c.messages.slice(1, keepStart);
-  c.observability?.recordEvent("compaction.started", { tokens: est, threshold, "message.count": old.length });
+  c.observability?.recordEvent("compaction.started", {
+    force,
+    reason,
+    "state.tokens": s.tokens,
+    "estimated.tokens": estimate(c.messages),
+    "effective.tokens": est,
+    "context.window": s.contextWindow,
+    threshold,
+    model: s.model,
+    "message.count": old.length,
+  });
   s.compacting = true;
   const progress = { kind: "thinking" as const, content: "preparing history", timestamp: Date.now() };
   appendChat(s, progress);
@@ -91,12 +105,12 @@ export async function compact(c: Controller, force = false, instructions?: strin
   }
   const rest = removeOrphanedToolOutputs(c.messages.slice(keepStart));
   s.compacting = false;
-  progress.content = `compaction complete (${est} -> ${estimateTokens(c.messages)} tokens)`;
+  progress.content = `compaction complete (${est} -> ${estimate(c.messages)} tokens)`;
   c.messages.length = 1;
   c.messages.push({ role: "user", content: `[context checkpoint handoff]\n${summary}` }, ...rest);
   c.session.append({ ts: Date.now(), type: "meta", payload: { kind: "compacted", summary } });
-  appendChat(s, { kind: "meta", content: `compacted: ${est} -> ${estimateTokens(c.messages)} tokens` });
-  s.tokens = estimateTokens(c.messages);
+  appendChat(s, { kind: "meta", content: `compacted: ${est} -> ${estimate(c.messages)} tokens` });
+  s.tokens = estimate(c.messages);
   c.observability?.recordEvent("compaction.completed", {
     "tokens.before": est,
     "tokens.after": s.tokens,

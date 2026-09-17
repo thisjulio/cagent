@@ -66,6 +66,14 @@ async function runAgentTurnWithRecovery(
     return await runAgentTurn(host, getThinking, setThinking, getTokens, setTokens);
   } catch (error) {
     if (!host.onContextLimit || !isContextLimitError(error)) throw error;
+    host.observability?.recordEvent("compaction.recovery", {
+      reason: "provider_context_limit",
+      error: error instanceof Error ? error.message : String(error),
+      "state.tokens": host.state.tokens,
+      "context.window": host.state.contextWindow,
+      threshold: host.state.threshold,
+      model: host.model,
+    });
     host.state.notice = "context limit reached; compacting context...";
     host.bump();
     await host.onContextLimit();

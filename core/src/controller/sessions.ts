@@ -7,6 +7,7 @@ import { MAX_CHAT_ITEMS } from "./chat-buffer";
 import { mergeSystemMessages } from "../message-context";
 import { classifyTool } from "../tool-category";
 import { restoreTasks } from "../tasks";
+import { filterExistingImagePaths } from "./image-processor";
 export { compact } from "./compaction";
 
 type LoadedRecord = { ts: number; type: "user" | "assistant" | "thinking" | "tool" | "meta"; payload: Record<string, unknown> };
@@ -14,7 +15,12 @@ type LoadedRecord = { ts: number; type: "user" | "assistant" | "thinking" | "too
 export function toChatItems(records: LoadedRecord[]): ChatItem[] {
   return records.flatMap((r) => {
     const p = r.payload as Record<string, unknown>;
-    if (r.type === "user") return [{ kind: "user", content: String(p.content ?? ""), timestamp: r.ts }];
+    if (r.type === "user") {
+      const imagePaths = Array.isArray(p.imagePaths)
+        ? filterExistingImagePaths(p.imagePaths.filter((path): path is string => typeof path === "string"))
+        : [];
+      return [{ kind: "user", content: String(p.content ?? ""), imagePaths, timestamp: r.ts }];
+    }
     if (r.type === "assistant") {
       const content = String(p.content ?? "");
       const subagent = typeof p.subagent === "string" ? p.subagent : undefined;

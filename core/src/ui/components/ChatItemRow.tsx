@@ -3,7 +3,6 @@ import type { ChatItem } from "../../controller/state";
 import type { Controller } from "../../controller/controller";
 import { Markdown, plainLine } from "../render/markdown";
 import { categoryLabel } from "../../tool-category";
-import { detectImagePaths } from "../../controller/image-detection";
 
 const MAX_THINKING_LINES = 12;
 const MAX_THINKING_CHARS = 2400;
@@ -34,14 +33,18 @@ function MetaRow({ it }: { it: ChatItem }) {
   );
 }
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function time(ts?: number): string {
   return ts ? new Date(ts).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true }) : "";
 }
 
 function UserRow({ it }: { it: ChatItem }) {
-  const imagePaths = detectImagePaths(it.content);
+  const imagePaths = it.imagePaths ?? [];
   const textWithoutImages = imagePaths.length > 0
-    ? it.content.replace(/(\.{0,2}\/[^\s"']+\.(?:png|jpe?g|gif|webp))/gi, "").trim()
+    ? it.content.replace(new RegExp(imagePaths.map(escapeRegExp).sort((a, b) => b.length - a.length).join("|"), "g"), "").trim()
     : it.content;
   return (
     <box paddingX={2} marginTop={1} marginBottom={1} width="100%" flexDirection="column" flexShrink={0}>

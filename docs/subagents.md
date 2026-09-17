@@ -1,7 +1,8 @@
 # Subagents
 
-cagent has a native subagent runtime in the core. Definitions are Markdown files
-under `agents/` and are discovered during bootstrap.
+cagent has a native subagent runtime in the core. The built-in `general` subagent is
+embedded in the core and is always registered during bootstrap. Additional native
+definitions are Markdown files under `agents/` and are discovered during bootstrap.
 
 ```md
 ---

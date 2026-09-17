@@ -144,12 +144,29 @@ function skillMessage(payload: Record<string, unknown>): string {
 export function estimateTokens(messages: Message[]): number {
   return Math.ceil(
     messages.reduce(
-      (n, m) => n + m.content.length + (m.tool_calls ? JSON.stringify(m.tool_calls).length : 0),
+      (n, m) => n + contentCharCount(m.content) + (m.tool_calls ? JSON.stringify(m.tool_calls).length : 0),
       0,
     ) / 4,
   );
 }
 
+function contentCharCount(content: Message["content"]): number {
+  if (typeof content === "string") return content.length;
+  return content.reduce((sum, part) => {
+    if (part.type === "text") return sum + part.text.length;
+    // ponytail: images are billed at ~1000 tokens regardless of size; 4000 chars / 4 = 1000 tokens
+    return sum + 4000;
+  }, 0);
+}
+
 export function serializeMessages(messages: Message[]): string {
-  return messages.map((m) => `${m.role}: ${m.content}`).join("\n");
+  return messages.map((m) => `${m.role}: ${serializeContent(m.content)}`).join("\n");
+}
+
+function serializeContent(content: Message["content"]): string {
+  if (typeof content === "string") return content;
+  return content.map((part) => {
+    if (part.type === "text") return part.text;
+    return "[image]";
+  }).join("\n");
 }

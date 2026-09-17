@@ -48,3 +48,14 @@ export function validateImagePath(path: string): void {
     throw new Error(`Cannot read image file: ${path}`);
   }
 }
+
+export function filterExistingImagePaths(paths: string[]): string[] {
+  return paths.filter((path) => {
+    try {
+      validateImagePath(path);
+      return true;
+    } catch {
+      return false;
+    }
+  });
+}

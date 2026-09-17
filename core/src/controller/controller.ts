@@ -21,6 +21,7 @@ import { submitMessage } from "./submission";
 import { submitShell as submitShellAction } from "./shell-submission";
 import { submitSubagent as submitSubagentAction } from "./subagent-submission";
 import { createStreamThrottle } from "./stream-throttle";
+import { compactionThreshold } from "./compaction-threshold";
 
 export class Controller {
   state: UIState;
@@ -69,9 +70,7 @@ export class Controller {
     const loaded = this.session.load();
     this.messages = mergeSystemMessages(deps.systemPrompt, loaded.messages);
     const contextWindow = deps.contextWindow ?? 100_000;
-    const configuredPercent = deps.config.compact_threshold_percent ?? 80;
-    const percent = Math.min(100, Math.max(1, configuredPercent));
-    const threshold = deps.config.compact_threshold_tokens ?? Math.floor(contextWindow * percent / 100);
+    const threshold = compactionThreshold(contextWindow, deps.config);
     const s: UIState = {
       tasks: restoreTasks(loaded.records),
       chat: toChatItems(loaded.records).slice(-MAX_CHAT_ITEMS),

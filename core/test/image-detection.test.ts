@@ -1,6 +1,6 @@
 import { describe, test, expect } from "bun:test";
 import { detectImagePaths, isImagePath } from "../src/controller/image-detection";
-import { processImage, detectMimeType, validateImagePath } from "../src/controller/image-processor";
+import { filterExistingImagePaths, processImage, detectMimeType, validateImagePath } from "../src/controller/image-processor";
 import { writeFileSync, mkdtempSync, rmSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -89,6 +89,16 @@ describe("image-processor", () => {
     expect(result.mimeType).toBe("image/png");
     expect(result.dataUrl).toContain("data:image/png;base64,");
     
+    rmSync(tmpDir, { recursive: true });
+  });
+
+  test("filterExistingImagePaths excludes missing files", () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), "cagent-test-"));
+    const existingPath = join(tmpDir, "existing.png");
+    writeFileSync(existingPath, "image");
+
+    expect(filterExistingImagePaths([existingPath, join(tmpDir, "missing.png")])).toEqual([existingPath]);
+
     rmSync(tmpDir, { recursive: true });
   });
 

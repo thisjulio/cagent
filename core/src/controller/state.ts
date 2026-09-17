@@ -11,6 +11,7 @@ import type { SubagentRequest } from "../subagents/executor";
 export type ChatItem = {
   kind: "user" | "assistant" | "tool" | "meta" | "thinking";
   content: string;
+  imagePaths?: string[];
   subagent?: string;
   subagentHeader?: boolean;
   toolName?: string;
