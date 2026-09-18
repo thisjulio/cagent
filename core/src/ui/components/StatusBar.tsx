@@ -15,10 +15,11 @@ export function StatusBar({
   contextWindow: number;
   threshold: number;
 }) {
-  const MAX_MODEL_LABEL = 40;
-  let label = variant ? `${model} (${variant})` : model;
-  if (label.length > MAX_MODEL_LABEL) {
-    label = `${label.slice(0, MAX_MODEL_LABEL - 3)}…`;
+  const variantText = variant ? ` (${variant})` : "";
+  const MAX_MODEL_LABEL = 40 - variantText.length;
+  let modelLabel = model;
+  if (modelLabel.length > MAX_MODEL_LABEL) {
+    modelLabel = `${modelLabel.slice(0, MAX_MODEL_LABEL - 3)}…`;
   }
   const pct =
     tokens !== undefined && contextWindow
@@ -37,7 +38,10 @@ export function StatusBar({
       flexDirection="row"
       justifyContent="space-between"
     >
-      <text fg="#666666">{label}</text>
+      <box flexDirection="row" alignItems="center" flexGrow={1}>
+        <text fg="#666666">{modelLabel}</text>
+        {variant && <text fg="#666666"> ({variant})</text>}
+      </box>
       <text fg="#666666">
         {tokenInfo} [{meter}] {pct}% context · /help
       </text>
