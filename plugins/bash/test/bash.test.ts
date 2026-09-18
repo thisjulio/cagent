@@ -9,6 +9,7 @@ function setup(): { tool: ToolDefinition; events: string[] } {
     config: {},
     registerTool: (candidate: ToolDefinition) => { tool = candidate; },
     emit: (event: string) => { events.push(event); },
+    promptSection: () => {},
   } as unknown as PluginContext;
   register(context);
   if (!tool) throw new Error("bash tool was not registered");

@@ -86,7 +86,7 @@ const register: Plugin = (ctx) => {
       properties: {
         command: { type: "string", description: "Command to run" },
         workdir: { type: "string", description: "Working directory (default: cwd)" },
-        timeout_ms: { type: "number", description: `Timeout in ms (default: ${defaultTimeout})` },
+        timeout_ms: { type: "number", description: `Timeout in ms (default: ${defaultTimeout}). Set explicitly for commands expected to run longer than the default.` },
       },
       required: ["command"],
     },
@@ -107,6 +107,10 @@ const register: Plugin = (ctx) => {
       return { output, isError, timedOut: result.timedOut };
     },
   });
+  ctx.promptSection(
+    "bash",
+    "bash: For commands that may take longer than 30 seconds, set timeout_ms explicitly.",
+  );
 };
 
 export default register;
