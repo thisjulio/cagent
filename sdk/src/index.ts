@@ -59,15 +59,23 @@ export function workflowEvent(
   return { version: 1, ...identifiers, data };
 }
 
-export type HookPhase = "before_tool" | "after_tool";
+export type HookPhase =
+  | "before_tool"
+  | "after_tool"
+  | "session_start"
+  | "user_prompt_submit"
+  | "subagent_start";
 export type HookAction = "allow" | "ask" | "deny" | "continue";
 
 export type HookEvent = {
   phase: HookPhase;
-  tool: string;
-  args: ToolArgs;
+  tool?: string;
+  args?: ToolArgs;
   result?: ToolResult;
   error?: string;
+  prompt?: string;
+  subagent?: string;
+  task?: string;
 };
 
 export type HookResponse = {

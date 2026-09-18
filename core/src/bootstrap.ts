@@ -217,6 +217,7 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
     invokeSubagent: registry.subagents().length ? executeSubagent : undefined,
     observability: telemetry,
   });
+  await c.registry.hooks.run({ phase: "session_start" });
   telemetry.recordMetric("app.startup_ms", performance.now() - started, {
     "plugin.count": loadedPlugins.commandSources.length,
   });

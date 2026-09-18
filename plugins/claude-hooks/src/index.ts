@@ -4,17 +4,25 @@ import path from "node:path";
 import type {
   HookDefinition,
   HookEvent,
+  HookPhase,
   HookResponse,
   Plugin,
 } from "@cagent/sdk";
+import { expandCommand } from "./expand-command";
 
 type ClaudeHook = { type: "command"; command: string };
 type ClaudeRule = { matcher?: string; hooks?: ClaudeHook[] };
 type ClaudeSettings = { hooks?: Record<string, ClaudeRule[]> };
 
-const eventMap: Record<string, "before_tool" | "after_tool"> = {
+const TOOL_EVENT_MAP: Record<string, HookPhase> = {
   PreToolUse: "before_tool",
   PostToolUse: "after_tool",
+};
+
+const NON_TOOL_EVENT_MAP: Record<string, HookPhase> = {
+  SessionStart: "session_start",
+  UserPromptSubmit: "user_prompt_submit",
+  SubagentStart: "subagent_start",
 };
 
 function readSettings(cwd: string): ClaudeSettings {
@@ -46,26 +54,45 @@ function claudeToolName(tool: string): string {
       : tool;
 }
 
+function buildInput(event: HookEvent, cwd: string): Record<string, unknown> {
+  const input: Record<string, unknown> = { cwd };
+  if (event.phase === "before_tool" || event.phase === "after_tool") {
+    input.tool_name = claudeToolName(event.tool ?? "");
+    input.tool_input = event.args;
+    input.tool_output = event.result;
+    input.error = event.error;
+  }
+  if (event.phase === "user_prompt_submit") {
+    input.prompt = event.prompt;
+  }
+  if (event.phase === "subagent_start") {
+    input.subagent = event.subagent;
+    input.task = event.task;
+  }
+  return input;
+}
+
+function hookEnv(cwd: string): Record<string, string> {
+  return {
+    ...process.env,
+    CWD: cwd,
+  };
+}
+
 async function execute(
   command: string,
   event: HookEvent,
   cwd: string,
 ): Promise<HookResponse | undefined> {
-  const child = Bun.spawn(["sh", "-c", command], {
+  const expanded = expandCommand(command, cwd);
+  const child = Bun.spawn(["sh", "-c", expanded], {
     cwd,
+    env: hookEnv(cwd),
     stdin: "pipe",
     stdout: "pipe",
     stderr: "pipe",
   });
-  child.stdin.write(
-    JSON.stringify({
-      tool_name: claudeToolName(event.tool),
-      tool_input: event.args,
-      tool_output: event.result,
-      error: event.error,
-      cwd,
-    }),
-  );
+  child.stdin.write(JSON.stringify(buildInput(event, cwd)));
   child.stdin.end();
   const output = (await new Response(child.stdout).text()).trim();
   await child.exited;
@@ -91,7 +118,7 @@ async function execute(
 
 const register: Plugin = (ctx) => {
   const settings = readSettings(process.cwd());
-  for (const [claudeEvent, phase] of Object.entries(eventMap)) {
+  for (const [claudeEvent, phase] of Object.entries(TOOL_EVENT_MAP)) {
     for (const [index, rule] of (
       settings.hooks?.[claudeEvent] ?? []
     ).entries()) {
@@ -100,10 +127,24 @@ const register: Plugin = (ctx) => {
           name: `claude-${claudeEvent}-${index}-${hookIndex}`,
           phase,
           handle: async (event) => {
-            if (!matches(rule.matcher, claudeToolName(event.tool)))
+            if (!matches(rule.matcher, claudeToolName(event.tool ?? "")))
               return undefined;
             return execute(hook.command, event, process.cwd());
           },
+        };
+        ctx.registerHook(definition);
+      }
+    }
+  }
+  for (const [claudeEvent, phase] of Object.entries(NON_TOOL_EVENT_MAP)) {
+    for (const [index, rule] of (
+      settings.hooks?.[claudeEvent] ?? []
+    ).entries()) {
+      for (const [hookIndex, hook] of (rule.hooks ?? []).entries()) {
+        const definition: HookDefinition = {
+          name: `claude-${claudeEvent}-${index}-${hookIndex}`,
+          phase,
+          handle: async (event) => execute(hook.command, event, process.cwd()),
         };
         ctx.registerHook(definition);
       }

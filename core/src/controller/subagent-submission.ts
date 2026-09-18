@@ -33,6 +33,11 @@ export async function submitSubagent(
     subagent: name,
     subagentHeader: true,
   });
+  await controller.registry.hooks.run({
+    phase: "subagent_start",
+    subagent: name,
+    task,
+  });
   s.busy = true;
   s.turnStartedAt = Date.now();
   controller.bump();
