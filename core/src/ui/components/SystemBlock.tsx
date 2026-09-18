@@ -31,12 +31,16 @@ export function SystemBlockComponent({ block }: { block: SystemBlock }) {
           <span attributes={TextAttributes.DIM}> {time(item.timestamp)}</span>
         ) : null}
       </text>
-      <text>
-        <span fg="#d97757">│ </span>
-        <span attributes={TextAttributes.DIM}>
-          {compacted ? compacted[1] : item.content}
-        </span>
-      </text>
+      <box flexDirection="column">
+        {(compacted ? compacted[1] : item.content)
+          .split("\n")
+          .map((line, lineIndex) => (
+            <text key={`system-line-${lineIndex}`}>
+              <span fg="#d97757">│ </span>
+              <span attributes={TextAttributes.DIM}>{line}</span>
+            </text>
+          ))}
+      </box>
     </box>
   );
 }

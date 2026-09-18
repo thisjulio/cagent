@@ -27,19 +27,16 @@ function ThinkingItemComponent({
         <span fg="#d97757">├─ </span>
         <strong fg="#ffffff">thinking</strong>
       </text>
-      <box flexDirection="row">
-        <text fg="#d97757">│ </text>
-        <box flexGrow={1}>
-          {lines.map((line, lineIndex) => (
-            <text
-              key={`thinking-line-${lineIndex}`}
-              fg="#888888"
-              attributes={TextAttributes.ITALIC}
-            >
-              {plainLine(line) || " "}
-            </text>
-          ))}
-        </box>
+      <box flexDirection="column">
+        {lines.map((line, lineIndex) => (
+          <text
+            key={`thinking-line-${lineIndex}`}
+            attributes={TextAttributes.ITALIC}
+          >
+            <span fg="#d97757">│ </span>
+            <span fg="#888888">{plainLine(line) || " "}</span>
+          </text>
+        ))}
       </box>
     </box>
   );
@@ -103,17 +100,19 @@ function ToolItemComponent({
         ) : null}
       </text>
       {item.expanded && item.content ? (
-        <text
-          attributes={item.isError ? TextAttributes.NONE : TextAttributes.DIM}
-        >
+        <box flexDirection="column">
           {item.content.split("\n").map((line, lineIndex) => (
-            <span key={`tool-line-${lineIndex}`}>
-              {lineIndex > 0 ? "\n" : null}
+            <text
+              key={`tool-line-${lineIndex}`}
+              attributes={
+                item.isError ? TextAttributes.NONE : TextAttributes.DIM
+              }
+            >
               <span fg="#d97757">│ </span>
               <span fg={item.isError ? "red" : undefined}>{line}</span>
-            </span>
+            </text>
           ))}
-        </text>
+        </box>
       ) : null}
     </box>
   );

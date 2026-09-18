@@ -152,12 +152,8 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
       }
     : undefined;
   if (skills) registry.registerTool(createReadSkillTool(skills));
-  let route = "";
-  let adapter = registry.provider(registry.llmRoute() ?? "");
-  if (options.headless) {
-    route = await resolveRoute(config, registry);
-    adapter = registry.provider(splitRoute(route)[0]);
-  }
+  let route = await resolveRoute(config, registry);
+  let adapter = registry.provider(splitRoute(route)[0]);
   if (!adapter) throw new Error("(no provider - nothing to do)");
   if (route) telemetry.recordEvent("route.resolved", { "model.route": route });
   const contextWindow = route
@@ -165,7 +161,9 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
     : 60_000;
   let ask: ToolAsk = async () => true;
   let currentModel = route;
-  const getModelRoute = (): string => currentModel;
+  let controllerRef: Controller | null = null;
+  const getModelRoute = (): string =>
+    controllerRef?.state.model ?? currentModel;
   const executeSubagent = createSubagentExecutor({
     find: (name) => registry.subagent(name),
     registry,
@@ -218,6 +216,7 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
     invokeSubagent: registry.subagents().length ? executeSubagent : undefined,
     observability: telemetry,
   });
+  controllerRef = c;
   await c.registry.hooks.run({ phase: "session_start" });
   telemetry.recordMetric("app.startup_ms", performance.now() - started, {
     "plugin.count": loadedPlugins.commandSources.length,

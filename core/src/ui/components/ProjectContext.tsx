@@ -9,7 +9,6 @@ export function ProjectContext({ cwd }: { cwd: string }) {
     <box
       border={["top"]}
       borderColor="#444444"
-      height={1}
       flexShrink={0}
       flexDirection="row"
       justifyContent="space-between"
