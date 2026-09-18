@@ -60,6 +60,7 @@ export type UIState = {
   sessionList: { id: string; updated: string; title: string }[] | null;
   helpOpen: boolean;
   title: string;
+  sessionId: string;
   suggest: string[];
   suggestIdx: number;
   inputKey: number;

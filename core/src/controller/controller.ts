@@ -111,6 +111,7 @@ export class Controller {
       chat: toChatItems(loaded.records).slice(-MAX_CHAT_ITEMS),
       chatVersion: 0,
       toolLog: [],
+      sessionId: this.session.id,
       title: toTitle(loaded.records),
       model: deps.model,
       variant: deps.variant,

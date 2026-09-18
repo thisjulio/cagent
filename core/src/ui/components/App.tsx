@@ -11,6 +11,7 @@ import { SessionList } from "./SessionList";
 import { StatusBar } from "./StatusBar";
 import { InputArea } from "./InputArea";
 import { TaskPanel } from "./TaskPanel";
+import { ProjectContext } from "./ProjectContext";
 import { formatHeaderTitle } from "../render/title";
 
 export function App({ c }: { c: Controller }) {
@@ -107,7 +108,14 @@ export function App({ c }: { c: Controller }) {
         flexDirection="row"
         justifyContent="space-between"
       >
-        <text fg="#d97757">{formatHeaderTitle(s.title, terminalWidth())}</text>
+        <text fg="#d97757">
+          {formatHeaderTitle(
+            s.title
+              ? `(${s.sessionId.slice(0, 6)}) | ${s.title}`
+              : `(${s.sessionId.slice(0, 6)})`,
+            terminalWidth(),
+          )}
+        </text>
         <text fg={s.busy ? "#d97757" : "#777777"}>
           {s.busy ? "working" : status}
         </text>
@@ -151,6 +159,7 @@ export function App({ c }: { c: Controller }) {
           }}
         />
       )}
+      <ProjectContext cwd={process.cwd()} />
       <box height={1} flexShrink={0}>
         <text attributes={TextAttributes.DIM}>{s.notice}</text>
       </box>
