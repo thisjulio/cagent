@@ -27,10 +27,14 @@ export function App({ c }: { c: Controller }) {
   useKeyboard((key: KeyEvent) => {
     const s = c.state;
     const input = key.sequence || (key.name === "space" ? " " : "");
-    const overlay = s.helpOpen || s.modelPicker || s.sessionList || s.pendingAsk;
+    const overlay =
+      s.helpOpen || s.modelPicker || s.sessionList || s.pendingAsk;
 
     if (key.ctrl && key.name === "c" && !key.shift && !overlay) {
-      c.observability?.recordEvent("keyboard.ctrl_c", { busy: s.busy, cleared_input: s.input.length > 0 });
+      c.observability?.recordEvent("keyboard.ctrl_c", {
+        busy: s.busy,
+        cleared_input: s.input.length > 0,
+      });
       if (s.input.length > 0) {
         c.setInput("");
         s.inputKey += 1;
@@ -43,7 +47,10 @@ export function App({ c }: { c: Controller }) {
     }
     if (key.ctrl && key.shift && key.name === "c" && renderer.hasSelection) {
       const selected = renderer.getSelection()?.getSelectedText() ?? "";
-      c.observability?.recordEvent("clipboard.copy", { "text.length": selected.length, success: Boolean(selected) });
+      c.observability?.recordEvent("clipboard.copy", {
+        "text.length": selected.length,
+        success: Boolean(selected),
+      });
       if (selected) renderer.copyToClipboardOSC52(selected);
       key.preventDefault();
       return;
@@ -60,8 +67,14 @@ export function App({ c }: { c: Controller }) {
       return;
     }
     if (key.name === "escape" || (overlay && (s.pendingAsk || s.helpOpen))) {
-      c.observability?.recordEvent("keyboard.escape", { busy: s.busy, overlay: Boolean(overlay) });
-      c.handleKey({ escape: key.name === "escape", return: key.name === "enter" }, input);
+      c.observability?.recordEvent("keyboard.escape", {
+        busy: s.busy,
+        overlay: Boolean(overlay),
+      });
+      c.handleKey(
+        { escape: key.name === "escape", return: key.name === "enter" },
+        input,
+      );
       key.preventDefault();
       return;
     }
@@ -78,7 +91,13 @@ export function App({ c }: { c: Controller }) {
   const lastLog = s.toolLog[s.toolLog.length - 1];
   const running = lastLog?.running ? lastLog.tool : undefined;
   const overlay = s.helpOpen || s.modelPicker || s.sessionList || s.pendingAsk;
-  const status = s.compacting ? "compacting" : s.pendingAsk ? "permission" : s.busy ? "working" : "ready";
+  const status = s.compacting
+    ? "compacting"
+    : s.pendingAsk
+      ? "permission"
+      : s.busy
+        ? "working"
+        : "ready";
   return (
     <box flexDirection="column" width="100%" height="100%">
       <box
@@ -89,7 +108,9 @@ export function App({ c }: { c: Controller }) {
         justifyContent="space-between"
       >
         <text fg="#d97757">{formatHeaderTitle(s.title, terminalWidth())}</text>
-        <text fg={s.busy ? "#d97757" : "#777777"}>{s.busy ? "working" : status}</text>
+        <text fg={s.busy ? "#d97757" : "#777777"}>
+          {s.busy ? "working" : status}
+        </text>
       </box>
       <ChatViewport chat={s.chat} busy={s.busy} controller={c} />
       <TaskPanel tasks={s.tasks} />
@@ -102,7 +123,10 @@ export function App({ c }: { c: Controller }) {
           onSelect={(r) => c.pickModel(r)}
         />
       ) : s.sessionList ? (
-        <SessionList list={s.sessionList} onSelect={(id) => c.resumeSession(id)} />
+        <SessionList
+          list={s.sessionList}
+          onSelect={(id) => c.resumeSession(id)}
+        />
       ) : s.pendingAsk ? (
         <PendingAsk ask={s.pendingAsk} />
       ) : (
@@ -115,7 +139,12 @@ export function App({ c }: { c: Controller }) {
           active={!overlay}
           onChange={(v) => c.setInput(v)}
           onSubmit={(v) => c.submit(v)}
-          onClipboard={(_, length, success) => c.observability?.recordEvent("clipboard.paste", { "text.length": length, success })}
+          onClipboard={(_, length, success) =>
+            c.observability?.recordEvent("clipboard.paste", {
+              "text.length": length,
+              success,
+            })
+          }
           onUpArrow={() => {
             c.handleKey({ upArrow: true }, "");
             return c.state.input || undefined;
@@ -125,15 +154,29 @@ export function App({ c }: { c: Controller }) {
       <box height={1} flexShrink={0}>
         <text attributes={TextAttributes.DIM}>{s.notice}</text>
       </box>
-<StatusBar model={s.model} variant={s.variant} tokens={s.tokens} inputTokens={s.inputTokens} outputTokens={s.outputTokens} contextWindow={s.contextWindow ?? s.threshold} threshold={s.threshold} />
+      <StatusBar
+        model={s.model}
+        variant={s.variant}
+        tokens={s.tokens}
+        inputTokens={s.inputTokens}
+        outputTokens={s.outputTokens}
+        contextWindow={s.contextWindow ?? s.threshold}
+        threshold={s.threshold}
+      />
     </box>
   );
 }
 
 function terminalWidth(): number {
-  return Number.isFinite(process.stdout.columns) && process.stdout.columns > 0 ? process.stdout.columns : 80;
+  return Number.isFinite(process.stdout.columns) && process.stdout.columns > 0
+    ? process.stdout.columns
+    : 80;
 }
 
 function isPrintable(input: string): boolean {
-  return input.length > 0 && !/[\x00-\x1f\x7f]/.test(input) && !input.startsWith("\x1b");
+  return (
+    input.length > 0 &&
+    !/[\x00-\x1f\x7f]/.test(input) &&
+    !input.startsWith("\x1b")
+  );
 }

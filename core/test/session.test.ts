@@ -17,7 +17,11 @@ describe("JSONL sessions", () => {
         {
           ts: 1,
           type: "meta",
-          payload: { kind: "title", title: '<tool_call> {"name": "git_status", "arguments": {}} </tool_call>' },
+          payload: {
+            kind: "title",
+            title:
+              '<tool_call> {"name": "git_status", "arguments": {}} </tool_call>',
+          },
         },
       ]),
     ).toBe("");
@@ -27,7 +31,11 @@ describe("JSONL sessions", () => {
     const s = new Session(undefined, dir);
     s.append({ ts: 1, type: "user", payload: { content: "hi" } });
     s.append({ ts: 2, type: "assistant", payload: { content: "hello" } });
-    s.append({ ts: 3, type: "tool", payload: { tool_call_id: "t1", content: "ok" } });
+    s.append({
+      ts: 3,
+      type: "tool",
+      payload: { tool_call_id: "t1", content: "ok" },
+    });
     const loaded = new Session(s.id, dir).load();
     expect(loaded.messages).toEqual([
       { role: "user", content: "hi" },
@@ -49,7 +57,11 @@ describe("JSONL sessions", () => {
   it("listing shows the title (metadata) with the first-message fallback", () => {
     const s = new Session("abc", dir);
     s.append({ ts: 1, type: "user", payload: { content: "hello world" } });
-    s.append({ ts: 2, type: "meta", payload: { kind: "title", title: "My title" } });
+    s.append({
+      ts: 2,
+      type: "meta",
+      payload: { kind: "title", title: "My title" },
+    });
     const s2 = new Session("xyz", dir);
     s2.append({ ts: 3, type: "user", payload: { content: "hello hello" } });
     const list = Session.list(dir);
@@ -61,9 +73,17 @@ describe("JSONL sessions", () => {
 
   it("finds the latest user message across all sessions", () => {
     const first = new Session("first", dir);
-    first.append({ ts: 10, type: "user", payload: { content: "older session message" } });
+    first.append({
+      ts: 10,
+      type: "user",
+      payload: { content: "older session message" },
+    });
     const second = new Session("second", dir);
-    second.append({ ts: 20, type: "user", payload: { content: "latest global message" } });
+    second.append({
+      ts: 20,
+      type: "user",
+      payload: { content: "latest global message" },
+    });
 
     expect(Session.latestUserMessage(dir)).toBe("latest global message");
   });
@@ -76,12 +96,23 @@ describe("JSONL sessions", () => {
   it("load resumes from the last summary instead of rebuilding old history", () => {
     const s = new Session("compacted", dir);
     s.append({ ts: 1, type: "user", payload: { content: "antiga" } });
-    s.append({ ts: 2, type: "assistant", payload: { content: "resposta antiga" } });
-    s.append({ ts: 3, type: "meta", payload: { kind: "compacted", summary: "important decision" } });
+    s.append({
+      ts: 2,
+      type: "assistant",
+      payload: { content: "resposta antiga" },
+    });
+    s.append({
+      ts: 3,
+      type: "meta",
+      payload: { kind: "compacted", summary: "important decision" },
+    });
     s.append({ ts: 4, type: "user", payload: { content: "new" } });
     const loaded = new Session(s.id, dir).load();
     expect(loaded.messages).toEqual([
-      { role: "user", content: "[previous conversation summary]\nimportant decision" },
+      {
+        role: "user",
+        content: "[previous conversation summary]\nimportant decision",
+      },
       { role: "user", content: "new" },
     ]);
     expect(loaded.records).toHaveLength(2);
@@ -89,30 +120,82 @@ describe("JSONL sessions", () => {
 
   it("restores activated skills as system messages", () => {
     const s = new Session("skill", dir);
-    s.append({ ts: 1, type: "meta", payload: { kind: "skill-activated", format: "skill-content-v1", name: "grill-me", source: "user", content: "Ask questions." } });
-    s.append({ ts: 2, type: "user", payload: { content: "design clipboard support" } });
+    s.append({
+      ts: 1,
+      type: "meta",
+      payload: {
+        kind: "skill-activated",
+        format: "skill-content-v1",
+        name: "grill-me",
+        source: "user",
+        content: "Ask questions.",
+      },
+    });
+    s.append({
+      ts: 2,
+      type: "user",
+      payload: { content: "design clipboard support" },
+    });
     const loaded = new Session(s.id, dir).load();
 
     expect(loaded.messages[0]).toEqual({
       role: "system",
-      content: '<skill_content name="grill-me" source="user">\nFollow this explicitly activated skill before answering the user\'s task.\n\nAsk questions.\n\n</skill_content>',
+      content:
+        '<skill_content name="grill-me" source="user">\nFollow this explicitly activated skill before answering the user\'s task.\n\nAsk questions.\n\n</skill_content>',
     });
-    expect(loaded.messages[1]).toEqual({ role: "user", content: "design clipboard support" });
+    expect(loaded.messages[1]).toEqual({
+      role: "user",
+      content: "design clipboard support",
+    });
   });
 
   it("restores native skill loads as tool history", () => {
     const s = new Session("native-skill", dir);
-    const toolCall = { id: "skill-1", name: "skill", arguments: '{"name":"grill-me"}' };
-    s.append({ ts: 1, type: "meta", payload: { kind: "skill-activated", format: "tool-v1", name: "grill-me", source: "user" } });
-    s.append({ ts: 2, type: "assistant", payload: { content: "", tool_calls: [toolCall] } });
-    s.append({ ts: 3, type: "tool", payload: { tool_call_id: "skill-1", toolName: "skill", content: "<skill_content name=\"grill-me\">" } });
+    const toolCall = {
+      id: "skill-1",
+      name: "skill",
+      arguments: '{"name":"grill-me"}',
+    };
+    s.append({
+      ts: 1,
+      type: "meta",
+      payload: {
+        kind: "skill-activated",
+        format: "tool-v1",
+        name: "grill-me",
+        source: "user",
+      },
+    });
+    s.append({
+      ts: 2,
+      type: "assistant",
+      payload: { content: "", tool_calls: [toolCall] },
+    });
+    s.append({
+      ts: 3,
+      type: "tool",
+      payload: {
+        tool_call_id: "skill-1",
+        toolName: "skill",
+        content: '<skill_content name="grill-me">',
+      },
+    });
 
     expect(new Session(s.id, dir).load().messages).toEqual([
       { role: "assistant", content: "", tool_calls: [toolCall] },
-      { role: "tool", tool_call_id: "skill-1", content: "<skill_content name=\"grill-me\">" },
+      {
+        role: "tool",
+        tool_call_id: "skill-1",
+        content: '<skill_content name="grill-me">',
+      },
     ]);
     expect(toChatItems(new Session(s.id, dir).load().records)).toEqual([
-      { kind: "tool", toolName: "skill", toolCategory: "skill", content: "<skill_content name=\"grill-me\">" },
+      {
+        kind: "tool",
+        toolName: "skill",
+        toolCategory: "skill",
+        content: '<skill_content name="grill-me">',
+      },
     ]);
   });
 });

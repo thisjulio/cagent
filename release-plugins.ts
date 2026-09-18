@@ -12,7 +12,7 @@ import plugin9 from "./plugins/openai/src/index";
 import plugin10 from "./plugins/stub/src/index";
 
 export const pluginLoaders: Record<string, Plugin> = {
-  "bash": plugin0,
+  bash: plugin0,
   "claude-agents": plugin1,
   "claude-commands": plugin2,
   "claude-hooks": plugin3,
@@ -20,7 +20,7 @@ export const pluginLoaders: Record<string, Plugin> = {
   "codex-agents": plugin5,
   "codex-prompts": plugin6,
   "llama.cpp": plugin7,
-  "mcp": plugin8,
-  "openai": plugin9,
-  "stub": plugin10,
+  mcp: plugin8,
+  openai: plugin9,
+  stub: plugin10,
 };

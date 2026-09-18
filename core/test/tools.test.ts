@@ -8,13 +8,25 @@ const bus = new EventBus();
 
 describe("tool pipeline", () => {
   it("allowlist permits without a prompt", async () => {
-    const res = await runToolPipeline(tool, { command: "git status" }, ["git"], async () => false, bus);
+    const res = await runToolPipeline(
+      tool,
+      { command: "git status" },
+      ["git"],
+      async () => false,
+      bus,
+    );
     expect(res.output).toBe("ok");
     expect(res.isError).toBeUndefined();
   });
 
   it("outside the allowlist asks for approval and denies", async () => {
-    const res = await runToolPipeline(tool, { command: "rm -rf /" }, ["git"], async () => false, bus);
+    const res = await runToolPipeline(
+      tool,
+      { command: "rm -rf /" },
+      ["git"],
+      async () => false,
+      bus,
+    );
     expect(res.isError).toBe(true);
     expect(res.output).toContain("denied");
   });

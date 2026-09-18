@@ -3,7 +3,9 @@ import { benchmark } from "../src/benchmark";
 
 describe("benchmark", () => {
   test("captures duration, memory and process metrics", async () => {
-    const result = await benchmark("test.operation", () => "done", { scenario: "unit" });
+    const result = await benchmark("test.operation", () => "done", {
+      scenario: "unit",
+    });
 
     expect(result.value).toBe("done");
     expect(result.durationMs).toBeGreaterThanOrEqual(0);
@@ -18,8 +20,10 @@ describe("benchmark", () => {
   });
 
   test("records exceptions without hiding them", async () => {
-    await expect(benchmark("test.failure", () => {
-      throw new Error("expected failure");
-    })).rejects.toThrow("expected failure");
+    await expect(
+      benchmark("test.failure", () => {
+        throw new Error("expected failure");
+      }),
+    ).rejects.toThrow("expected failure");
   });
 });

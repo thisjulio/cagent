@@ -39,7 +39,8 @@ export function addBuiltinSkills(catalog: SkillCatalog): SkillCatalog {
   const record: SkillRecord = {
     metadata: {
       name: "cagent-development",
-      description: "Create and maintain cagent skills and plugins while following its architecture and development rules.",
+      description:
+        "Create and maintain cagent skills and plugins while following its architecture and development rules.",
     },
     directory: "builtin:cagent-development",
     instructionFile: "builtin:cagent-development/SKILL.md",

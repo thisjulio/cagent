@@ -10,33 +10,77 @@ import { restoreTasks } from "../tasks";
 import { filterExistingImagePaths } from "./image-processor";
 export { compact } from "./compaction";
 
-type LoadedRecord = { ts: number; type: "user" | "assistant" | "thinking" | "tool" | "meta"; payload: Record<string, unknown> };
+type LoadedRecord = {
+  ts: number;
+  type: "user" | "assistant" | "thinking" | "tool" | "meta";
+  payload: Record<string, unknown>;
+};
 
 export function toChatItems(records: LoadedRecord[]): ChatItem[] {
   return records.flatMap((r) => {
     const p = r.payload as Record<string, unknown>;
     if (r.type === "user") {
       const imagePaths = Array.isArray(p.imagePaths)
-        ? filterExistingImagePaths(p.imagePaths.filter((path): path is string => typeof path === "string"))
+        ? filterExistingImagePaths(
+            p.imagePaths.filter(
+              (path): path is string => typeof path === "string",
+            ),
+          )
         : [];
-      return [{ kind: "user", content: String(p.content ?? ""), imagePaths, timestamp: r.ts }];
+      return [
+        {
+          kind: "user",
+          content: String(p.content ?? ""),
+          imagePaths,
+          timestamp: r.ts,
+        },
+      ];
     }
     if (r.type === "assistant") {
       const content = String(p.content ?? "");
       const subagent = typeof p.subagent === "string" ? p.subagent : undefined;
-      return content ? [{ kind: "assistant", content, subagent, timestamp: r.ts }] : [];
+      return content
+        ? [{ kind: "assistant", content, subagent, timestamp: r.ts }]
+        : [];
     }
     if (r.type === "thinking") {
       const content = String(p.content ?? "");
       return content ? [{ kind: "thinking", content, timestamp: r.ts }] : [];
     }
     if (r.type === "tool") {
-      const toolName = p.toolName ? String(p.toolName) : String(p.tool_call_id ?? "");
-      return [{ kind: "tool", content: String(p.content ?? ""), toolName, toolCategory: classifyTool(toolName) }];
+      const toolName = p.toolName
+        ? String(p.toolName)
+        : String(p.tool_call_id ?? "");
+      return [
+        {
+          kind: "tool",
+          content: String(p.content ?? ""),
+          toolName,
+          toolCategory: classifyTool(toolName),
+        },
+      ];
     }
-    if (p.kind === "subagent-start") return [{ kind: "assistant", content: "", subagent: String(p.name ?? ""), subagentHeader: true, timestamp: r.ts }];
-    if (p.kind === "skill-activated") return p.format === "tool-v1" ? [] : [{ kind: "meta", content: `skill activated: ${String(p.name ?? "")}` }];
-    if (p.kind === "compacted") return [{ kind: "meta", content: "conversation compacted" }];
+    if (p.kind === "subagent-start")
+      return [
+        {
+          kind: "assistant",
+          content: "",
+          subagent: String(p.name ?? ""),
+          subagentHeader: true,
+          timestamp: r.ts,
+        },
+      ];
+    if (p.kind === "skill-activated")
+      return p.format === "tool-v1"
+        ? []
+        : [
+            {
+              kind: "meta",
+              content: `skill activated: ${String(p.name ?? "")}`,
+            },
+          ];
+    if (p.kind === "compacted")
+      return [{ kind: "meta", content: "conversation compacted" }];
     return [];
   });
 }
@@ -70,8 +114,16 @@ export function sanitizeTitle(value: string): string {
 }
 
 export function toTitle(records: LoadedRecord[]): string {
-  const rec = records.find((r) => r.type === "meta" && (r.payload as Record<string, unknown>).kind === "title");
-  return rec ? sanitizeTitle(String((rec.payload as Record<string, unknown>).title ?? "")) : "";
+  const rec = records.find(
+    (r) =>
+      r.type === "meta" &&
+      (r.payload as Record<string, unknown>).kind === "title",
+  );
+  return rec
+    ? sanitizeTitle(
+        String((rec.payload as Record<string, unknown>).title ?? ""),
+      )
+    : "";
 }
 
 export function startNewSession(c: Controller): void {
@@ -117,22 +169,37 @@ export function restoreSession(c: Controller, id: string): void {
   c.state.inputKey += 1;
   c.state.suggest = [];
   c.state.suggestIdx = -1;
-  const usage = loaded.records.slice().reverse().find((r) => r.type === "meta" && (r.payload as Record<string, unknown>).kind === "usage")?.payload as Record<string, unknown> | undefined;
+  const usage = loaded.records
+    .slice()
+    .reverse()
+    .find(
+      (r) =>
+        r.type === "meta" &&
+        (r.payload as Record<string, unknown>).kind === "usage",
+    )?.payload as Record<string, unknown> | undefined;
   if (usage && typeof usage.tokens === "number") {
     c.state.tokens = usage.tokens;
-    if (typeof usage.inputTokens === "number") c.state.inputTokens = usage.inputTokens;
-    if (typeof usage.outputTokens === "number") c.state.outputTokens = usage.outputTokens;
+    if (typeof usage.inputTokens === "number")
+      c.state.inputTokens = usage.inputTokens;
+    if (typeof usage.outputTokens === "number")
+      c.state.outputTokens = usage.outputTokens;
   } else {
     c.state.tokens = estimateTokens(c.messages);
   }
-  c.observability?.recordEvent("session.resumed", { "message.count": loaded.messages.length });
+  c.observability?.recordEvent("session.resumed", {
+    "message.count": loaded.messages.length,
+  });
   c.bump();
 }
 
 export function openSessions(c: Controller): void {
   c.state.sessionList = Session.list();
-  c.observability?.recordEvent("session_picker.opened", { "session.count": c.state.sessionList.length });
-  c.observability?.recordEvent("session.listed", { "session.count": c.state.sessionList.length });
+  c.observability?.recordEvent("session_picker.opened", {
+    "session.count": c.state.sessionList.length,
+  });
+  c.observability?.recordEvent("session.listed", {
+    "session.count": c.state.sessionList.length,
+  });
   c.bump();
 }
 
@@ -144,14 +211,25 @@ export function renameSession(c: Controller, name: string): void {
     return;
   }
   s.title = sanitizeTitle(name).slice(0, 60);
-  c.observability?.recordEvent("session.renamed", { "title.length": s.title.length });
-  c.session.append({ ts: Date.now(), type: "meta", payload: { kind: "title", title: s.title } });
+  c.observability?.recordEvent("session.renamed", {
+    "title.length": s.title.length,
+  });
+  c.session.append({
+    ts: Date.now(),
+    type: "meta",
+    payload: { kind: "title", title: s.title },
+  });
   s.notice = "";
   c.bump();
 }
 
-export async function generateTitle(c: Controller, msg: string): Promise<string> {
-  c.observability?.recordEvent("title_generation.started", { "input.length": msg.length });
+export async function generateTitle(
+  c: Controller,
+  msg: string,
+): Promise<string> {
+  c.observability?.recordEvent("title_generation.started", {
+    "input.length": msg.length,
+  });
   try {
     const { text } = await streamOnce({
       adapter: c.adapter,
@@ -162,7 +240,10 @@ export async function generateTitle(c: Controller, msg: string): Promise<string>
           content:
             "You are a title generator. Your ONLY job is to generate a short title for the conversation opener below. Do NOT answer the question or respond to the content. Do NOT provide any information, facts, or responses to what is asked. Just generate a 3-6 word Title Case title that describes the topic. Examples: 'Commit Git Changes', 'Debug Login Timeout', 'Improve Session Titles', 'Check Current Date'. Output ONLY the title text, nothing else.",
         },
-        { role: "user", content: `Conversation opener to title (do NOT answer it):\n"${msg}"\n\nTitle:` },
+        {
+          role: "user",
+          content: `Conversation opener to title (do NOT answer it):\n"${msg}"\n\nTitle:`,
+        },
       ],
       tools: [],
       attempts: 1,
@@ -170,7 +251,10 @@ export async function generateTitle(c: Controller, msg: string): Promise<string>
     });
     const t = sanitizeTitle(text);
     if (t) {
-      c.observability?.recordEvent("title_generation.completed", { "title.length": Math.min(t.length, 60), fallback: false });
+      c.observability?.recordEvent("title_generation.completed", {
+        "title.length": Math.min(t.length, 60),
+        fallback: false,
+      });
       return t.slice(0, 60);
     }
   } catch {
@@ -178,6 +262,8 @@ export async function generateTitle(c: Controller, msg: string): Promise<string>
     // Fallback when the LLM fails or the user interrupts.
   }
   const fallback = sanitizeTitle(msg);
-  c.observability?.recordEvent("title_generation.fallback", { "title.length": Math.min(fallback.length, 40) });
+  c.observability?.recordEvent("title_generation.fallback", {
+    "title.length": Math.min(fallback.length, 40),
+  });
   return fallback.length > 40 ? fallback.slice(0, 40) + "…" : fallback;
 }

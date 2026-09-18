@@ -17,13 +17,18 @@ export type ContextExtension = {
   id: string;
   phase: string;
   priority?: number;
-  contribute: (input: ContextExtensionInput) => Promise<ContextContribution | void>;
+  contribute: (
+    input: ContextExtensionInput,
+  ) => Promise<ContextContribution | void>;
 };
 
-export function orderContextExtensions(extensions: ContextExtension[]): ContextExtension[] {
-  return [...extensions].sort((left, right) =>
-    left.phase.localeCompare(right.phase) ||
-    (left.priority ?? 0) - (right.priority ?? 0) ||
-    left.id.localeCompare(right.id),
+export function orderContextExtensions(
+  extensions: ContextExtension[],
+): ContextExtension[] {
+  return [...extensions].sort(
+    (left, right) =>
+      left.phase.localeCompare(right.phase) ||
+      (left.priority ?? 0) - (right.priority ?? 0) ||
+      left.id.localeCompare(right.id),
   );
 }

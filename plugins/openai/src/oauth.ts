@@ -31,8 +31,12 @@ function base64UrlEncode(buffer: ArrayBuffer): string {
     .replace(/=+$/, "");
 }
 
-async function generatePKCE(): Promise<{ verifier: string; challenge: string }> {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
+async function generatePKCE(): Promise<{
+  verifier: string;
+  challenge: string;
+}> {
+  const chars =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
   const limit = Math.floor(256 / chars.length) * chars.length;
   const bytes: number[] = [];
   while (bytes.length < 43) {
@@ -42,7 +46,9 @@ async function generatePKCE(): Promise<{ verifier: string; challenge: string }> 
     }
   }
   const verifier = bytes.map((byte) => chars[byte]).join("");
-  const challenge = base64UrlEncode(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier)));
+  const challenge = base64UrlEncode(
+    await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier)),
+  );
   return { verifier, challenge };
 }
 
@@ -52,7 +58,10 @@ function configFile(): string {
 
 export function readCreds(): Creds | undefined {
   if (!fs.existsSync(configFile())) return undefined;
-  const data = yaml.load(fs.readFileSync(configFile(), "utf8")) as Record<string, unknown>;
+  const data = yaml.load(fs.readFileSync(configFile(), "utf8")) as Record<
+    string,
+    unknown
+  >;
   const o = data.openai as Record<string, unknown> | undefined;
   if (!o || typeof o.access !== "string") return undefined;
   return {
@@ -67,7 +76,10 @@ export function persistCreds(creds: Creds): void {
   const dir = path.dirname(configFile());
   fs.mkdirSync(dir, { recursive: true });
   const data = fs.existsSync(configFile())
-    ? ((yaml.load(fs.readFileSync(configFile(), "utf8")) as Record<string, unknown>) ?? {})
+    ? ((yaml.load(fs.readFileSync(configFile(), "utf8")) as Record<
+        string,
+        unknown
+      >) ?? {})
     : {};
   data.openai = {
     access: creds.access,
@@ -85,13 +97,17 @@ function extractAccountId(tokens: Record<string, unknown>): string | undefined {
     const parts = token.split(".");
     if (parts.length !== 3) continue;
     try {
-      const claims = JSON.parse(Buffer.from(parts[1], "base64url").toString()) as Record<string, unknown>;
+      const claims = JSON.parse(
+        Buffer.from(parts[1], "base64url").toString(),
+      ) as Record<string, unknown>;
       const id =
         (claims.chatgpt_account_id as string | undefined) ??
-        ((claims["https://api.openai.com/auth"] as Record<string, unknown> | undefined)?.chatgpt_account_id as
-          | string
-          | undefined) ??
-        ((claims.organizations as { id: string }[] | undefined)?.[0]?.id);
+        ((
+          claims["https://api.openai.com/auth"] as
+            | Record<string, unknown>
+            | undefined
+        )?.chatgpt_account_id as string | undefined) ??
+        (claims.organizations as { id: string }[] | undefined)?.[0]?.id;
       if (id) return id;
     } catch {
       // Token is not a JWT.
@@ -100,7 +116,11 @@ function extractAccountId(tokens: Record<string, unknown>): string | undefined {
   return undefined;
 }
 
-export async function exchangeCode(code: string, verifier: string, redirectUri: string): Promise<Creds> {
+export async function exchangeCode(
+  code: string,
+  verifier: string,
+  redirectUri: string,
+): Promise<Creds> {
   const res = await fetch(`${ISSUER}/oauth/token`, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -144,12 +164,17 @@ export async function refreshCreds(refreshToken: string): Promise<Creds> {
 
 // redirect_uri must match the public client registration byte for byte
 // (http://localhost:1455/auth/callback).
-function parseCallback(url: URL, expectedState: string): { code?: string; error?: string } {
+function parseCallback(
+  url: URL,
+  expectedState: string,
+): { code?: string; error?: string } {
   if (url.pathname !== "/auth/callback") return { error: "not found" };
   const code = url.searchParams.get("code");
-  const error = url.searchParams.get("error") ?? url.searchParams.get("error_description");
+  const error =
+    url.searchParams.get("error") ?? url.searchParams.get("error_description");
   if (error) return { error };
-  if (!code || url.searchParams.get("state") !== expectedState) return { error: "invalid state" };
+  if (!code || url.searchParams.get("state") !== expectedState)
+    return { error: "invalid state" };
   return { code };
 }
 
@@ -166,7 +191,11 @@ function openInBrowser(url: string): void {
   console.log(`If the browser did not open, use: ${url}`);
 }
 
-function authorizeParams(state: string, challenge: string, redirectUri: string): URLSearchParams {
+function authorizeParams(
+  state: string,
+  challenge: string,
+  redirectUri: string,
+): URLSearchParams {
   return new URLSearchParams({
     response_type: "code",
     client_id: CLIENT_ID,
@@ -211,7 +240,9 @@ function makeCallbackServer(o: {
 
 export async function pkceLogin(): Promise<Creds> {
   const { verifier, challenge } = await generatePKCE();
-  const state = base64UrlEncode(crypto.getRandomValues(new Uint8Array(32)).buffer);
+  const state = base64UrlEncode(
+    crypto.getRandomValues(new Uint8Array(32)).buffer,
+  );
   return new Promise<Creds>((resolve, reject) => {
     let done = false;
     let redirectUri = "";
@@ -231,14 +262,34 @@ export async function pkceLogin(): Promise<Creds> {
         reject(err);
       }
     };
-    const server = makeCallbackServer({ state, verifier, redirect: () => redirectUri, finish, fail });
-    const timer = setTimeout(() => fail(new Error("timeout: the browser callback did not arrive within 5 minutes")), 5 * 60 * 1000);
+    const server = makeCallbackServer({
+      state,
+      verifier,
+      redirect: () => redirectUri,
+      finish,
+      fail,
+    });
+    const timer = setTimeout(
+      () =>
+        fail(
+          new Error(
+            "timeout: the browser callback did not arrive within 5 minutes",
+          ),
+        ),
+      5 * 60 * 1000,
+    );
     server.on("error", (e: Error) => {
-      fail(new Error(`could not open the callback server on port ${OAUTH_PORT}: ${e.message}`));
+      fail(
+        new Error(
+          `could not open the callback server on port ${OAUTH_PORT}: ${e.message}`,
+        ),
+      );
     });
     server.listen(OAUTH_PORT, "localhost", () => {
       redirectUri = `http://localhost:${OAUTH_PORT}/auth/callback`;
-      openInBrowser(`${ISSUER}/oauth/authorize?${authorizeParams(state, challenge, redirectUri).toString()}`);
+      openInBrowser(
+        `${ISSUER}/oauth/authorize?${authorizeParams(state, challenge, redirectUri).toString()}`,
+      );
     });
   });
 }

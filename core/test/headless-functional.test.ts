@@ -3,7 +3,10 @@ import { parseCliArgs } from "../src/cli-args";
 
 describe("headless functional contract", () => {
   test("accepts the thinking styling task as a non-interactive request", () => {
-    const options = parseCliArgs(["--non-interactive", "Implement thinking text as gray italic content"], "");
+    const options = parseCliArgs(
+      ["--non-interactive", "Implement thinking text as gray italic content"],
+      "",
+    );
     expect(options.nonInteractive).toBe(true);
     expect(options.prompt).toContain("thinking text as gray italic content");
   });

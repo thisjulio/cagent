@@ -11,7 +11,11 @@ export function appendChat(state: UIState, item: ChatItem): void {
   state.chatVersion += 1;
 }
 
-export function appendToolLog(state: UIState, tool: UIState["toolLog"][number]): void {
+export function appendToolLog(
+  state: UIState,
+  tool: UIState["toolLog"][number],
+): void {
   state.toolLog.push(tool);
-  if (state.toolLog.length > MAX_CHAT_ITEMS) state.toolLog.splice(0, state.toolLog.length - MAX_CHAT_ITEMS);
+  if (state.toolLog.length > MAX_CHAT_ITEMS)
+    state.toolLog.splice(0, state.toolLog.length - MAX_CHAT_ITEMS);
 }

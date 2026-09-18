@@ -8,7 +8,8 @@ export function createCommandSource(root = ".cagent/commands"): CommandSource {
     discover(cwd) {
       const directory = path.resolve(cwd, root);
       if (!fs.existsSync(directory)) return [];
-      return fs.readdirSync(directory, { withFileTypes: true })
+      return fs
+        .readdirSync(directory, { withFileTypes: true })
         .filter((entry) => entry.isFile() && entry.name.endsWith(".md"))
         .map((entry) => {
           const name = entry.name.slice(0, -3);
@@ -20,10 +21,14 @@ export function createCommandSource(root = ".cagent/commands"): CommandSource {
   };
 }
 
-export function discoverCommands(cwd: string, sources: CommandSource[]): CommandCatalog {
+export function discoverCommands(
+  cwd: string,
+  sources: CommandSource[],
+): CommandCatalog {
   const byName = new Map<string, CustomCommand>();
-  for (const source of sources) for (const command of source.discover(cwd))
-    if (!byName.has(command.name)) byName.set(command.name, command);
+  for (const source of sources)
+    for (const command of source.discover(cwd))
+      if (!byName.has(command.name)) byName.set(command.name, command);
   return { commands: [...byName.values()], byName };
 }
 

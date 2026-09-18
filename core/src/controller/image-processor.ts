@@ -1,11 +1,11 @@
 import { readFileSync, statSync } from "node:fs";
 
 const MIME_TYPES: Record<string, string> = {
-  "png": "image/png",
-  "jpg": "image/jpeg",
-  "jpeg": "image/jpeg",
-  "gif": "image/gif",
-  "webp": "image/webp",
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  gif: "image/gif",
+  webp: "image/webp",
 };
 
 export interface ImageLimits {
@@ -25,7 +25,10 @@ export function detectMimeType(path: string): string {
   return MIME_TYPES[ext] ?? "image/png";
 }
 
-export function processImage(path: string, limits: ImageLimits = DEFAULT_IMAGE_LIMITS): { dataUrl: string; mimeType: string } {
+export function processImage(
+  path: string,
+  limits: ImageLimits = DEFAULT_IMAGE_LIMITS,
+): { dataUrl: string; mimeType: string } {
   const buffer = readFileSync(path);
   const mimeType = detectMimeType(path);
   const base64 = buffer.toString("base64");
@@ -34,7 +37,9 @@ export function processImage(path: string, limits: ImageLimits = DEFAULT_IMAGE_L
     return { dataUrl: `data:${mimeType};base64,${base64}`, mimeType };
   }
 
-  throw new Error(`Image ${path} exceeds maximum base64 size after encoding (${Buffer.byteLength(base64)} > ${limits.maxBase64Bytes} bytes)`);
+  throw new Error(
+    `Image ${path} exceeds maximum base64 size after encoding (${Buffer.byteLength(base64)} > ${limits.maxBase64Bytes} bytes)`,
+  );
 }
 
 export function validateImagePath(path: string): void {
@@ -44,7 +49,8 @@ export function validateImagePath(path: string): void {
       throw new Error(`Path is not a file: ${path}`);
     }
   } catch (e) {
-    if (e instanceof Error && e.message.startsWith("Path is not a file")) throw e;
+    if (e instanceof Error && e.message.startsWith("Path is not a file"))
+      throw e;
     throw new Error(`Cannot read image file: ${path}`);
   }
 }

@@ -9,7 +9,10 @@ type SlashHandler = (c: Controller, arg: string) => void | Promise<void>;
 // ponytail: the dispatch map replaces the if chain in submit; a new command is a new entry, without touching the controller.
 const commands: Record<string, SlashHandler> = {
   "/compact": (c, arg) => {
-    appendChat(c.state, { kind: "user", content: `/compact${arg.trim() ? ` ${arg.trim()}` : ""}` });
+    appendChat(c.state, {
+      kind: "user",
+      content: `/compact${arg.trim() ? ` ${arg.trim()}` : ""}`,
+    });
     c.bump();
     return c.compact(arg.trim() || undefined);
   },
@@ -18,7 +21,10 @@ const commands: Record<string, SlashHandler> = {
   "/new": (c) => c.newSession(),
   "/rename": (c, arg) => c.renameSession(arg.trim()),
   "/tasks": (c, arg) => {
-    appendChat(c.state, { kind: "user", content: `/tasks${arg ? ` ${arg}` : ""}` });
+    appendChat(c.state, {
+      kind: "user",
+      content: `/tasks${arg ? ` ${arg}` : ""}`,
+    });
     const parts = arg.trim().split(/\s+/);
     let result: string;
     if (!arg.trim() || parts[0] === "list") {
@@ -26,15 +32,25 @@ const commands: Record<string, SlashHandler> = {
     } else if (parts[0] === "add") {
       result = c.updateTasks("create", { titles: [parts.slice(1).join(" ")] });
     } else if (parts[0] === "complete" || parts[0] === "reopen") {
-      result = c.updateTasks("update", { id: parts[1], status: parts[0] === "complete" ? "completed" : "pending", details: parts[0] === "reopen" ? "reopen by user" : parts.slice(2).join(" ") });
+      result = c.updateTasks("update", {
+        id: parts[1],
+        status: parts[0] === "complete" ? "completed" : "pending",
+        details:
+          parts[0] === "reopen" ? "reopen by user" : parts.slice(2).join(" "),
+      });
     } else if (parts[0] === "remove") {
       result = c.updateTasks("remove", { id: parts[1] });
     } else if (parts[0] === "clear" && parts[1] === "--confirm") {
       result = c.updateTasks("clear", {});
     } else {
-      result = "usage: /tasks [list|add <title>|complete <id> <evidence>|reopen <id>|remove <id>|clear --confirm]";
+      result =
+        "usage: /tasks [list|add <title>|complete <id> <evidence>|reopen <id>|remove <id>|clear --confirm]";
     }
-    appendChat(c.state, { kind: "assistant", content: formatTaskResult(result), command: `/tasks${arg ? ` ${arg}` : ""}` });
+    appendChat(c.state, {
+      kind: "assistant",
+      content: formatTaskResult(result),
+      command: `/tasks${arg ? ` ${arg}` : ""}`,
+    });
     c.state.notice = "";
     c.bump();
   },
@@ -42,7 +58,9 @@ const commands: Record<string, SlashHandler> = {
   "/variant": (c, arg) => {
     const val = arg.trim();
     if (!val) {
-      c.state.notice = c.state.variant ? `variant: ${c.state.variant}` : "no variant set";
+      c.state.notice = c.state.variant
+        ? `variant: ${c.state.variant}`
+        : "no variant set";
       c.bump();
       return;
     }
@@ -64,7 +82,9 @@ const commands: Record<string, SlashHandler> = {
     c.bump();
   },
   "/skill": async (c, arg) => {
-    const match = arg.trim().match(/^([a-z0-9]+(?:-[a-z0-9]+)*)(?:\s+([\s\S]*))?$/);
+    const match = arg
+      .trim()
+      .match(/^([a-z0-9]+(?:-[a-z0-9]+)*)(?:\s+([\s\S]*))?$/);
     const name = match?.[1] ?? "";
     const prompt = match?.[2]?.trim() ?? "";
     if (!name || !(await c.invokeSkill(name, prompt))) {
@@ -81,11 +101,19 @@ function formatTaskResult(result: string): string {
     const tasks = JSON.parse(result) as Task[];
     if (!Array.isArray(tasks)) return result;
     if (tasks.length === 0) return "Tasks\n└─ no tasks";
-    return ["Tasks", ...tasks.map((task, index) => {
-      const marker = task.status === "completed" ? "✓" : task.status === "in_progress" ? "◌" : "·";
-      const branch = index === tasks.length - 1 ? "└─" : "├─";
-      return `${branch} ${marker} ${task.title} [${task.status}]`;
-    })].join("\n");
+    return [
+      "Tasks",
+      ...tasks.map((task, index) => {
+        const marker =
+          task.status === "completed"
+            ? "✓"
+            : task.status === "in_progress"
+              ? "◌"
+              : "·";
+        const branch = index === tasks.length - 1 ? "└─" : "├─";
+        return `${branch} ${marker} ${task.title} [${task.status}]`;
+      }),
+    ].join("\n");
   } catch {
     return result;
   }
@@ -119,9 +147,18 @@ export function runSlash(c: Controller, text: string): void | Promise<void> {
     return c.submit(expandCommand(custom, arg));
   }
   if (!handler && pluginCommand) {
-    return pluginCommand.execute({ name: pluginCommand.name, arguments: arg, values: parseValues(arg) })
+    return pluginCommand
+      .execute({
+        name: pluginCommand.name,
+        arguments: arg,
+        values: parseValues(arg),
+      })
       .then((output) => {
-        appendChat(c.state, { kind: "assistant", content: output, command: text });
+        appendChat(c.state, {
+          kind: "assistant",
+          content: output,
+          command: text,
+        });
         c.bump();
       })
       .catch((error) => {

@@ -22,17 +22,46 @@ test("subagent executes with isolated instructions and selected provider", async
   const registry = new Registry();
   const provider = adapter("delegated result");
   registry.registerProvider("mock", provider);
-  registry.registerSubagent({ name: "reviewer", description: "Reviews", instructions: "Review strictly.", model: "mock/model" });
-  const execute = createSubagentExecutor({ find: (name) => registry.subagent(name), registry, model: () => "mock/model", tools: [], allowlist: [], ask: async () => true, bus: new EventBus() });
-  await expect(execute("reviewer", "Inspect this")).resolves.toBe("delegated result");
+  registry.registerSubagent({
+    name: "reviewer",
+    description: "Reviews",
+    instructions: "Review strictly.",
+    model: "mock/model",
+  });
+  const execute = createSubagentExecutor({
+    find: (name) => registry.subagent(name),
+    registry,
+    model: () => "mock/model",
+    tools: [],
+    allowlist: [],
+    ask: async () => true,
+    bus: new EventBus(),
+  });
+  await expect(execute("reviewer", "Inspect this")).resolves.toBe(
+    "delegated result",
+  );
 });
 
 test("subagent uses the configured provider when no model is specified", async () => {
   const registry = new Registry();
   registry.registerProvider("mock", adapter("fallback result"));
-  registry.registerSubagent({ name: "reviewer", description: "Reviews", instructions: "Review strictly." });
-  const execute = createSubagentExecutor({ find: (name) => registry.subagent(name), registry, model: () => "mock/model", tools: [], allowlist: [], ask: async () => true, bus: new EventBus() });
-  await expect(execute("reviewer", "Inspect this")).resolves.toBe("fallback result");
+  registry.registerSubagent({
+    name: "reviewer",
+    description: "Reviews",
+    instructions: "Review strictly.",
+  });
+  const execute = createSubagentExecutor({
+    find: (name) => registry.subagent(name),
+    registry,
+    model: () => "mock/model",
+    tools: [],
+    allowlist: [],
+    ask: async () => true,
+    bus: new EventBus(),
+  });
+  await expect(execute("reviewer", "Inspect this")).resolves.toBe(
+    "fallback result",
+  );
 });
 
 test("subagent inherits the active model route", async () => {
@@ -65,15 +94,21 @@ test("subagent inherits the active model route", async () => {
     bus: new EventBus(),
   });
 
-  await expect(execute("reviewer", "Inspect this")).resolves.toBe("inherited result");
+  await expect(execute("reviewer", "Inspect this")).resolves.toBe(
+    "inherited result",
+  );
   expect(usedModel).toBe("model");
   activeRoute = "second/active-model";
-  await expect(execute("reviewer", "Inspect again")).resolves.toBe("inherited result");
+  await expect(execute("reviewer", "Inspect again")).resolves.toBe(
+    "inherited result",
+  );
   expect(usedModel).toBe("active-model");
 });
 
 test("parses a direct subagent mention", () => {
-  expect(parseSubagentMention("@architecture-reviewer confira o projeto")).toEqual({
+  expect(
+    parseSubagentMention("@architecture-reviewer confira o projeto"),
+  ).toEqual({
     name: "architecture-reviewer",
     task: "confira o projeto",
   });
@@ -82,9 +117,16 @@ test("parses a direct subagent mention", () => {
 });
 
 test("subagent tool rejects unknown agents and empty tasks", async () => {
-  const tool = createSubagentTool(() => ["reviewer"], async () => "ok");
-  expect((await tool.execute({ name: "missing", task: "x" })).isError).toBe(true);
-  expect((await tool.execute({ name: "reviewer", task: " " })).isError).toBe(true);
+  const tool = createSubagentTool(
+    () => ["reviewer"],
+    async () => "ok",
+  );
+  expect((await tool.execute({ name: "missing", task: "x" })).isError).toBe(
+    true,
+  );
+  expect((await tool.execute({ name: "reviewer", task: " " })).isError).toBe(
+    true,
+  );
 });
 
 test("built-in general subagent is added to the registry contract", () => {

@@ -7,7 +7,9 @@ export interface Hunk {
 
 function parseFile(path: string, op: Op, lines: string[]): PatchFile {
   let movePath: string | undefined;
-  const moveIndex = lines.findIndex((line) => /^\*\*\* Move to:\s*/i.test(line.trim()));
+  const moveIndex = lines.findIndex((line) =>
+    /^\*\*\* Move to:\s*/i.test(line.trim()),
+  );
   if (moveIndex >= 0) {
     movePath = lines[moveIndex].replace(/^\s*\*\*\* Move to:\s*/i, "").trim();
     if (!movePath) throw new Error("move destination is empty");
@@ -16,7 +18,12 @@ function parseFile(path: string, op: Op, lines: string[]): PatchFile {
   return {
     path,
     op,
-    hunks: op === "add" ? addHunks(lines) : op === "delete" ? [] : updateHunks(lines),
+    hunks:
+      op === "add"
+        ? addHunks(lines)
+        : op === "delete"
+          ? []
+          : updateHunks(lines),
     ...(movePath ? { movePath } : {}),
   };
 }
@@ -33,7 +40,9 @@ const BEGIN_RE = /\*\*\* Begin patch\s*\n/i;
 
 function parsePathLine(line: string): { path: string; op: Op } {
   const m = line.trim().match(/^\*\*\* (Update|Add|Delete) File:\s*(.*)$/);
-  return m ? { path: m[2].trim(), op: m[1].toLowerCase() as Op } : { path: line.trim(), op: "update" };
+  return m
+    ? { path: m[2].trim(), op: m[1].toLowerCase() as Op }
+    : { path: line.trim(), op: "update" };
 }
 
 function updateHunks(lines: string[]): Hunk[] {
@@ -52,14 +61,15 @@ function updateHunks(lines: string[]): Hunk[] {
       const ctx = line.slice(1);
       cur.oldLines.push(ctx);
       cur.newLines.push(ctx);
-    }
-    else throw new Error(`invalid patch line: ${line}`);
+    } else throw new Error(`invalid patch line: ${line}`);
   }
   return hunks;
 }
 
 function addHunks(lines: string[]): Hunk[] {
-  const newLines = lines.map((l) => (l.startsWith("+") ? l.slice(1) : l === " " ? "" : l));
+  const newLines = lines.map((l) =>
+    l.startsWith("+") ? l.slice(1) : l === " " ? "" : l,
+  );
   return [{ oldLines: [], newLines }];
 }
 
@@ -71,10 +81,14 @@ export function parseApplyPatch(patch: string): PatchFile[] {
     const lines = body.split("\n");
     if (lines[lines.length - 1] === "") lines.pop(); // Final newline artifact, not a hunk line.
     const fileIndexes = lines
-      .map((line, index) => (/^\*\*\* (Update|Add|Delete) File:/.test(line.trim()) ? index : -1))
+      .map((line, index) =>
+        /^\*\*\* (Update|Add|Delete) File:/.test(line.trim()) ? index : -1,
+      )
       .filter((index) => index >= 0);
     if (!fileIndexes.length) {
-      const fileIdx = lines.findIndex((line) => !line.startsWith("@@") && line.trim().length > 0);
+      const fileIdx = lines.findIndex(
+        (line) => !line.startsWith("@@") && line.trim().length > 0,
+      );
       if (fileIdx < 0) throw new Error("patch has no file path");
       const { path, op } = parsePathLine(lines[fileIdx]);
       files.push(parseFile(path, op, lines.slice(fileIdx + 1)));

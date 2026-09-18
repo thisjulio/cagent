@@ -1,4 +1,9 @@
-export function formatSkillToolOutput(name: string, directory: string, content: string, files: string[] = []): string {
+export function formatSkillToolOutput(
+  name: string,
+  directory: string,
+  content: string,
+  files: string[] = [],
+): string {
   return [
     `<skill_content name="${name}">`,
     `# Skill: ${name}`,

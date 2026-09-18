@@ -2,7 +2,10 @@ import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { saveLastChoice, loadLastChoice } from "../src/controller/model-persistence";
+import {
+  saveLastChoice,
+  loadLastChoice,
+} from "../src/controller/model-persistence";
 
 function choiceFile(): string {
   return path.join(os.homedir(), ".cagent", "last-model.json");

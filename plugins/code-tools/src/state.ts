@@ -20,11 +20,16 @@ const lineAnchor = new Set<string>();
 
 export function recordRead(absPath: string): void {
   const buf = fs.readFileSync(absPath);
-  reads.set(absPath, { hash: hash(buf.toString("utf8")), mtimeMs: fs.statSync(absPath).mtimeMs });
+  reads.set(absPath, {
+    hash: hash(buf.toString("utf8")),
+    mtimeMs: fs.statSync(absPath).mtimeMs,
+  });
   lineAnchor.add(absPath);
 }
 
-export function getRead(absPath: string): { hash: string; mtimeMs: number } | undefined {
+export function getRead(
+  absPath: string,
+): { hash: string; mtimeMs: number } | undefined {
   return reads.get(absPath);
 }
 
@@ -40,7 +45,8 @@ export function bumpFailure(absPath: string, seed: string): number {
 }
 
 export function clearFailures(absPath: string): void {
-  for (const k of [...failures.keys()]) if (k.startsWith(absPath + "\u0000")) failures.delete(k);
+  for (const k of [...failures.keys()])
+    if (k.startsWith(absPath + "\u0000")) failures.delete(k);
 }
 
 export function recordWrite(absPath: string, content: string): void {

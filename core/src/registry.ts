@@ -1,4 +1,10 @@
-import type { HookDefinition, PluginCommand, ProviderAdapter, SubagentDefinition, ToolDefinition } from "@cagent/sdk";
+import type {
+  HookDefinition,
+  PluginCommand,
+  ProviderAdapter,
+  SubagentDefinition,
+  ToolDefinition,
+} from "@cagent/sdk";
 import { HookRegistry } from "./hooks";
 
 export class Registry {
@@ -10,32 +16,44 @@ export class Registry {
   readonly hooks = new HookRegistry();
 
   registerTool(tool: ToolDefinition): void {
-    if (this.toolList.has(tool.name)) throw new Error(`duplicate tool: ${tool.name}`);
+    if (this.toolList.has(tool.name))
+      throw new Error(`duplicate tool: ${tool.name}`);
     this.toolList.set(tool.name, tool);
   }
 
   registerCommand(command: PluginCommand): void {
-    if (this.commandList.has(command.name)) throw new Error(`duplicate command: ${command.name}`);
+    if (this.commandList.has(command.name))
+      throw new Error(`duplicate command: ${command.name}`);
     this.commandList.set(command.name, command);
   }
 
-  command(name: string): PluginCommand | undefined { return this.commandList.get(name); }
-  commands(): PluginCommand[] { return [...this.commandList.values()]; }
+  command(name: string): PluginCommand | undefined {
+    return this.commandList.get(name);
+  }
+  commands(): PluginCommand[] {
+    return [...this.commandList.values()];
+  }
 
   registerHook(hook: HookDefinition): void {
     this.hooks.register(hook);
   }
 
-  subagent(name: string): SubagentDefinition | undefined { return this.subagentList.get(name); }
-  subagents(): SubagentDefinition[] { return [...this.subagentList.values()]; }
+  subagent(name: string): SubagentDefinition | undefined {
+    return this.subagentList.get(name);
+  }
+  subagents(): SubagentDefinition[] {
+    return [...this.subagentList.values()];
+  }
 
   registerSubagent(agent: SubagentDefinition): void {
-    if (this.subagentList.has(agent.name)) throw new Error(`duplicate subagent: ${agent.name}`);
+    if (this.subagentList.has(agent.name))
+      throw new Error(`duplicate subagent: ${agent.name}`);
     this.subagentList.set(agent.name, agent);
   }
 
   registerProvider(route: string, adapter: ProviderAdapter): void {
-    if (this.providerList.has(route)) throw new Error(`duplicate provider: ${route}`);
+    if (this.providerList.has(route))
+      throw new Error(`duplicate provider: ${route}`);
     this.providerList.set(route, adapter);
   }
 

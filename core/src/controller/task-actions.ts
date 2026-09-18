@@ -7,11 +7,17 @@ export function taskAwareTools(controller: Controller): ToolDefinition[] {
 }
 
 export function resetCompletedTasks(controller: Controller): void {
-  if (controller.state.tasks.length > 0 && controller.state.tasks.every((task) => task.status === "completed")) {
+  if (
+    controller.state.tasks.length > 0 &&
+    controller.state.tasks.every((task) => task.status === "completed")
+  ) {
     controller.state.tasks = [];
     controller.session.appendTasks(controller.state.tasks);
     controller.bump();
-    controller.observability?.recordEvent("task.completed", { operation: "reset", "task.count": 0 });
+    controller.observability?.recordEvent("task.completed", {
+      operation: "reset",
+      "task.count": 0,
+    });
   }
 }
 
@@ -22,7 +28,11 @@ export function updateTasks(
 ): string {
   try {
     controller.observability?.recordEvent("task.requested", { operation });
-    if (operation === "create") controller.state.tasks = createTasks(controller.state.tasks, (args.titles as string[]) ?? []);
+    if (operation === "create")
+      controller.state.tasks = createTasks(
+        controller.state.tasks,
+        (args.titles as string[]) ?? [],
+      );
     else if (operation === "update") {
       controller.state.tasks = updateTask(
         controller.state.tasks,
@@ -30,14 +40,21 @@ export function updateTasks(
         String(args.status) as TaskStatus,
         args.details as string,
       );
-    }
-    else if (operation === "remove") controller.state.tasks = removeTask(controller.state.tasks, String(args.id));
+    } else if (operation === "remove")
+      controller.state.tasks = removeTask(
+        controller.state.tasks,
+        String(args.id),
+      );
     else if (operation === "clear") controller.state.tasks = [];
-    else if (operation === "list") return JSON.stringify(controller.state.tasks);
+    else if (operation === "list")
+      return JSON.stringify(controller.state.tasks);
     else throw new Error(`unknown task operation: ${operation}`);
     controller.session.appendTasks(controller.state.tasks);
     controller.bump();
-    controller.observability?.recordEvent("task.completed", { operation, "task.count": controller.state.tasks.length });
+    controller.observability?.recordEvent("task.completed", {
+      operation,
+      "task.count": controller.state.tasks.length,
+    });
     return JSON.stringify(controller.state.tasks);
   } catch (error) {
     controller.observability?.recordEvent("task.failed", { operation });

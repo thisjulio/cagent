@@ -7,7 +7,10 @@ function fakeModels(ids: string[]): typeof fetch {
   const fake = (async (input: RequestInfo | URL) => {
     const url = String(input);
     expect(url).toContain("/v1/models");
-    return { ok: true, json: async () => ({ data: ids.map((id) => ({ id })) }) };
+    return {
+      ok: true,
+      json: async () => ({ data: ids.map((id) => ({ id })) }),
+    };
   }) as unknown as typeof fetch;
   globalThis.fetch = fake;
   return orig;
@@ -17,12 +20,17 @@ describe("llama.cpp adapter", () => {
   it("estimates injected prompt and tool schema tokens", () => {
     const adapter = createAdapter();
     const messages = [{ role: "user" as const, content: "hello" }];
-    const tools = [{
-      name: "search",
-      description: "Search the workspace",
-      parameters: { type: "object", properties: { query: { type: "string" } } },
-      execute: async () => ({ output: "" }),
-    }];
+    const tools = [
+      {
+        name: "search",
+        description: "Search the workspace",
+        parameters: {
+          type: "object",
+          properties: { query: { type: "string" } },
+        },
+        execute: async () => ({ output: "" }),
+      },
+    ];
     const withoutTools = adapter.estimate_tokens?.("model", messages) ?? 0;
     const withTools = adapter.estimate_tokens?.("model", messages, tools) ?? 0;
     expect(withTools).toBeGreaterThan(withoutTools);
@@ -32,26 +40,37 @@ describe("llama.cpp adapter", () => {
   test("replaces unrecoverable streamed tool arguments with valid JSON", async () => {
     const orig = globalThis.fetch;
     const event = {
-      choices: [{
-        delta: {
-          tool_calls: [{
-            index: 0,
-            id: "call-1",
-            function: { name: "bash", arguments: '{"command":"export async function submitMessage(controller: Controller, text: string): Promise<void> {' },
-          }],
+      choices: [
+        {
+          delta: {
+            tool_calls: [
+              {
+                index: 0,
+                id: "call-1",
+                function: {
+                  name: "bash",
+                  arguments:
+                    '{"command":"export async function submitMessage(controller: Controller, text: string): Promise<void> {',
+                },
+              },
+            ],
+          },
         },
-      }],
+      ],
     };
     globalThis.fetch = (async () =>
-      new Response(
-          `data: ${JSON.stringify(event)}\n\n` +
-          "data: [DONE]\n\n",
-        { headers: { "Content-Type": "text/event-stream" } },
-      )) as typeof fetch;
+      new Response(`data: ${JSON.stringify(event)}\n\n` + "data: [DONE]\n\n", {
+        headers: { "Content-Type": "text/event-stream" },
+      })) as typeof fetch;
     try {
       const adapter = createAdapter();
       const chunks = [];
-      for await (const chunk of adapter.stream({ model: "qwen", messages: [], tools: [] })) chunks.push(chunk);
+      for await (const chunk of adapter.stream({
+        model: "qwen",
+        messages: [],
+        tools: [],
+      }))
+        chunks.push(chunk);
       expect(chunks).toContainEqual({
         type: "tool-call",
         tool_call: { id: "call-1", name: "bash", arguments: "{}" },
@@ -66,14 +85,20 @@ describe("llama.cpp adapter", () => {
       { role: "user", content: "Inspect this" },
     ]);
     expect(messages[0].content).toContain("Project rules");
-    expect(messages[0].content).toContain("Use exact tool and argument names from the schema.");
+    expect(messages[0].content).toContain(
+      "Use exact tool and argument names from the schema.",
+    );
     expect(messages[1]).toEqual({ role: "user", content: "Inspect this" });
   });
 
   test("accepts nested context settings from older llama-server responses", async () => {
     const orig = globalThis.fetch;
-    globalThis.fetch = (async () =>
-      ({ ok: true, json: async () => ({ default_generation_settings: { params: { n_ctx: 80128 } } }) })) as unknown as typeof fetch;
+    globalThis.fetch = (async () => ({
+      ok: true,
+      json: async () => ({
+        default_generation_settings: { params: { n_ctx: 80128 } },
+      }),
+    })) as unknown as typeof fetch;
     try {
       expect(await createAdapter().context_window?.("qwen")).toBe(80128);
     } finally {
@@ -85,7 +110,12 @@ describe("llama.cpp adapter", () => {
     const orig = globalThis.fetch;
     globalThis.fetch = (async (input: RequestInfo | URL) => {
       expect(String(input)).toBe("http://localhost:8080/props");
-      return { ok: true, json: async () => ({ default_generation_settings: { params: { n_ctx: 80128 } } }) };
+      return {
+        ok: true,
+        json: async () => ({
+          default_generation_settings: { params: { n_ctx: 80128 } },
+        }),
+      };
     }) as unknown as typeof fetch;
     try {
       expect(await createAdapter().context_window?.("qwen")).toBe(80128);
@@ -123,7 +153,10 @@ describe("llama.cpp adapter", () => {
         messages: [{ role: "user", content: "hi" }],
         tools: [],
       });
-      expect(prepared.messages[0]).toEqual({ role: "system", content: `${LLAMA_AGENT_PROMPT}\n\n[reminder]\nCall one tool in this message, or give the final answer. Never both.` });
+      expect(prepared.messages[0]).toEqual({
+        role: "system",
+        content: `${LLAMA_AGENT_PROMPT}\n\n[reminder]\nCall one tool in this message, or give the final answer. Never both.`,
+      });
 
       const disabled = createAdapter({ inject_agent_prompt: false });
       const withoutPrompt = await disabled.prepare_call({
@@ -156,7 +189,10 @@ describe("llama.cpp adapter", () => {
   });
 
   test("list_models deduplicates models that share a name", async () => {
-    const orig = fakeModels(["/home/user/models/llama.gguf", "/home/user/models/alt/llama.gguf"]);
+    const orig = fakeModels([
+      "/home/user/models/llama.gguf",
+      "/home/user/models/alt/llama.gguf",
+    ]);
     try {
       const adapter = createAdapter();
       expect(await adapter.list_models()).toEqual(["llama.gguf"]);
@@ -166,7 +202,9 @@ describe("llama.cpp adapter", () => {
   });
 
   test("prepare_call maps the model name back to the full id", async () => {
-    const orig = fakeModels(["/home/user/models/llama-3.2-3b-instruct.Q8_0.gguf"]);
+    const orig = fakeModels([
+      "/home/user/models/llama-3.2-3b-instruct.Q8_0.gguf",
+    ]);
     try {
       const adapter = createAdapter();
       await adapter.list_models();
@@ -175,7 +213,9 @@ describe("llama.cpp adapter", () => {
         messages: [{ role: "user", content: "hi" }],
         tools: [],
       });
-      expect(prepared.model).toBe("/home/user/models/llama-3.2-3b-instruct.Q8_0.gguf");
+      expect(prepared.model).toBe(
+        "/home/user/models/llama-3.2-3b-instruct.Q8_0.gguf",
+      );
     } finally {
       globalThis.fetch = orig;
     }
@@ -186,7 +226,11 @@ describe("llama.cpp adapter", () => {
     try {
       const adapter = createAdapter();
       await adapter.list_models();
-      const prepared = await adapter.prepare_call({ model: "something-else", messages: [], tools: [] });
+      const prepared = await adapter.prepare_call({
+        model: "something-else",
+        messages: [],
+        tools: [],
+      });
       expect(prepared.model).toBe("something-else");
     } finally {
       globalThis.fetch = orig;
@@ -197,17 +241,22 @@ describe("llama.cpp adapter", () => {
     const orig = globalThis.fetch;
     globalThis.fetch = (async () =>
       new Response(
-          'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call-1","function":{"name":"bash","arguments":"```json{\\"x\\":1,}```"}}]}}]}\n\n' +
+        'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call-1","function":{"name":"bash","arguments":"```json{\\"x\\":1,}```"}}]}}]}\n\n' +
           "data: [DONE]\n\n",
         { headers: { "Content-Type": "text/event-stream" } },
       )) as typeof fetch;
     try {
       const adapter = createAdapter();
       const chunks = [];
-      for await (const chunk of adapter.stream({ model: "qwen", messages: [], tools: [] })) chunks.push(chunk);
+      for await (const chunk of adapter.stream({
+        model: "qwen",
+        messages: [],
+        tools: [],
+      }))
+        chunks.push(chunk);
       expect(chunks).toContainEqual({
         type: "tool-call",
-        tool_call: { id: "call-1", name: "bash", arguments: "{\"x\":1}" },
+        tool_call: { id: "call-1", name: "bash", arguments: '{"x":1}' },
       });
     } finally {
       globalThis.fetch = orig;
@@ -225,7 +274,12 @@ describe("llama.cpp adapter", () => {
     try {
       const adapter = createAdapter();
       const chunks = [];
-      for await (const chunk of adapter.stream({ model: "qwen", messages: [], tools: [] })) chunks.push(chunk);
+      for await (const chunk of adapter.stream({
+        model: "qwen",
+        messages: [],
+        tools: [],
+      }))
+        chunks.push(chunk);
       expect(chunks).toContainEqual({
         type: "finish",
         finish_reason: "stop",
@@ -239,16 +293,30 @@ describe("llama.cpp adapter", () => {
   test("forwards the reasoning variant as a chat template parameter", async () => {
     const orig = globalThis.fetch;
     let payload: Record<string, unknown> | undefined;
-    globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+    globalThis.fetch = (async (
+      _input: RequestInfo | URL,
+      init?: RequestInit,
+    ) => {
       payload = JSON.parse(String(init?.body)) as Record<string, unknown>;
-      return new Response('data: {"choices":[{"delta":{"content":"done"},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n', {
-        headers: { "Content-Type": "text/event-stream" },
-      });
+      return new Response(
+        'data: {"choices":[{"delta":{"content":"done"},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n',
+        {
+          headers: { "Content-Type": "text/event-stream" },
+        },
+      );
     }) as typeof fetch;
     try {
       const adapter = createAdapter();
-      for await (const _chunk of adapter.stream({ model: "qwen", messages: [], tools: [], variant: "ilow" })) {}
-      expect(payload?.chat_template_kwargs).toEqual({ reasoning_effort: "ilow" });
+      for await (const _chunk of adapter.stream({
+        model: "qwen",
+        messages: [],
+        tools: [],
+        variant: "ilow",
+      })) {
+      }
+      expect(payload?.chat_template_kwargs).toEqual({
+        reasoning_effort: "ilow",
+      });
     } finally {
       globalThis.fetch = orig;
     }

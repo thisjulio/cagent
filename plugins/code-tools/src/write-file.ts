@@ -11,7 +11,10 @@ export function writeFileTool(ctx: PluginContext) {
     {
       type: "object",
       properties: {
-        path: { type: "string", description: "File path (relative to the workspace or absolute)" },
+        path: {
+          type: "string",
+          description: "File path (relative to the workspace or absolute)",
+        },
         content: { type: "string", description: "Complete file content" },
       },
       required: ["path", "content"],
@@ -23,12 +26,24 @@ export function writeFileTool(ctx: PluginContext) {
       try {
         abs = guardPath(input);
       } catch (e) {
-        return { output: errorText("E_PATH", `${input}: ${e instanceof Error ? e.message : String(e)}`), isError: true };
+        return {
+          output: errorText(
+            "E_PATH",
+            `${input}: ${e instanceof Error ? e.message : String(e)}`,
+          ),
+          isError: true,
+        };
       }
       try {
         atomicWrite(abs, content);
       } catch (e) {
-        return { output: errorText("E_WRITE", `${input}: ${e instanceof Error ? e.message : String(e)}`), isError: true };
+        return {
+          output: errorText(
+            "E_WRITE",
+            `${input}: ${e instanceof Error ? e.message : String(e)}`,
+          ),
+          isError: true,
+        };
       }
       recordRead(abs);
       recordWrite(abs, content);

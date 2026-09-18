@@ -51,9 +51,12 @@ describe("MCP .mcp.json discovery", () => {
   it("returns empty when no .mcp.json exists", () => {
     const tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), "mcp-test-"));
     const globalHome = fs.mkdtempSync(path.join(os.tmpdir(), "mcp-home-"));
-    fs.writeFileSync(path.join(globalHome, ".mcp.json"), JSON.stringify({
-      mcpServers: { leaked: { command: "should-not-be-read" } },
-    }));
+    fs.writeFileSync(
+      path.join(globalHome, ".mcp.json"),
+      JSON.stringify({
+        mcpServers: { leaked: { command: "should-not-be-read" } },
+      }),
+    );
     const servers = discoverMcpServers(tmpdir);
     expect(servers.length).toBe(0);
     fs.rmSync(tmpdir, { recursive: true });
@@ -63,11 +66,16 @@ describe("MCP .mcp.json discovery", () => {
   it("reads an explicit global configuration only when requested", () => {
     const tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), "mcp-test-"));
     const globalHome = fs.mkdtempSync(path.join(os.tmpdir(), "mcp-home-"));
-    fs.writeFileSync(path.join(globalHome, ".mcp.json"), JSON.stringify({
-      mcpServers: { global: { command: "echo" } },
-    }));
+    fs.writeFileSync(
+      path.join(globalHome, ".mcp.json"),
+      JSON.stringify({
+        mcpServers: { global: { command: "echo" } },
+      }),
+    );
     expect(discoverMcpServers(tmpdir)).toEqual([]);
-    expect(discoverMcpServers(tmpdir, globalHome).map((server) => server.name)).toEqual(["global"]);
+    expect(
+      discoverMcpServers(tmpdir, globalHome).map((server) => server.name),
+    ).toEqual(["global"]);
     fs.rmSync(tmpdir, { recursive: true });
     fs.rmSync(globalHome, { recursive: true });
   });

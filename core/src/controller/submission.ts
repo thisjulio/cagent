@@ -10,7 +10,10 @@ import { workflowEvent } from "@cagent/sdk";
 import { buildImageContent } from "./submit-image";
 import { compactionEventFields } from "./compaction-events";
 import { estimateForModel } from "./token-estimation";
-export async function submitMessage(controller: Controller, text: string): Promise<void> {
+export async function submitMessage(
+  controller: Controller,
+  text: string,
+): Promise<void> {
   const state = controller.state;
   const turnId = crypto.randomUUID();
   const imageContent = buildImageContent(text);
@@ -35,29 +38,85 @@ export async function submitMessage(controller: Controller, text: string): Promi
     payload: { content: text, imagePaths },
   });
   controller.messages.push({ role: "user", content });
-  controller.bus.emit("message.submitted", workflowEvent({ content: text }, { sessionId: controller.session.id }));
-  controller.envStamp = addEnvironmentContext(controller.messages, controller.envStamp);
-  const estimatedTokens = estimateForModel(controller.adapter, state.model, controller.messages);
-  if (controller.config.compact_auto !== false && Math.max(state.tokens ?? 0, estimatedTokens) >= state.threshold) {
-    try { await compact(controller); } catch (error) { state.notice = `compaction failed: ${error instanceof Error ? error.message : String(error)}`; }
+  controller.bus.emit(
+    "message.submitted",
+    workflowEvent({ content: text }, { sessionId: controller.session.id }),
+  );
+  controller.envStamp = addEnvironmentContext(
+    controller.messages,
+    controller.envStamp,
+  );
+  const estimatedTokens = estimateForModel(
+    controller.adapter,
+    state.model,
+    controller.messages,
+  );
+  if (
+    controller.config.compact_auto !== false &&
+    Math.max(state.tokens ?? 0, estimatedTokens) >= state.threshold
+  ) {
+    try {
+      await compact(controller);
+    } catch (error) {
+      state.notice = `compaction failed: ${error instanceof Error ? error.message : String(error)}`;
+    }
   }
   controller.bump();
-  const titlePromise = state.title ? Promise.resolve() : generateTitle(controller, text).then((title) => {
-    state.title = title;
-    controller.session.append({ ts: Date.now(), type: "meta", payload: { kind: "title", title } });
-    controller.bump();
-  });
+  const titlePromise = state.title
+    ? Promise.resolve()
+    : generateTitle(controller, text).then((title) => {
+        state.title = title;
+        controller.session.append({
+          ts: Date.now(),
+          type: "meta",
+          payload: { kind: "title", title },
+        });
+        controller.bump();
+      });
   await titlePromise;
-  const timer = setInterval(() => { if (state.turnStartedAt) { state.elapsedMs = Date.now() - state.turnStartedAt; controller.bump(); } }, 500);
-  await executeTurn({ state, adapter: controller.adapter, model: splitRoute(state.model)[1], variant: state.variant, messages: controller.messages, tools: taskAwareTools(controller), allowlist: controller.config.allowlist, ask: controller.ask, bus: controller.bus, hooks: controller.registry.hooks, session: controller.session, interrupted: () => controller.isInterrupted(), signal: controller.signal, maxTurns: controller.maxTurns, maxToolCalls: controller.maxToolCalls, onText: controller.onText, onReasoning: controller.onReasoning, bump: controller.bump, bumpStream: () => controller.bumpStreamNow(), observability: controller.observability, turnId, onContextLimit: () => {
-    if (controller.config.compact_auto === false) {
-      controller.state.notice = "automatic compaction disabled; use /compact";
+  const timer = setInterval(() => {
+    if (state.turnStartedAt) {
+      state.elapsedMs = Date.now() - state.turnStartedAt;
       controller.bump();
-      return Promise.resolve();
     }
-    controller.observability?.recordEvent("compaction.requested", { ...compactionEventFields(controller.state), reason: "provider_context_limit", error: controller.state.notice });
-    return compact(controller, true);
-  }, traceAttributes: { "turn.id": turnId } }).finally(() => clearInterval(timer));
+  }, 500);
+  await executeTurn({
+    state,
+    adapter: controller.adapter,
+    model: splitRoute(state.model)[1],
+    variant: state.variant,
+    messages: controller.messages,
+    tools: taskAwareTools(controller),
+    allowlist: controller.config.allowlist,
+    ask: controller.ask,
+    bus: controller.bus,
+    hooks: controller.registry.hooks,
+    session: controller.session,
+    interrupted: () => controller.isInterrupted(),
+    signal: controller.signal,
+    maxTurns: controller.maxTurns,
+    maxToolCalls: controller.maxToolCalls,
+    onText: controller.onText,
+    onReasoning: controller.onReasoning,
+    bump: controller.bump,
+    bumpStream: () => controller.bumpStreamNow(),
+    observability: controller.observability,
+    turnId,
+    onContextLimit: () => {
+      if (controller.config.compact_auto === false) {
+        controller.state.notice = "automatic compaction disabled; use /compact";
+        controller.bump();
+        return Promise.resolve();
+      }
+      controller.observability?.recordEvent("compaction.requested", {
+        ...compactionEventFields(controller.state),
+        reason: "provider_context_limit",
+        error: controller.state.notice,
+      });
+      return compact(controller, true);
+    },
+    traceAttributes: { "turn.id": turnId },
+  }).finally(() => clearInterval(timer));
 }
 
 function rejectSubmission(controller: Controller, message: string): void {

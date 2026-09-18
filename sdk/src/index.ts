@@ -1,6 +1,12 @@
 export type ToolArgs = Record<string, unknown>;
 
-export type ToolEvidence = { path: string; symbol?: string; line?: number; commit?: string; kind?: "code" | "test" | "adr" | "docs" };
+export type ToolEvidence = {
+  path: string;
+  symbol?: string;
+  line?: number;
+  commit?: string;
+  kind?: "code" | "test" | "adr" | "docs";
+};
 export interface ToolResult {
   output: string;
   isError?: boolean;
@@ -19,7 +25,10 @@ export {
   type PluginDiagnostics,
   type PluginStorage,
 } from "./plugin-services";
-export { type PluginCommand, type PluginCommandContext } from "./plugin-command";
+export {
+  type PluginCommand,
+  type PluginCommandContext,
+} from "./plugin-command";
 
 export const WORKFLOW_EVENTS = [
   "session.started",
@@ -39,7 +48,9 @@ export type WorkflowEventPayload = {
   projectId?: string;
   data: Readonly<Record<string, unknown>>;
 };
-export type WorkflowEventHandler = (payload: WorkflowEventPayload) => unknown | Promise<unknown>;
+export type WorkflowEventHandler = (
+  payload: WorkflowEventPayload,
+) => unknown | Promise<unknown>;
 
 export function workflowEvent(
   data: Record<string, unknown>,
@@ -65,7 +76,9 @@ export type HookResponse = {
   message?: string;
 };
 
-export type HookHandler = (event: HookEvent) => HookResponse | void | Promise<HookResponse | void>;
+export type HookHandler = (
+  event: HookEvent,
+) => HookResponse | void | Promise<HookResponse | void>;
 
 export type HookDefinition = {
   name: string;
@@ -108,18 +121,29 @@ export type ToolSchemaOverride = {
 
 export type ToolOverrides = Record<string, ToolSchemaOverride>;
 
-export function applyToolOverrides(tools: ToolDefinition[], overrides: ToolOverrides): ToolDefinition[] {
+export function applyToolOverrides(
+  tools: ToolDefinition[],
+  overrides: ToolOverrides,
+): ToolDefinition[] {
   return tools.map((t) => {
     const ov = overrides[t.name];
     return ov
-      ? { ...t, name: ov.name, description: ov.description ?? t.description, parameters: ov.parameters ?? t.parameters }
+      ? {
+          ...t,
+          name: ov.name,
+          description: ov.description ?? t.description,
+          parameters: ov.parameters ?? t.parameters,
+        }
       : t;
   });
 }
 
-export function overrideNameMap(overrides: ToolOverrides): Record<string, string> {
+export function overrideNameMap(
+  overrides: ToolOverrides,
+): Record<string, string> {
   const map: Record<string, string> = {};
-  for (const [canonical, ov] of Object.entries(overrides)) map[ov.name] = canonical;
+  for (const [canonical, ov] of Object.entries(overrides))
+    map[ov.name] = canonical;
   return map;
 }
 
@@ -142,7 +166,11 @@ export type Message = {
 export type WireMessage = {
   role: "system" | "user" | "assistant" | "tool";
   content: string | any[];
-  tool_calls?: { id: string; type: "function"; function: { name: string; arguments: string } }[];
+  tool_calls?: {
+    id: string;
+    type: "function";
+    function: { name: string; arguments: string };
+  }[];
   tool_call_id?: string;
 };
 
@@ -153,7 +181,8 @@ export function toChatMessages(messages: Message[]): WireMessage[] {
     if (typeof m.content === "object") {
       out.content = m.content.map((part) => {
         if (part.type === "text") return { type: "text", text: part.text };
-        if (part.type === "image_url") return { type: "image_url", image_url: { url: part.image_url.url } };
+        if (part.type === "image_url")
+          return { type: "image_url", image_url: { url: part.image_url.url } };
         return part;
       });
     }
@@ -172,8 +201,15 @@ export function toChatMessages(messages: Message[]): WireMessage[] {
 export type LlmChunk =
   | { type: "text"; text: string }
   | { type: "reasoning"; text: string }
-  | { type: "tool-call"; tool_call: { id: string; name: string; arguments: string } }
-  | { type: "finish"; finish_reason: string; usage?: { input_tokens: number; output_tokens: number } };
+  | {
+      type: "tool-call";
+      tool_call: { id: string; name: string; arguments: string };
+    }
+  | {
+      type: "finish";
+      finish_reason: string;
+      usage?: { input_tokens: number; output_tokens: number };
+    };
 
 export interface LlmCallOptions {
   model: string;
@@ -185,7 +221,11 @@ export interface LlmCallOptions {
 export interface ProviderAdapter {
   list_models(): Promise<string[]>;
   context_window?(model: string): Promise<number | undefined>;
-  estimate_tokens?(model: string, messages: Message[], tools?: ToolDefinition[]): number | undefined;
+  estimate_tokens?(
+    model: string,
+    messages: Message[],
+    tools?: ToolDefinition[],
+  ): number | undefined;
   supported_variants?(model: string): Promise<string[]>;
   tool_overrides?(): ToolOverrides;
   prepare_call(options: LlmCallOptions): Promise<LlmCallOptions>;
@@ -200,8 +240,14 @@ export interface PluginContext {
   registerHook(hook: HookDefinition): void;
   registerProvider(route: string, adapter: ProviderAdapter): void;
   registerSubagent(agent: SubagentDefinition): void;
-  emit(event: WorkflowEventName | string, payload: WorkflowEventPayload | unknown): void;
-  on(event: WorkflowEventName | string, handler: WorkflowEventHandler | ((payload: unknown) => unknown)): void;
+  emit(
+    event: WorkflowEventName | string,
+    payload: WorkflowEventPayload | unknown,
+  ): void;
+  on(
+    event: WorkflowEventName | string,
+    handler: WorkflowEventHandler | ((payload: unknown) => unknown),
+  ): void;
   registerContextExtension(extension: ContextExtension): void;
   storage: PluginStorage;
   diagnostics: PluginDiagnostics;
@@ -209,8 +255,13 @@ export interface PluginContext {
   registerCommandSource(source: CommandSource): void;
   registerCommand(command: PluginCommand): void;
   registerSkillSource(source: SkillSource): void;
-  contributeContext(input: ContextExtensionInput): Promise<ContextContribution[]>;
-  activity(content: string, attributes?: Readonly<Record<string, string | number | boolean>>): void;
+  contributeContext(
+    input: ContextExtensionInput,
+  ): Promise<ContextContribution[]>;
+  activity(
+    content: string,
+    attributes?: Readonly<Record<string, string | number | boolean>>,
+  ): void;
 }
 
 export type Plugin = (ctx: PluginContext) => void | Promise<void>;

@@ -29,10 +29,17 @@ function languageFor(file: string, requested?: string): Lang | undefined {
 }
 
 function evidenceFromOutput(output: string) {
-  return output.split("\n").map((line) => {
-    const match = line.match(/^(.+?):(\d+):/);
-    return match ? { path: match[1], line: Number(match[2]), kind: "code" as const } : undefined;
-  }).filter((item): item is { path: string; line: number; kind: "code" } => Boolean(item));
+  return output
+    .split("\n")
+    .map((line) => {
+      const match = line.match(/^(.+?):(\d+):/);
+      return match
+        ? { path: match[1], line: Number(match[2]), kind: "code" as const }
+        : undefined;
+    })
+    .filter((item): item is { path: string; line: number; kind: "code" } =>
+      Boolean(item),
+    );
 }
 
 function filesFor(target: string): string[] {
@@ -46,7 +53,12 @@ function filesFor(target: string): string[] {
   });
 }
 
-function searchFiles(files: string[], pattern: string, language: string | undefined, max: number): string[] {
+function searchFiles(
+  files: string[],
+  pattern: string,
+  language: string | undefined,
+  max: number,
+): string[] {
   const matches: string[] = [];
   for (const file of files) {
     const lang = languageFor(file, language);
@@ -55,7 +67,9 @@ function searchFiles(files: string[], pattern: string, language: string | undefi
     for (const node of parse(lang, source).root().findAll(pattern)) {
       const position = node.range().start;
       const relative = path.relative(root(), file) || path.basename(file);
-      matches.push(`${relative}:${position.line + 1}:${position.column + 1}: ${node.text()}`);
+      matches.push(
+        `${relative}:${position.line + 1}:${position.column + 1}: ${node.text()}`,
+      );
       if (matches.length >= max) return matches;
     }
   }
@@ -69,33 +83,68 @@ export function searchAstTool(ctx: PluginContext) {
     {
       type: "object",
       properties: {
-        pattern: { type: "string", description: "AST pattern (for example, console.log($X))" },
-        lang: { type: "string", description: "Language (ts, js, tsx, html, css); optional, inferred from the extension" },
-        target: { type: "string", description: "File or directory (default: workspace)" },
-        max_matches: { type: "number", description: `Max matches (default ${MAX_MATCHES})` },
+        pattern: {
+          type: "string",
+          description: "AST pattern (for example, console.log($X))",
+        },
+        lang: {
+          type: "string",
+          description:
+            "Language (ts, js, tsx, html, css); optional, inferred from the extension",
+        },
+        target: {
+          type: "string",
+          description: "File or directory (default: workspace)",
+        },
+        max_matches: {
+          type: "number",
+          description: `Max matches (default ${MAX_MATCHES})`,
+        },
       },
       required: ["pattern"],
     },
     async (args: ToolArgs) => {
       const pattern = String(args.pattern ?? "");
-      if (!pattern) return { output: errorText("E_PARSE", "empty pattern"), isError: true };
+      if (!pattern)
+        return { output: errorText("E_PARSE", "empty pattern"), isError: true };
       const target = String(args.target ?? ".");
-      const max = Math.min(MAX_MATCHES, Math.max(1, Math.trunc(Number(args.max_matches ?? MAX_MATCHES))));
-      const language = typeof args.lang === "string" && args.lang ? args.lang : undefined;
+      const max = Math.min(
+        MAX_MATCHES,
+        Math.max(1, Math.trunc(Number(args.max_matches ?? MAX_MATCHES))),
+      );
+      const language =
+        typeof args.lang === "string" && args.lang ? args.lang : undefined;
       if (language && !LANGUAGES[language.toLowerCase()]) {
-        return { output: errorText("E_LANG", `${language}: unsupported language`), isError: true };
+        return {
+          output: errorText("E_LANG", `${language}: unsupported language`),
+          isError: true,
+        };
       }
       let abs: string;
       try {
         abs = guardPath(target);
       } catch (e) {
-        return { output: errorText("E_PATH", `${target}: ${e instanceof Error ? e.message : String(e)}`), isError: true };
+        return {
+          output: errorText(
+            "E_PATH",
+            `${target}: ${e instanceof Error ? e.message : String(e)}`,
+          ),
+          isError: true,
+        };
       }
       try {
-        const output = searchFiles(filesFor(abs), pattern, language, max).join("\n") || "no results";
+        const output =
+          searchFiles(filesFor(abs), pattern, language, max).join("\n") ||
+          "no results";
         return { output, evidence: evidenceFromOutput(output) };
       } catch (e) {
-        return { output: errorText("E_SEARCH", `${target}: ${e instanceof Error ? e.message : String(e)}`), isError: true };
+        return {
+          output: errorText(
+            "E_SEARCH",
+            `${target}: ${e instanceof Error ? e.message : String(e)}`,
+          ),
+          isError: true,
+        };
       }
     },
   );

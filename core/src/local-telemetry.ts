@@ -2,7 +2,12 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import crypto from "node:crypto";
-import { noopObservability, type Attributes, type Observability, type Span } from "@cagent/sdk";
+import {
+  noopObservability,
+  type Attributes,
+  type Observability,
+  type Span,
+} from "@cagent/sdk";
 
 type ResourceSnapshot = {
   rss_bytes: number;
@@ -23,12 +28,14 @@ type TelemetryRecord = {
 // run.id is stable for the lifetime of the process
 const RUN_ID = crypto.randomUUID();
 
-const safeError = (error: unknown): string => error instanceof Error ? error.message : String(error);
+const safeError = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error);
 
 const resolveTelemetryPath = (file: string): string => {
-  const expanded = file === "~" || file.startsWith("~/")
-    ? path.join(os.homedir(), file.slice(2))
-    : file;
+  const expanded =
+    file === "~" || file.startsWith("~/")
+      ? path.join(os.homedir(), file.slice(2))
+      : file;
   return path.resolve(expanded);
 };
 
@@ -68,21 +75,47 @@ class FileSpan implements Span {
     Object.assign(this.attributes, initial);
   }
 
-  setAttribute(name: string, value: string | number | boolean): void { this.attributes[name] = value; }
-  addEvent(name: string, attributes?: Attributes): void { this.events.push({ name, attributes }); }
-  recordException(error: unknown): void { this.exception = safeError(error); }
+  setAttribute(name: string, value: string | number | boolean): void {
+    this.attributes[name] = value;
+  }
+  addEvent(name: string, attributes?: Attributes): void {
+    this.events.push({ name, attributes });
+  }
+  recordException(error: unknown): void {
+    this.exception = safeError(error);
+  }
   end(): void {
     const endResources = resourceSnapshot();
     const resources: Attributes = {
       "process.rss_bytes": endResources.rss_bytes,
-      ...(endResources.user_cpu_us !== undefined && this.startResources.user_cpu_us !== undefined
-        ? { "process.user_cpu_us": endResources.user_cpu_us - this.startResources.user_cpu_us } : {}),
-      ...(endResources.system_cpu_us !== undefined && this.startResources.system_cpu_us !== undefined
-        ? { "process.system_cpu_us": endResources.system_cpu_us - this.startResources.system_cpu_us } : {}),
-      ...(endResources.read_bytes !== undefined && this.startResources.read_bytes !== undefined
-        ? { "process.read_bytes": endResources.read_bytes - this.startResources.read_bytes } : {}),
-      ...(endResources.write_bytes !== undefined && this.startResources.write_bytes !== undefined
-        ? { "process.write_bytes": endResources.write_bytes - this.startResources.write_bytes } : {}),
+      ...(endResources.user_cpu_us !== undefined &&
+      this.startResources.user_cpu_us !== undefined
+        ? {
+            "process.user_cpu_us":
+              endResources.user_cpu_us - this.startResources.user_cpu_us,
+          }
+        : {}),
+      ...(endResources.system_cpu_us !== undefined &&
+      this.startResources.system_cpu_us !== undefined
+        ? {
+            "process.system_cpu_us":
+              endResources.system_cpu_us - this.startResources.system_cpu_us,
+          }
+        : {}),
+      ...(endResources.read_bytes !== undefined &&
+      this.startResources.read_bytes !== undefined
+        ? {
+            "process.read_bytes":
+              endResources.read_bytes - this.startResources.read_bytes,
+          }
+        : {}),
+      ...(endResources.write_bytes !== undefined &&
+      this.startResources.write_bytes !== undefined
+        ? {
+            "process.write_bytes":
+              endResources.write_bytes - this.startResources.write_bytes,
+          }
+        : {}),
     };
     this.owner.enqueue({
       type: "span",
@@ -105,7 +138,9 @@ export class LocalFileObservability implements Observability {
   private buffer: string = "";
   private flushTimer: ReturnType<typeof setTimeout> | null = null;
 
-  constructor(file = path.join(os.homedir(), ".cagent", "telemetry", "events.jsonl")) {
+  constructor(
+    file = path.join(os.homedir(), ".cagent", "telemetry", "events.jsonl"),
+  ) {
     this.file = resolveTelemetryPath(file);
     fs.mkdirSync(path.dirname(this.file), { recursive: true, mode: 0o700 });
   }
@@ -115,11 +150,26 @@ export class LocalFileObservability implements Observability {
   }
 
   recordMetric(name: string, value: number, attributes?: Attributes): void {
-    this.enqueue({ type: "metric", timestamp: new Date().toISOString(), run_id: RUN_ID, process_pid: process.pid, name, value, attributes });
+    this.enqueue({
+      type: "metric",
+      timestamp: new Date().toISOString(),
+      run_id: RUN_ID,
+      process_pid: process.pid,
+      name,
+      value,
+      attributes,
+    });
   }
 
   recordEvent(name: string, attributes?: Attributes): void {
-    this.enqueue({ type: "event", timestamp: new Date().toISOString(), run_id: RUN_ID, process_pid: process.pid, name, attributes });
+    this.enqueue({
+      type: "event",
+      timestamp: new Date().toISOString(),
+      run_id: RUN_ID,
+      process_pid: process.pid,
+      name,
+      attributes,
+    });
   }
 
   flush(): void {
@@ -145,13 +195,18 @@ export class LocalFileObservability implements Observability {
 
   private write(record: TelemetryRecord): void {
     try {
-      fs.appendFileSync(this.file, `${JSON.stringify(record)}\n`, { mode: 0o600 });
+      fs.appendFileSync(this.file, `${JSON.stringify(record)}\n`, {
+        mode: 0o600,
+      });
     } catch {
       // Telemetry must never affect the application workflow.
     }
   }
 }
 
-export function createLocalObservability(enabled: boolean, file?: string): Observability {
+export function createLocalObservability(
+  enabled: boolean,
+  file?: string,
+): Observability {
   return enabled ? new LocalFileObservability(file) : noopObservability;
 }

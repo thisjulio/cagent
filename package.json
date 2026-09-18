@@ -4,7 +4,11 @@
   "license": "MIT",
   "private": true,
   "type": "module",
-  "workspaces": ["core", "sdk", "plugins/*"],
+  "workspaces": [
+    "core",
+    "sdk",
+    "plugins/*"
+  ],
   "scripts": {
     "start": "bun core/src/main.ts",
     "test": "bun test",

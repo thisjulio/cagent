@@ -24,7 +24,10 @@ export interface JsonRpcNotification {
   params?: Record<string, unknown>;
 }
 
-export type JsonRpcMessage = JsonRpcRequest | JsonRpcResponse | JsonRpcNotification;
+export type JsonRpcMessage =
+  | JsonRpcRequest
+  | JsonRpcResponse
+  | JsonRpcNotification;
 
 export interface Transport {
   send(message: JsonRpcMessage): Promise<void>;

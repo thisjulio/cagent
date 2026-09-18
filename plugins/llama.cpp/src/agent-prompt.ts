@@ -26,10 +26,20 @@ export const LLAMA_AGENT_PROMPT = [
   "read_file -> edit_file with patch -> read_file -> run the smallest relevant check",
 ].join("\n");
 
-export function addAgentPrompt(messages: Message[], prompt = LLAMA_AGENT_PROMPT): Message[] {
+export function addAgentPrompt(
+  messages: Message[],
+  prompt = LLAMA_AGENT_PROMPT,
+): Message[] {
   const index = messages.findIndex((message) => message.role === "system");
-  if (index === -1) return [{ role: "system", content: `${prompt}\n\n${TURN_REMINDER}` }, ...messages];
+  if (index === -1)
+    return [
+      { role: "system", content: `${prompt}\n\n${TURN_REMINDER}` },
+      ...messages,
+    ];
   const result = messages.map((message) => ({ ...message }));
-  result[index] = { ...result[index], content: `${result[index].content}\n\n${prompt}\n\n${TURN_REMINDER}` };
+  result[index] = {
+    ...result[index],
+    content: `${result[index].content}\n\n${prompt}\n\n${TURN_REMINDER}`,
+  };
   return result;
 }

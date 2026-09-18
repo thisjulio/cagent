@@ -27,8 +27,13 @@ controller.state.toolLog = [];
 controller.state.tokens = 0;
 
 async function frame(w: number): Promise<void> {
-  const setup = await testRender(<App c={controller} />, { width: w, height: 24 });
-  await act(async () => { await setup.flush(); });
+  const setup = await testRender(<App c={controller} />, {
+    width: w,
+    height: 24,
+  });
+  await act(async () => {
+    await setup.flush();
+  });
   const lines = setup.captureCharFrame().split("\n");
   console.log(`\n=== ${w} cols ===`);
   console.log("┌" + "─".repeat(w) + "┐");
@@ -42,10 +47,33 @@ for (const w of [60, 80, 120]) await frame(w);
 // Seeded state: the three blocks (user / assistant / tool).
 controller.state.chat = [
   { kind: "user", content: "run ls" },
-  { kind: "assistant", content: "The directory contains:\n\n- AGENTS.md\n- core/\n" },
-  { kind: "tool", toolName: "bash", cmd: "git status", content: "3 lines", running: false },
-  { kind: "tool", toolName: "bash", cmd: "ls", content: "total 24\nAGENTS.md\nbun.lock", running: false, expanded: true },
-  { kind: "tool", toolName: "bash", cmd: "rm -rf /", content: "permission denied", isError: true, expanded: true },
+  {
+    kind: "assistant",
+    content: "The directory contains:\n\n- AGENTS.md\n- core/\n",
+  },
+  {
+    kind: "tool",
+    toolName: "bash",
+    cmd: "git status",
+    content: "3 lines",
+    running: false,
+  },
+  {
+    kind: "tool",
+    toolName: "bash",
+    cmd: "ls",
+    content: "total 24\nAGENTS.md\nbun.lock",
+    running: false,
+    expanded: true,
+  },
+  {
+    kind: "tool",
+    toolName: "bash",
+    cmd: "rm -rf /",
+    content: "permission denied",
+    isError: true,
+    expanded: true,
+  },
 ];
 controller.state.tokens = 1200;
 controller.state.title = "snapshot";

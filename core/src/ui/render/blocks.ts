@@ -87,7 +87,15 @@ export function chatToBlocks(chat: ChatItem[]): Block[] {
         turnId: item.turnId,
         author: "user",
         timestamp: item.timestamp ?? Date.now(),
-        items: [{ type: "PROMPT", content: item.content, imagePaths: item.imagePaths, timestamp: item.timestamp, chatIndex: i }],
+        items: [
+          {
+            type: "PROMPT",
+            content: item.content,
+            imagePaths: item.imagePaths,
+            timestamp: item.timestamp,
+            chatIndex: i,
+          },
+        ],
       });
     } else if (item.kind === "meta") {
       // Meta items become their own system blocks
@@ -95,7 +103,13 @@ export function chatToBlocks(chat: ChatItem[]): Block[] {
       blocks.push({
         type: "system",
         turnId: item.turnId,
-        item: { type: "META", content: item.content, kind: item.command, timestamp: item.timestamp, chatIndex: i },
+        item: {
+          type: "META",
+          content: item.content,
+          kind: item.command,
+          timestamp: item.timestamp,
+          chatIndex: i,
+        },
       });
     } else {
       // assistant, thinking, tool items belong to the current agent turn

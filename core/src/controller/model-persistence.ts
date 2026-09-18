@@ -16,7 +16,8 @@ function isValidChoice(data: unknown): data is LastChoice {
   if (typeof data !== "object" || data === null) return false;
   const obj = data as Record<string, unknown>;
   if (obj.model !== undefined && typeof obj.model !== "string") return false;
-  if (obj.variant !== undefined && typeof obj.variant !== "string") return false;
+  if (obj.variant !== undefined && typeof obj.variant !== "string")
+    return false;
   if (typeof obj.timestamp !== "number") return false;
   return true;
 }

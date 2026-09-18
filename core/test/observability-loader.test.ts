@@ -8,12 +8,22 @@ describe("plugin observability", () => {
   test("injects the shared implementation and traces plugin loading", async () => {
     const telemetry = new InMemoryObservability();
     let received: unknown;
-    await loadPlugins({ log_level: "info", plugins: [{ name: "test-plugin", enabled: true, config: {} }] }, new Registry(), new EventBus(), {
-      loaders: {
-        "test-plugin": (ctx) => { received = ctx.observability; },
+    await loadPlugins(
+      {
+        log_level: "info",
+        plugins: [{ name: "test-plugin", enabled: true, config: {} }],
       },
-      observability: telemetry,
-    });
+      new Registry(),
+      new EventBus(),
+      {
+        loaders: {
+          "test-plugin": (ctx) => {
+            received = ctx.observability;
+          },
+        },
+        observability: telemetry,
+      },
+    );
 
     expect(received).toBe(telemetry);
     expect(telemetry.spans.map((span) => span.name)).toEqual(["plugin.load"]);

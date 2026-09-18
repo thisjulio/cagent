@@ -13,7 +13,13 @@ export function plainLine(line: string): string {
     .replace(/_([^_]+)_/g, "$1");
 }
 
-export function Markdown({ content, streaming = false }: { content: string; streaming?: boolean }) {
+export function Markdown({
+  content,
+  streaming = false,
+}: {
+  content: string;
+  streaming?: boolean;
+}) {
   const lines = content.split("\n");
   const children: React.ReactNode[] = [];
   let code: string[] = [];
@@ -47,10 +53,18 @@ export function Markdown({ content, streaming = false }: { content: string; stre
     }
     const heading = /^#{1,6}\s+/.test(line);
     children.push(
-      <text key={`line-${i}`} attributes={heading ? TextAttributes.BOLD : TextAttributes.NONE} content={plainLine(line) || " "} />,
+      <text
+        key={`line-${i}`}
+        attributes={heading ? TextAttributes.BOLD : TextAttributes.NONE}
+        content={plainLine(line) || " "}
+      />,
     );
   }
   flushCode(false);
 
-  return <box flexDirection="column" width="100%">{children}</box>;
+  return (
+    <box flexDirection="column" width="100%">
+      {children}
+    </box>
+  );
 }

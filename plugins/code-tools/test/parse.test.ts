@@ -34,7 +34,13 @@ a.ts
  c
 *** End patch`,
     );
-    expect(p).toEqual([{ path: "a.ts", op: "update", hunks: [{ oldLines: ["a", "b", "c"], newLines: ["a", "c"] }] }]);
+    expect(p).toEqual([
+      {
+        path: "a.ts",
+        op: "update",
+        hunks: [{ oldLines: ["a", "b", "c"], newLines: ["a", "c"] }],
+      },
+    ]);
   });
 
   it("patch: no blocks throws", () => {
@@ -51,13 +57,21 @@ B
 gamma
 >>>`,
     );
-    const out = applyRegions(["alpha", "beta", "gamma", "delta"], regions, 0.75);
+    const out = applyRegions(
+      ["alpha", "beta", "gamma", "delta"],
+      regions,
+      0.75,
+    );
     expect(out.error).toBeUndefined();
     expect(out.lines).toEqual(["alpha", "B", "delta"]);
   });
 
   it("applyHunks: context-free hunk replaces the file", () => {
-    const out = applyHunks(["a", "b"], { path: "x", op: "update", hunks: [{ oldLines: [], newLines: ["z"] }] }, 0.85);
+    const out = applyHunks(
+      ["a", "b"],
+      { path: "x", op: "update", hunks: [{ oldLines: [], newLines: ["z"] }] },
+      0.85,
+    );
     expect(out.error).toBeUndefined();
     expect(out.lines).toEqual(["z"]);
   });
@@ -72,16 +86,32 @@ gamma
  c
 *** End Patch`,
     );
-    expect(p).toEqual([{ path: "src/a.ts", op: "update", hunks: [{ oldLines: ["a", "b", "c"], newLines: ["a", "c"] }] }]);
+    expect(p).toEqual([
+      {
+        path: "src/a.ts",
+        op: "update",
+        hunks: [{ oldLines: ["a", "b", "c"], newLines: ["a", "c"] }],
+      },
+    ]);
   });
 
   it("patch: Add File (add operation, content becomes newLines)", () => {
-    const p = parseApplyPatch(`*** Begin Patch\n*** Add File: src/new.ts\n+one\n+two\n*** End Patch`);
-    expect(p).toEqual([{ path: "src/new.ts", op: "add", hunks: [{ oldLines: [], newLines: ["one", "two"] }] }]);
+    const p = parseApplyPatch(
+      `*** Begin Patch\n*** Add File: src/new.ts\n+one\n+two\n*** End Patch`,
+    );
+    expect(p).toEqual([
+      {
+        path: "src/new.ts",
+        op: "add",
+        hunks: [{ oldLines: [], newLines: ["one", "two"] }],
+      },
+    ]);
   });
 
   it("patch: Delete File (delete operation, no hunks)", () => {
-    const p = parseApplyPatch(`*** Begin Patch\n*** Delete File: src/velho.ts\n*** End Patch`);
+    const p = parseApplyPatch(
+      `*** Begin Patch\n*** Delete File: src/velho.ts\n*** End Patch`,
+    );
     expect(p).toEqual([{ path: "src/velho.ts", op: "delete", hunks: [] }]);
   });
 
@@ -96,7 +126,12 @@ gamma
 *** End Patch`,
     );
     expect(p).toEqual([
-      { path: "src/old.ts", op: "update", movePath: "src/new.ts", hunks: [{ oldLines: ["old"], newLines: ["new"] }] },
+      {
+        path: "src/old.ts",
+        op: "update",
+        movePath: "src/new.ts",
+        hunks: [{ oldLines: ["old"], newLines: ["new"] }],
+      },
     ]);
   });
 });

@@ -1,10 +1,17 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.5.13/schema.json",
   "files": {
-    "includes": ["**", "!bun.lock", "!graphify-out", "!dist", "!.claude/skills", "!.cagent"]
+    "includes": [
+      "**",
+      "!bun.lock",
+      "!graphify-out",
+      "!dist",
+      "!.claude/skills",
+      "!.cagent"
+    ]
   },
   "formatter": {
-    "enabled": false,
+    "enabled": true,
     "indentStyle": "space",
     "indentWidth": 2
   },

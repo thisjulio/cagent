@@ -21,7 +21,10 @@ export type BenchmarkResult = {
 function readLinuxIo(): Pick<ProcessSnapshot, "readBytes" | "writeBytes"> {
   try {
     const values = readFileSync("/proc/self/io", "utf8").split("\n");
-    const get = (key: string) => Number(values.find((line) => line.startsWith(`${key}:`))?.split(/\s+/)[1]);
+    const get = (key: string) =>
+      Number(
+        values.find((line) => line.startsWith(`${key}:`))?.split(/\s+/)[1],
+      );
     return { readBytes: get("read_bytes"), writeBytes: get("write_bytes") };
   } catch {
     return {};
@@ -38,7 +41,11 @@ function snapshot(): ProcessSnapshot {
   };
 }
 
-export async function benchmark<T>(name: string, operation: () => T | Promise<T>, attributes: Attributes = {}): Promise<BenchmarkResult & { value: T }> {
+export async function benchmark<T>(
+  name: string,
+  operation: () => T | Promise<T>,
+  attributes: Attributes = {},
+): Promise<BenchmarkResult & { value: T }> {
   const metrics = new InMemoryObservability();
   const start = snapshot();
   const started = performance.now();
@@ -46,6 +53,10 @@ export async function benchmark<T>(name: string, operation: () => T | Promise<T>
   const end = snapshot();
   const durationMs = performance.now() - started;
   metrics.recordMetric(`${name}.duration_ms`, durationMs, attributes);
-  metrics.recordMetric(`${name}.rss_delta_bytes`, end.rssBytes - start.rssBytes, attributes);
+  metrics.recordMetric(
+    `${name}.rss_delta_bytes`,
+    end.rssBytes - start.rssBytes,
+    attributes,
+  );
   return { name, durationMs, start, end, metrics, value };
 }

@@ -4,7 +4,8 @@ export class HookRegistry {
   private readonly hooks: HookDefinition[] = [];
 
   register(hook: HookDefinition): void {
-    if (this.hooks.some((item) => item.name === hook.name)) throw new Error(`duplicate hook: ${hook.name}`);
+    if (this.hooks.some((item) => item.name === hook.name))
+      throw new Error(`duplicate hook: ${hook.name}`);
     this.hooks.push(hook);
   }
 

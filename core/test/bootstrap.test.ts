@@ -13,25 +13,39 @@ describe("resolveRoute", () => {
   it("validates the provider/model pair against the catalog", async () => {
     const registry = new Registry();
     registry.registerProvider("openai", adapter);
-    await expect(resolveRoute({ model: "openai/m1" } as ControllerDeps["config"], registry)).resolves.toBe("openai/m1");
+    await expect(
+      resolveRoute(
+        { model: "openai/m1" } as ControllerDeps["config"],
+        registry,
+      ),
+    ).resolves.toBe("openai/m1");
   });
 
   it("rejects a provider that does not exist", async () => {
     const registry = new Registry();
     registry.registerProvider("openai", adapter);
-    await expect(resolveRoute({ model: "foo/m1" } as ControllerDeps["config"], registry)).rejects.toThrow("provider not found: foo");
+    await expect(
+      resolveRoute({ model: "foo/m1" } as ControllerDeps["config"], registry),
+    ).rejects.toThrow("provider not found: foo");
   });
 
   it("rejects a model that does not exist in the provider", async () => {
     const registry = new Registry();
     registry.registerProvider("openai", adapter);
-    await expect(resolveRoute({ model: "openai/m9" } as ControllerDeps["config"], registry)).rejects.toThrow("model m9 does not exist in provider openai");
+    await expect(
+      resolveRoute(
+        { model: "openai/m9" } as ControllerDeps["config"],
+        registry,
+      ),
+    ).rejects.toThrow("model m9 does not exist in provider openai");
   });
 
   it("without config: fallback = first provider + first catalog model", async () => {
     const registry = new Registry();
     registry.registerProvider("openai", adapter);
-    await expect(resolveRoute({} as ControllerDeps["config"], registry)).resolves.toBe("openai/m1");
+    await expect(
+      resolveRoute({} as ControllerDeps["config"], registry),
+    ).resolves.toBe("openai/m1");
   });
 
   it("without config: keeps the first registered provider when others are available", async () => {
@@ -41,6 +55,8 @@ describe("resolveRoute", () => {
       ...adapter,
       list_models: async () => ["local-model"],
     });
-    await expect(resolveRoute({} as ControllerDeps["config"], registry)).resolves.toBe("openai/m1");
+    await expect(
+      resolveRoute({} as ControllerDeps["config"], registry),
+    ).resolves.toBe("openai/m1");
   });
 });

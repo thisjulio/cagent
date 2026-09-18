@@ -10,7 +10,10 @@ describe("MCP client", () => {
     const transport = new StdioTransport("bun", ["run", MOCK_SERVER], {});
     const client = new McpClient(transport);
 
-    const initResult = await client.initialize({ name: "test-client", version: "1.0.0" });
+    const initResult = await client.initialize({
+      name: "test-client",
+      version: "1.0.0",
+    });
     expect(initResult.protocolVersion).toBe("2024-11-05");
     expect(initResult.serverInfo.name).toBe("mock-server");
 

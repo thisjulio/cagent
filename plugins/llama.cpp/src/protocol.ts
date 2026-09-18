@@ -8,16 +8,25 @@ export interface LlamaConfig {
   inject_agent_prompt?: boolean;
 }
 
-export function baseUrl(config: LlamaConfig): string { return String(config.url ?? "http://localhost:8080").replace(/\/$/, ""); }
-
-export function headers(config: LlamaConfig): Record<string, string> {
-  return { "Content-Type": "application/json", ...(config.api_key ? { Authorization: `Bearer ${config.api_key}` } : {}) };
+export function baseUrl(config: LlamaConfig): string {
+  return String(config.url ?? "http://localhost:8080").replace(/\/$/, "");
 }
 
-export async function checkedJson(response: Response): Promise<Record<string, unknown>> {
+export function headers(config: LlamaConfig): Record<string, string> {
+  return {
+    "Content-Type": "application/json",
+    ...(config.api_key ? { Authorization: `Bearer ${config.api_key}` } : {}),
+  };
+}
+
+export async function checkedJson(
+  response: Response,
+): Promise<Record<string, unknown>> {
   if (!response.ok) {
     const body = await response.text();
-    throw new Error(`llama-server respondeu ${response.status}: ${body.slice(0, 500)}`);
+    throw new Error(
+      `llama-server respondeu ${response.status}: ${body.slice(0, 500)}`,
+    );
   }
   return (await response.json()) as Record<string, unknown>;
 }
@@ -27,14 +36,26 @@ export function contextSize(json: Record<string, unknown>): number | undefined {
   if (!settings || typeof settings !== "object") return undefined;
   const direct = (settings as { n_ctx?: unknown }).n_ctx;
   const params = (settings as { params?: unknown }).params;
-  const nested = params && typeof params === "object" ? (params as { n_ctx?: unknown }).n_ctx : undefined;
+  const nested =
+    params && typeof params === "object"
+      ? (params as { n_ctx?: unknown }).n_ctx
+      : undefined;
   const value = direct ?? nested;
-  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : undefined;
+  return typeof value === "number" && Number.isFinite(value) && value > 0
+    ? value
+    : undefined;
 }
 
 export function toolPayload(request: LlmCallOptions): unknown[] | undefined {
   if (!request.tools.length) return undefined;
-  return request.tools.map((tool) => ({ type: "function", function: { name: tool.name, description: tool.description, parameters: tool.parameters } }));
+  return request.tools.map((tool) => ({
+    type: "function",
+    function: {
+      name: tool.name,
+      description: tool.description,
+      parameters: tool.parameters,
+    },
+  }));
 }
 
 export function modelKey(id: string): string {
@@ -43,11 +64,23 @@ export function modelKey(id: string): string {
 }
 
 export function validToolArguments(argumentsText: string): string {
-  const plain = argumentsText.trim().replace(/^```(?:json)?\s*|\s*```$/gi, "").trim();
-  const candidates = [argumentsText.trim(), plain, plain.replace(/,\s*([}\]])/g, "$1")];
+  const plain = argumentsText
+    .trim()
+    .replace(/^```(?:json)?\s*|\s*```$/gi, "")
+    .trim();
+  const candidates = [
+    argumentsText.trim(),
+    plain,
+    plain.replace(/,\s*([}\]])/g, "$1"),
+  ];
   for (const candidate of candidates) {
     if (!candidate) continue;
-    try { JSON.parse(candidate); return candidate; } catch { /* Try the next low-risk normalization. */ }
+    try {
+      JSON.parse(candidate);
+      return candidate;
+    } catch {
+      /* Try the next low-risk normalization. */
+    }
   }
   // Never resend malformed arguments: llama-server parses assistant tool calls
   // as JSON before it can return a useful tool error.

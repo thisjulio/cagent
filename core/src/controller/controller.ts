@@ -1,10 +1,21 @@
-import type { Message, ToolArgs, ToolDefinition, ProviderAdapter } from "@cagent/sdk";
+import type {
+  Message,
+  ToolArgs,
+  ToolDefinition,
+  ProviderAdapter,
+} from "@cagent/sdk";
 import { runSlash } from "../commands/commands";
 import { inputSuggestions } from "../commands/suggest";
 import { Session } from "../session";
 import type { ToolAsk } from "../tools";
 import { generateTitle, toChatItems, toTitle } from "./sessions";
-import { compactSession, newSession, open, rename, resumeSession } from "./session-actions";
+import {
+  compactSession,
+  newSession,
+  open,
+  rename,
+  resumeSession,
+} from "./session-actions";
 import { openModelPicker, pickModel } from "./models";
 import { toolDenied, toolPost, toolPre, toolStream } from "./tool-events";
 import { onKey } from "./keys";
@@ -34,9 +45,15 @@ export class Controller {
   onToolEvent?: ControllerDeps["onToolEvent"];
   adapter: ProviderAdapter;
   bump: () => void = () => {};
-  get registry(): ControllerDeps["registry"] { return this.deps.registry; }
-  customCommand(name: string): CustomCommand | undefined { return this.deps.commands?.get(name.slice(1)); }
-  nextSkillCallId(): number { return this.skillCallId++; }
+  get registry(): ControllerDeps["registry"] {
+    return this.deps.registry;
+  }
+  customCommand(name: string): CustomCommand | undefined {
+    return this.deps.commands?.get(name.slice(1));
+  }
+  nextSkillCallId(): number {
+    return this.skillCallId++;
+  }
 
   private deps: ControllerDeps;
   private interrupted = false;
@@ -45,13 +62,28 @@ export class Controller {
   private bumpStream: () => void;
   envStamp: number = Date.now();
   private askResolver: ((ok: boolean) => void) | null = null;
-  get config(): ControllerDeps["config"] { return this.deps.config; }
-  get bus(): ControllerDeps["bus"] { return this.deps.bus; }
-  isInterrupted(): boolean { return this.interrupted; }
-  get signal(): AbortSignal { return this.abortController?.signal ?? new AbortController().signal; }
-  resetTurn(): void { this.interrupted = false; this.abortController = new AbortController(); }
-  bumpStreamNow(): void { this.bumpStream(); }
-  get invokeSubagent() { return this.deps.invokeSubagent; }
+  get config(): ControllerDeps["config"] {
+    return this.deps.config;
+  }
+  get bus(): ControllerDeps["bus"] {
+    return this.deps.bus;
+  }
+  isInterrupted(): boolean {
+    return this.interrupted;
+  }
+  get signal(): AbortSignal {
+    return this.abortController?.signal ?? new AbortController().signal;
+  }
+  resetTurn(): void {
+    this.interrupted = false;
+    this.abortController = new AbortController();
+  }
+  bumpStreamNow(): void {
+    this.bumpStream();
+  }
+  get invokeSubagent() {
+    return this.deps.invokeSubagent;
+  }
 
   private agentNames(): string[] {
     return this.deps.registry.subagents().map((agent) => agent.name);
@@ -99,17 +131,33 @@ export class Controller {
       elapsedMs: 0,
       lastEscTime: 0,
     };
-    if (loaded.records.length) appendChat(s, { kind: "meta", content: `resuming session ${this.session.id} (${loaded.messages.length} messages)` });
+    if (loaded.records.length)
+      appendChat(s, {
+        kind: "meta",
+        content: `resuming session ${this.session.id} (${loaded.messages.length} messages)`,
+      });
     this.state = s;
   }
 
-  onToolPre(p: unknown): void { toolPre(this.state, p); this.bump(); }
+  onToolPre(p: unknown): void {
+    toolPre(this.state, p);
+    this.bump();
+  }
 
-  onToolPost(p: unknown): void { toolPost(this.state, p); this.bump(); }
+  onToolPost(p: unknown): void {
+    toolPost(this.state, p);
+    this.bump();
+  }
 
-  onToolDenied(p: unknown): void { toolDenied(this.state, p); this.bump(); }
+  onToolDenied(p: unknown): void {
+    toolDenied(this.state, p);
+    this.bump();
+  }
 
-  onToolStream(p: unknown, prefix = ""): void { toolStream(this.state, p, prefix); this.bumpStream(); }
+  onToolStream(p: unknown, prefix = ""): void {
+    toolStream(this.state, p, prefix);
+    this.bumpStream();
+  }
 
   interrupt(): void {
     if (this.state.busy) this.interrupted = true;
@@ -146,7 +194,8 @@ export class Controller {
 
   ask: ToolAsk = async (tool: ToolDefinition, args: ToolArgs) => {
     if (this.deps.config.permissions === false) return true;
-    const cmd = typeof args.command === "string" ? args.command : JSON.stringify(args);
+    const cmd =
+      typeof args.command === "string" ? args.command : JSON.stringify(args);
     this.state.pendingAsk = { tool: tool.name, cmd };
     this.bump();
     return new Promise<boolean>((resolve) => {
@@ -167,7 +216,8 @@ export class Controller {
     const s = this.state;
     if (!s.pendingAsk) return;
     const cmd = s.pendingAsk.cmd;
-    if (!this.deps.config.allowlist.includes(cmd)) this.deps.config.allowlist.push(cmd);
+    if (!this.deps.config.allowlist.includes(cmd))
+      this.deps.config.allowlist.push(cmd);
     // ponytail: allowlist is in memory for the session; config persistence is Phase 7.
     this.answerAsk(true);
   }
@@ -176,15 +226,25 @@ export class Controller {
     toggleToolExpandAction(this.state, index, () => this.bump());
   }
 
-  newSession(): void { newSession(this); }
+  newSession(): void {
+    newSession(this);
+  }
 
-  resumeSession(id: string): void { resumeSession(this, id); }
+  resumeSession(id: string): void {
+    resumeSession(this, id);
+  }
 
-  renameSession(name: string): void { rename(this, name); }
+  renameSession(name: string): void {
+    rename(this, name);
+  }
 
-  openSessions(): void { open(this); }
+  openSessions(): void {
+    open(this);
+  }
 
-  compact(instructions?: string): Promise<void> { return compactSession(this, instructions); }
+  compact(instructions?: string): Promise<void> {
+    return compactSession(this, instructions);
+  }
 
   openModelPicker(): Promise<void> {
     return openModelPicker(this);
@@ -205,7 +265,16 @@ export class Controller {
   setInput(v: string): void {
     const s = this.state;
     s.input = v;
-    s.suggest = inputSuggestions(v, this.deps.skillNames?.() ?? [], [...(this.deps.commands?.keys() ?? []), ...(this.deps.pluginCommands ?? [])], this.agentNames(), this.deps.pluginCommandSubcommands);
+    s.suggest = inputSuggestions(
+      v,
+      this.deps.skillNames?.() ?? [],
+      [
+        ...(this.deps.commands?.keys() ?? []),
+        ...(this.deps.pluginCommands ?? []),
+      ],
+      this.agentNames(),
+      this.deps.pluginCommandSubcommands,
+    );
     s.suggestIdx = -1;
     this.bump();
   }
@@ -217,7 +286,16 @@ export class Controller {
   reloadSkills(): boolean {
     if (!this.deps.reloadSkills) return false;
     this.deps.reloadSkills();
-    s.suggest = inputSuggestions(this.state.input, this.deps.skillNames?.() ?? [], [...(this.deps.commands?.keys() ?? []), ...(this.deps.pluginCommands ?? [])], this.agentNames(), this.deps.pluginCommandSubcommands);
+    s.suggest = inputSuggestions(
+      this.state.input,
+      this.deps.skillNames?.() ?? [],
+      [
+        ...(this.deps.commands?.keys() ?? []),
+        ...(this.deps.pluginCommands ?? []),
+      ],
+      this.agentNames(),
+      this.deps.pluginCommandSubcommands,
+    );
     this.state.suggestIdx = -1;
     return true;
   }
@@ -228,7 +306,8 @@ export class Controller {
       const activation = await this.deps.invokeSkill(name, args);
       return invokeSkillAction(this, name, activation);
     } catch (error) {
-      this.state.notice = error instanceof Error ? error.message : String(error);
+      this.state.notice =
+        error instanceof Error ? error.message : String(error);
       this.bump();
       return false;
     }

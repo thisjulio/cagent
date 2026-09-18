@@ -16,7 +16,9 @@ interface ResolvedServer {
 }
 
 function resolveServers(config: Record<string, unknown>): McpServerConfig[] {
-  const servers = config.servers as Record<string, Record<string, unknown>> | undefined;
+  const servers = config.servers as
+    | Record<string, Record<string, unknown>>
+    | undefined;
   if (!servers) return [];
 
   return Object.entries(servers).map(([name, cfg]) => ({
@@ -26,7 +28,9 @@ function resolveServers(config: Record<string, unknown>): McpServerConfig[] {
     args: (cfg.args as string[]) || [],
     env: cfg.env as Record<string, string> | undefined,
     url: cfg.url as string | undefined,
-    auth: cfg.auth as { type: "bearer"; token?: string; token_env?: string } | undefined,
+    auth: cfg.auth as
+      | { type: "bearer"; token?: string; token_env?: string }
+      | undefined,
     timeout_ms: cfg.timeout_ms as number | undefined,
   }));
 }
@@ -39,7 +43,8 @@ function connectServer(
     try {
       let transport;
       if (server.transport === "stdio") {
-        if (!server.command) throw new Error(`Server ${server.name}: missing command`);
+        if (!server.command)
+          throw new Error(`Server ${server.name}: missing command`);
         const stdio = new StdioClientTransport({
           command: server.command,
           args: server.args || [],
@@ -47,7 +52,9 @@ function connectServer(
           stderr: "pipe",
         });
         if (stdio.stderr && (logLevel === "info" || logLevel === "debug")) {
-          stdio.stderr.on("data", (chunk: Buffer) => process.stderr.write(chunk));
+          stdio.stderr.on("data", (chunk: Buffer) =>
+            process.stderr.write(chunk),
+          );
         }
         transport = stdio;
       } else {
@@ -68,16 +75,25 @@ function connectServer(
       const timeout = server.timeout_ms || 10000;
 
       // Initialize with timeout
-      const initPromise = client.initialize({ name: "cagent", version: "0.1.0" });
+      const initPromise = client.initialize({
+        name: "cagent",
+        version: "0.1.0",
+      });
       const initTimeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error(`Server ${server.name}: init timeout`)), timeout),
+        setTimeout(
+          () => reject(new Error(`Server ${server.name}: init timeout`)),
+          timeout,
+        ),
       );
       await Promise.race([initPromise, initTimeout]);
 
       // List tools with timeout
       const toolsPromise = client.listTools();
       const toolsTimeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error(`Server ${server.name}: listTools timeout`)), timeout),
+        setTimeout(
+          () => reject(new Error(`Server ${server.name}: listTools timeout`)),
+          timeout,
+        ),
       );
       const tools = await Promise.race([toolsPromise, toolsTimeout]);
 
@@ -102,10 +118,15 @@ const register: Plugin = async (ctx) => {
   // ponytail: Merge config servers with .mcp.json discovered servers.
   // Config servers take precedence for the same name.
   const configServers = resolveServers(ctx.config);
-  const discovered = discoverMcpServers(process.cwd(), process.env.CAGENT_MCP_GLOBAL_HOME);
+  const discovered = discoverMcpServers(
+    process.cwd(),
+    process.env.CAGENT_MCP_GLOBAL_HOME,
+  );
   const allServers = mergeServers(discovered, configServers);
   if (allServers.length === 0) return;
-  const logLevel = (ctx.config.log_level as "silent" | "error" | "warn" | "info" | "debug") || "silent";
+  const logLevel =
+    (ctx.config.log_level as "silent" | "error" | "warn" | "info" | "debug") ||
+    "silent";
 
   // Connect to all servers in parallel with individual timeouts
   const results = await Promise.allSettled(
@@ -117,14 +138,19 @@ const register: Plugin = async (ctx) => {
     if (result.status === "fulfilled") {
       connected.push(result.value);
     } else {
-      console.error(`[mcp] Failed to connect: ${result.reason?.message || result.reason}`);
+      console.error(
+        `[mcp] Failed to connect: ${result.reason?.message || result.reason}`,
+      );
     }
   }
 
   // Register discovered tools
   for (const server of connected) {
     for (const tool of server.tools) {
-      const prefixedName = `mcp-${server.name}-${tool.name}`.replace(/[^a-zA-Z0-9_-]/g, "_");
+      const prefixedName = `mcp-${server.name}-${tool.name}`.replace(
+        /[^a-zA-Z0-9_-]/g,
+        "_",
+      );
       const toolDef: ToolDefinition = defineTool(
         prefixedName,
         tool.description || `MCP tool from ${server.name}`,

@@ -43,7 +43,10 @@ function parseMcpJson(filePath: string): McpServerConfig[] {
   }
 }
 
-export function discoverMcpServers(cwd: string, globalHome?: string): McpServerConfig[] {
+export function discoverMcpServers(
+  cwd: string,
+  globalHome?: string,
+): McpServerConfig[] {
   // Project-level .mcp.json takes precedence
   const projectConfig = path.join(cwd, ".mcp.json");
   const projectServers = parseMcpJson(projectConfig);

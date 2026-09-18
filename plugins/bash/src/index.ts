@@ -14,7 +14,10 @@ type OutputBuffer = { parts: string[]; length: number; truncated: boolean };
 
 function capture(buffer: OutputBuffer, chunk: string): string {
   const remaining = MAX_OUTPUT_CHARS - buffer.length;
-  if (remaining <= 0) { buffer.truncated = true; return ""; }
+  if (remaining <= 0) {
+    buffer.truncated = true;
+    return "";
+  }
   const kept = chunk.slice(0, remaining);
   buffer.parts.push(kept);
   buffer.length += kept.length;
@@ -23,16 +26,31 @@ function capture(buffer: OutputBuffer, chunk: string): string {
 }
 
 function output(buffer: OutputBuffer): string {
-  return buffer.parts.join("") + (buffer.truncated ? "\n[output truncated to preserve memory]" : "");
+  return (
+    buffer.parts.join("") +
+    (buffer.truncated ? "\n[output truncated to preserve memory]" : "")
+  );
 }
 
-function runCommand(opts: RunOptions): Promise<{ code: number; stdout: string; stderr: string; timedOut: boolean; cancelled?: boolean; error?: string }> {
+function runCommand(opts: RunOptions): Promise<{
+  code: number;
+  stdout: string;
+  stderr: string;
+  timedOut: boolean;
+  cancelled?: boolean;
+  error?: string;
+}> {
   const out: OutputBuffer = { parts: [], length: 0, truncated: false };
   const err: OutputBuffer = { parts: [], length: 0, truncated: false };
   return new Promise((resolve) => {
     let timedOut = false;
     let cancelled = false;
-    const child = spawn(opts.command, { shell: true, cwd: opts.workdir, env: process.env, detached: true });
+    const child = spawn(opts.command, {
+      shell: true,
+      cwd: opts.workdir,
+      env: process.env,
+      detached: true,
+    });
 
     const killProcess = () => {
       if (!child.pid) return;
@@ -67,11 +85,24 @@ function runCommand(opts: RunOptions): Promise<{ code: number; stdout: string; s
     });
     child.on("error", (e: Error) => {
       clearTimeout(timer);
-      resolve({ code: -1, stdout: output(out), stderr: output(err), timedOut, cancelled, error: e.message });
+      resolve({
+        code: -1,
+        stdout: output(out),
+        stderr: output(err),
+        timedOut,
+        cancelled,
+        error: e.message,
+      });
     });
     child.on("close", (code) => {
       clearTimeout(timer);
-      resolve({ code, stdout: output(out), stderr: output(err), timedOut, cancelled });
+      resolve({
+        code,
+        stdout: output(out),
+        stderr: output(err),
+        timedOut,
+        cancelled,
+      });
     });
   });
 }
@@ -85,8 +116,14 @@ const register: Plugin = (ctx) => {
       type: "object",
       properties: {
         command: { type: "string", description: "Command to run" },
-        workdir: { type: "string", description: "Working directory (default: cwd)" },
-        timeout_ms: { type: "number", description: `Timeout in ms (default: ${defaultTimeout}). Set explicitly for commands expected to run longer than the default.` },
+        workdir: {
+          type: "string",
+          description: "Working directory (default: cwd)",
+        },
+        timeout_ms: {
+          type: "number",
+          description: `Timeout in ms (default: ${defaultTimeout}). Set explicitly for commands expected to run longer than the default.`,
+        },
       },
       required: ["command"],
     },
@@ -95,15 +132,22 @@ const register: Plugin = (ctx) => {
       const result = await runCommand({
         command: String(args.command),
         workdir: args.workdir ? String(args.workdir) : process.cwd(),
-        timeout: typeof args.timeout_ms === "number" ? (args.timeout_ms as number) : defaultTimeout,
-        emit: (stream, chunk) => ctx.emit(`tools/${stream}`, { tool: "bash", chunk }),
+        timeout:
+          typeof args.timeout_ms === "number"
+            ? (args.timeout_ms as number)
+            : defaultTimeout,
+        emit: (stream, chunk) =>
+          ctx.emit(`tools/${stream}`, { tool: "bash", chunk }),
         signal,
       });
       if (result.cancelled) {
         return { output: "cancelled by user", isError: true, cancelled: true };
       }
-      const isError = result.code !== 0 || result.timedOut || result.error !== undefined;
-      const output = result.stderr ? `${result.stdout}\n[stderr] ${result.stderr}` : result.stdout;
+      const isError =
+        result.code !== 0 || result.timedOut || result.error !== undefined;
+      const output = result.stderr
+        ? `${result.stdout}\n[stderr] ${result.stderr}`
+        : result.stdout;
       return { output, isError, timedOut: result.timedOut };
     },
   });

@@ -14,9 +14,18 @@ export function readTool(ctx: PluginContext) {
     {
       type: "object",
       properties: {
-        path: { type: "string", description: "File path (relative to the workspace or absolute)" },
-        offset: { type: "number", description: "Starting line (1-based, default 1)" },
-        limit: { type: "number", description: `Lines to read (default ${DEFAULT_LIMIT}, max ${MAX_LIMIT})` },
+        path: {
+          type: "string",
+          description: "File path (relative to the workspace or absolute)",
+        },
+        offset: {
+          type: "number",
+          description: "Starting line (1-based, default 1)",
+        },
+        limit: {
+          type: "number",
+          description: `Lines to read (default ${DEFAULT_LIMIT}, max ${MAX_LIMIT})`,
+        },
       },
       required: ["path"],
     },
@@ -26,7 +35,13 @@ export function readTool(ctx: PluginContext) {
       try {
         abs = guardPath(input);
       } catch (e) {
-        return { output: errorText("E_PATH", `${input}: ${e instanceof Error ? e.message : String(e)}`), isError: true };
+        return {
+          output: errorText(
+            "E_PATH",
+            `${input}: ${e instanceof Error ? e.message : String(e)}`,
+          ),
+          isError: true,
+        };
       }
       let text: string;
       try {
@@ -40,10 +55,16 @@ export function readTool(ctx: PluginContext) {
       const body = text.startsWith("\uFEFF") ? text.slice(1) : text;
       const lines = body.split(eol);
       const offset = Math.max(1, Math.trunc(Number(args.offset ?? 1)));
-      const limit = Math.min(MAX_LIMIT, Math.max(1, Math.trunc(Number(args.limit ?? DEFAULT_LIMIT))));
+      const limit = Math.min(
+        MAX_LIMIT,
+        Math.max(1, Math.trunc(Number(args.limit ?? DEFAULT_LIMIT))),
+      );
       const slice = lines.slice(offset - 1, offset - 1 + limit);
       const out = slice.map((l, i) => `${offset + i}\t${l}`).join("\n");
-      return { output: out || `empty file (${lines.length} line(s))`, evidence: [{ path: abs, line: offset, kind: "code" }] };
+      return {
+        output: out || `empty file (${lines.length} line(s))`,
+        evidence: [{ path: abs, line: offset, kind: "code" }],
+      };
     },
   );
 }

@@ -53,7 +53,10 @@ export type UIState = {
   notice: string;
   compacting: boolean;
   pendingAsk: { tool: string; cmd: string } | null;
-  modelPicker: { entries: { route: string; models: string[] }[]; query: string } | null;
+  modelPicker: {
+    entries: { route: string; models: string[] }[];
+    query: string;
+  } | null;
   sessionList: { id: string; updated: string; title: string }[] | null;
   helpOpen: boolean;
   title: string;
@@ -64,7 +67,7 @@ export type UIState = {
   elapsedMs: number;
   lastEscTime: number;
   currentTurnId?: string;
-}
+};
 
 export type InputKey = {
   upArrow?: boolean;
@@ -94,9 +97,17 @@ export interface ControllerDeps {
   maxToolCalls?: number;
   onText?: (text: string) => void;
   onReasoning?: (text: string) => void;
-  onToolEvent?: (event: { phase: "start" | "end"; tool: string; content?: string; error?: boolean }) => void;
+  onToolEvent?: (event: {
+    phase: "start" | "end";
+    tool: string;
+    content?: string;
+    error?: boolean;
+  }) => void;
   reloadSkills?: () => void;
-  invokeSkill?: (name: string, args: string) => Promise<SkillActivation | undefined>;
+  invokeSkill?: (
+    name: string,
+    args: string,
+  ) => Promise<SkillActivation | undefined>;
   skillNames?: () => string[];
   commands?: Map<string, CustomCommand>;
   pluginCommands?: string[];

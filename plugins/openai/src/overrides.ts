@@ -9,7 +9,10 @@ export const CODE_TOOLS_OVERRIDES: ToolOverrides = {
     parameters: {
       type: "object",
       properties: {
-        patch: { type: "string", description: "Complete patch in the *** Begin patch format" },
+        patch: {
+          type: "string",
+          description: "Complete patch in the *** Begin patch format",
+        },
       },
       required: ["patch"],
     },

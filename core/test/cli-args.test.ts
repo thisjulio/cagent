@@ -13,7 +13,16 @@ describe("CLI arguments", () => {
   });
 
   test("parses common options", () => {
-    const result = parseCliArgs(["--yes", "--output", "jsonl", "--timeout", "2m", "--variant", "ilow", "task"]);
+    const result = parseCliArgs([
+      "--yes",
+      "--output",
+      "jsonl",
+      "--timeout",
+      "2m",
+      "--variant",
+      "ilow",
+      "task",
+    ]);
     expect(result.permissionMode).toBe("auto");
     expect(result.output).toBe("jsonl");
     expect(result.timeoutMs).toBe(120000);
@@ -21,7 +30,9 @@ describe("CLI arguments", () => {
   });
 
   test("rejects conflicting sessions", () => {
-    expect(() => parseCliArgs(["--session", "old", "--new-session", "task"])).toThrow();
+    expect(() =>
+      parseCliArgs(["--session", "old", "--new-session", "task"]),
+    ).toThrow();
   });
 
   test("parses the version flag", () => {

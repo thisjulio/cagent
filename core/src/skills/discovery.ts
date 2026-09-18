@@ -4,11 +4,14 @@ import os from "node:os";
 import { parseSkill } from "./frontmatter";
 import type { SkillCatalog, SkillRecord } from "./types";
 
-export function discoverSkills(cwd: string, roots: string[] = [], extraRoots: string[] = []): SkillCatalog {
-  const base = roots.length ? roots : [
-    ".cagent/skills",
-    path.join(os.homedir(), ".cagent", "skills"),
-  ];
+export function discoverSkills(
+  cwd: string,
+  roots: string[] = [],
+  extraRoots: string[] = [],
+): SkillCatalog {
+  const base = roots.length
+    ? roots
+    : [".cagent/skills", path.join(os.homedir(), ".cagent", "skills")];
   const seen = new Set<string>(base);
   const candidates = [...base, ...extraRoots.filter((root) => !seen.has(root))];
   const byName = new Map<string, SkillRecord>();
@@ -20,9 +23,18 @@ export function discoverSkills(cwd: string, roots: string[] = [], extraRoots: st
       const instructionFile = path.join(directory, entry.name, "SKILL.md");
       if (!fs.existsSync(instructionFile)) continue;
       try {
-        const metadata = parseSkill(fs.readFileSync(instructionFile, "utf8"), entry.name);
-        byName.set(metadata.name, { metadata, directory: path.join(directory, entry.name), instructionFile });
-      } catch { /* invalid skills are unavailable */ }
+        const metadata = parseSkill(
+          fs.readFileSync(instructionFile, "utf8"),
+          entry.name,
+        );
+        byName.set(metadata.name, {
+          metadata,
+          directory: path.join(directory, entry.name),
+          instructionFile,
+        });
+      } catch {
+        /* invalid skills are unavailable */
+      }
     }
   }
   return { skills: [...byName.values()], byName };

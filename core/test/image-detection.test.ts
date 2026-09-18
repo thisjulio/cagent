@@ -1,6 +1,14 @@
 import { describe, test, expect } from "bun:test";
-import { detectImagePaths, isImagePath } from "../src/controller/image-detection";
-import { filterExistingImagePaths, processImage, detectMimeType, validateImagePath } from "../src/controller/image-processor";
+import {
+  detectImagePaths,
+  isImagePath,
+} from "../src/controller/image-detection";
+import {
+  filterExistingImagePaths,
+  processImage,
+  detectMimeType,
+  validateImagePath,
+} from "../src/controller/image-processor";
 import { buildImageContent } from "../src/controller/submit-image";
 import { writeFileSync, mkdtempSync, rmSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -11,7 +19,12 @@ import { Controller, type ControllerDeps } from "../src/controller/controller";
 
 function controllerDeps(sessionDir: string): ControllerDeps {
   return {
-    config: { plugins: [], allowlist: [], model: "openai/m1", permissions: false },
+    config: {
+      plugins: [],
+      allowlist: [],
+      model: "openai/m1",
+      permissions: false,
+    },
     registry: new Registry(),
     bus: new EventBus(),
     adapter: {
@@ -83,13 +96,16 @@ describe("image-processor", () => {
     const tmpDir = mkdtempSync(join(tmpdir(), "cagent-test-"));
     const imagePath = join(tmpDir, "test.png");
     // Minimal 1x1 PNG
-    const pngBytes = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60E6KwAAAABJRU5ErkJggg==", "base64");
+    const pngBytes = Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60E6KwAAAABJRU5ErkJggg==",
+      "base64",
+    );
     writeFileSync(imagePath, pngBytes);
-    
+
     const result = processImage(imagePath);
     expect(result.mimeType).toBe("image/png");
     expect(result.dataUrl).toContain("data:image/png;base64,");
-    
+
     rmSync(tmpDir, { recursive: true });
   });
 
@@ -98,7 +114,9 @@ describe("image-processor", () => {
     const existingPath = join(tmpDir, "existing.png");
     writeFileSync(existingPath, "image");
 
-    expect(filterExistingImagePaths([existingPath, join(tmpDir, "missing.png")])).toEqual([existingPath]);
+    expect(
+      filterExistingImagePaths([existingPath, join(tmpDir, "missing.png")]),
+    ).toEqual([existingPath]);
 
     rmSync(tmpDir, { recursive: true });
   });
@@ -119,11 +137,17 @@ describe("image-processor", () => {
     const sessionDir = mkdtempSync(join(tmpdir(), "cagent-test-"));
     const controller = new Controller(controllerDeps(sessionDir));
 
-    await expect(controller.submit("analise ./missing-image.png")).resolves.toBeUndefined();
+    await expect(
+      controller.submit("analise ./missing-image.png"),
+    ).resolves.toBeUndefined();
 
     expect(controller.state.notice).toBe("");
     expect(controller.state.busy).toBe(false);
-    expect(controller.messages.some((message) => message.content === "analise ./missing-image.png")).toBe(true);
+    expect(
+      controller.messages.some(
+        (message) => message.content === "analise ./missing-image.png",
+      ),
+    ).toBe(true);
     expect(controller.state.chat).toHaveLength(2);
 
     rmSync(sessionDir, { recursive: true });
@@ -167,7 +191,10 @@ describe("buildImageContent", () => {
   test("builds content parts with images", () => {
     const tmpDir = mkdtempSync(join(tmpdir(), "cagent-test-"));
     const imgPath = join(tmpDir, "test.png");
-    const pngBytes = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60E6KwAAAABJRU5ErkJggg==", "base64");
+    const pngBytes = Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60E6KwAAAABJRU5ErkJggg==",
+      "base64",
+    );
     writeFileSync(imgPath, pngBytes);
     const result = buildImageContent(`look at ${imgPath}`);
     expect(result).not.toBeNull();
@@ -179,4 +206,3 @@ describe("buildImageContent", () => {
     rmSync(tmpDir, { recursive: true });
   });
 });
-

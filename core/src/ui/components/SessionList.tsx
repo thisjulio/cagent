@@ -2,9 +2,22 @@ import type { UIState } from "../../controller/state";
 
 type SessionInfo = NonNullable<UIState["sessionList"]>[number];
 
-export function SessionList({ list, onSelect }: { list: SessionInfo[]; onSelect: (id: string) => void }) {
+export function SessionList({
+  list,
+  onSelect,
+}: {
+  list: SessionInfo[];
+  onSelect: (id: string) => void;
+}) {
   return (
-    <box flexDirection="column" flexShrink={0} border borderStyle="rounded" borderColor="#d97757" paddingX={1}>
+    <box
+      flexDirection="column"
+      flexShrink={0}
+      border
+      borderStyle="rounded"
+      borderColor="#d97757"
+      paddingX={1}
+    >
       <text fg="#d97757"> Resume session </text>
       <text fg="#999999">Select a conversation to restore</text>
       <select
@@ -15,9 +28,11 @@ export function SessionList({ list, onSelect }: { list: SessionInfo[]; onSelect:
           description: "",
           value: s.id,
         }))}
-        onSelect={(_, option) => { if (option?.value) onSelect(String(option.value)); }}
+        onSelect={(_, option) => {
+          if (option?.value) onSelect(String(option.value));
+        }}
       />
-      <text fg="#666666">↑↓ navigate  Enter resume  Esc cancel</text>
+      <text fg="#666666">↑↓ navigate Enter resume Esc cancel</text>
     </box>
   );
 }

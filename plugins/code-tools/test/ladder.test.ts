@@ -19,14 +19,22 @@ describe("matching ladder", () => {
   });
 
   it("fuzzy: matches above the threshold", () => {
-    const m = findBlock(["a = 1", "b = 2", "c = 3", "d = 4"], "a = 1\nb = 99\nc = 3", 0.5);
+    const m = findBlock(
+      ["a = 1", "b = 2", "c = 3", "d = 4"],
+      "a = 1\nb = 99\nc = 3",
+      0.5,
+    );
     expect(m).not.toBe("ambiguous");
     expect(m && m.mode).toBe("fuzzy");
     expect(m && m.start).toBe(0);
   });
 
   it("fuzzy: does not match below the threshold", () => {
-    const m = findBlock(["a = 1", "b = 2", "c = 3", "d = 4"], "x = 0\ny = 0", 0.9);
+    const m = findBlock(
+      ["a = 1", "b = 2", "c = 3", "d = 4"],
+      "x = 0\ny = 0",
+      0.9,
+    );
     expect(m).toBeNull();
   });
 

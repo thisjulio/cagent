@@ -9,8 +9,12 @@ export function fuzzy(models: string[], q: string): string[] {
   });
 }
 
-export function filterModels(entries: { route: string; models: string[] }[], query: string): string[] {
+export function filterModels(
+  entries: { route: string; models: string[] }[],
+  query: string,
+): string[] {
   const routes: string[] = [];
-  for (const e of entries) for (const m of e.models) routes.push(`${e.route}/${m}`);
+  for (const e of entries)
+    for (const m of e.models) routes.push(`${e.route}/${m}`);
   return fuzzy(routes, query);
 }

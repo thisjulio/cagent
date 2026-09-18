@@ -1,18 +1,41 @@
-import { toChatMessages, type LlmCallOptions, type LlmChunk, type Plugin, type ProviderAdapter, type ToolDefinition } from "@cagent/sdk";
+import {
+  toChatMessages,
+  type LlmCallOptions,
+  type LlmChunk,
+  type Plugin,
+  type ProviderAdapter,
+  type ToolDefinition,
+} from "@cagent/sdk";
 import { addAgentPrompt } from "./agent-prompt";
-import { baseUrl, checkedJson, contextSize, headers, modelKey, toolPayload, validToolArguments, type LlamaConfig } from "./protocol";
+import {
+  baseUrl,
+  checkedJson,
+  contextSize,
+  headers,
+  modelKey,
+  toolPayload,
+  validToolArguments,
+  type LlamaConfig,
+} from "./protocol";
 import { LLAMA_TOOL_OVERRIDES } from "./tools";
 
-async function* streamChatCompletions(request: LlmCallOptions, config: LlamaConfig): AsyncGenerator<LlmChunk> {
+async function* streamChatCompletions(
+  request: LlmCallOptions,
+  config: LlamaConfig,
+): AsyncGenerator<LlmChunk> {
   const root = baseUrl(config);
-  const fetchOptions = config.timeout_ms ? { signal: AbortSignal.timeout(config.timeout_ms) } : {};
+  const fetchOptions = config.timeout_ms
+    ? { signal: AbortSignal.timeout(config.timeout_ms) }
+    : {};
   const tools = toolPayload(request);
   const body = {
     model: request.model,
     messages: toChatMessages(request.messages),
     stream: true,
     stream_options: { include_usage: true },
-    ...(request.variant ? { chat_template_kwargs: { reasoning_effort: request.variant } } : {}),
+    ...(request.variant
+      ? { chat_template_kwargs: { reasoning_effort: request.variant } }
+      : {}),
     ...(tools ? { tools } : {}),
   };
   const response = await fetch(`${root}/v1/chat/completions`, {
@@ -23,14 +46,19 @@ async function* streamChatCompletions(request: LlmCallOptions, config: LlamaConf
   });
   if (!response.ok) {
     const error = await response.text();
-    throw new Error(`llama-server respondeu ${response.status}: ${error.slice(0, 500)}`);
+    throw new Error(
+      `llama-server respondeu ${response.status}: ${error.slice(0, 500)}`,
+    );
   }
   if (!response.body) throw new Error("llama-server did not return a stream");
 
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
-  const calls = new Map<number, { id: string; name: string; arguments: string }>();
+  const calls = new Map<
+    number,
+    { id: string; name: string; arguments: string }
+  >();
   const consume = async function* (text: string): AsyncGenerator<LlmChunk> {
     for (const block of text.split(/\n\n/)) {
       const line = block.split("\n").find((item) => item.startsWith("data:"));
@@ -45,7 +73,8 @@ async function* streamChatCompletions(request: LlmCallOptions, config: LlamaConf
       }
       const choice = json.choices?.[0];
       const delta = choice?.delta ?? {};
-      if (typeof delta.content === "string") yield { type: "text", text: delta.content };
+      if (typeof delta.content === "string")
+        yield { type: "text", text: delta.content };
       // ponytail: field varies by llama-server version (reasoning_content | reasoning).
       const reasoning =
         typeof delta.reasoning_content === "string"
@@ -56,34 +85,44 @@ async function* streamChatCompletions(request: LlmCallOptions, config: LlamaConf
       if (reasoning !== undefined) yield { type: "reasoning", text: reasoning };
       for (const call of delta.tool_calls ?? []) {
         const index = Number(call.index ?? 0);
-        const current = calls.get(index) ?? { id: call.id ?? `call_${index}`, name: "", arguments: "" };
+        const current = calls.get(index) ?? {
+          id: call.id ?? `call_${index}`,
+          name: "",
+          arguments: "",
+        };
         if (call.id) current.id = call.id;
         if (call.function?.name) current.name += call.function.name;
-        if (call.function?.arguments) current.arguments += call.function.arguments;
+        if (call.function?.arguments)
+          current.arguments += call.function.arguments;
         calls.set(index, current);
       }
-	      const usage = json.usage;
-	      const inputTokens =
-	        typeof usage?.prompt_tokens === "number"
-	          ? usage.prompt_tokens
-	          : typeof usage?.input_tokens === "number"
-	            ? usage.input_tokens
-	            : undefined;
-	      const outputTokens =
-	        typeof usage?.completion_tokens === "number"
-	          ? usage.completion_tokens
-	          : typeof usage?.output_tokens === "number"
-	            ? usage.output_tokens
-	            : undefined;
-	      if (choice?.finish_reason || inputTokens !== undefined) {
-	        yield {
-	          type: "finish",
-	          finish_reason: String(choice?.finish_reason ?? "stop"),
-	          ...(inputTokens !== undefined && outputTokens !== undefined
-	            ? { usage: { input_tokens: inputTokens, output_tokens: outputTokens } }
-	            : {}),
-	        };
-	      }
+      const usage = json.usage;
+      const inputTokens =
+        typeof usage?.prompt_tokens === "number"
+          ? usage.prompt_tokens
+          : typeof usage?.input_tokens === "number"
+            ? usage.input_tokens
+            : undefined;
+      const outputTokens =
+        typeof usage?.completion_tokens === "number"
+          ? usage.completion_tokens
+          : typeof usage?.output_tokens === "number"
+            ? usage.output_tokens
+            : undefined;
+      if (choice?.finish_reason || inputTokens !== undefined) {
+        yield {
+          type: "finish",
+          finish_reason: String(choice?.finish_reason ?? "stop"),
+          ...(inputTokens !== undefined && outputTokens !== undefined
+            ? {
+                usage: {
+                  input_tokens: inputTokens,
+                  output_tokens: outputTokens,
+                },
+              }
+            : {}),
+        };
+      }
     }
   };
   for (;;) {
@@ -97,7 +136,13 @@ async function* streamChatCompletions(request: LlmCallOptions, config: LlamaConf
   buffer += decoder.decode();
   for await (const chunk of consume(buffer)) yield chunk;
   for (const call of calls.values()) {
-    yield { type: "tool-call", tool_call: { ...call, arguments: validToolArguments(call.arguments || "{}") } };
+    yield {
+      type: "tool-call",
+      tool_call: {
+        ...call,
+        arguments: validToolArguments(call.arguments || "{}"),
+      },
+    };
   }
 }
 
@@ -108,13 +153,24 @@ export function createAdapter(config: LlamaConfig = {}): ProviderAdapter {
 
   return {
     estimate_tokens(_model: string, messages, tools: ToolDefinition[] = []) {
-      const prepared = config.inject_agent_prompt === false
-        ? messages
-        : addAgentPrompt(messages, config.agent_prompt);
-      const content = prepared.reduce((total, message) =>
-        total + message.content.length + (message.tool_calls ? JSON.stringify(message.tool_calls).length : 0), 0);
+      const prepared =
+        config.inject_agent_prompt === false
+          ? messages
+          : addAgentPrompt(messages, config.agent_prompt);
+      const content = prepared.reduce(
+        (total, message) =>
+          total +
+          message.content.length +
+          (message.tool_calls ? JSON.stringify(message.tool_calls).length : 0),
+        0,
+      );
       const toolSchema = tools.length
-        ? JSON.stringify(tools.map((tool) => toolPayload({ model: "", messages: [], tools: [tool] })?.[0])).length
+        ? JSON.stringify(
+            tools.map(
+              (tool) =>
+                toolPayload({ model: "", messages: [], tools: [tool] })?.[0],
+            ),
+          ).length
         : 0;
       return Math.ceil((content + toolSchema) / 4);
     },
@@ -122,19 +178,27 @@ export function createAdapter(config: LlamaConfig = {}): ProviderAdapter {
     async context_window(): Promise<number | undefined> {
       const response = await fetch(`${baseUrl(config)}/props`, {
         headers: headers(config),
-        ...(config.timeout_ms ? { signal: AbortSignal.timeout(config.timeout_ms) } : {}),
+        ...(config.timeout_ms
+          ? { signal: AbortSignal.timeout(config.timeout_ms) }
+          : {}),
       });
       return contextSize(await checkedJson(response));
     },
     async list_models(): Promise<string[]> {
       const response = await fetch(`${baseUrl(config)}/v1/models`, {
         headers: headers(config),
-        ...(config.timeout_ms ? { signal: AbortSignal.timeout(config.timeout_ms) } : {}),
+        ...(config.timeout_ms
+          ? { signal: AbortSignal.timeout(config.timeout_ms) }
+          : {}),
       });
       const json = await checkedJson(response);
       const data = Array.isArray(json.data) ? json.data : [];
       const ids = data
-        .map((item) => (item && typeof item === "object" ? (item as { id?: unknown }).id : undefined))
+        .map((item) =>
+          item && typeof item === "object"
+            ? (item as { id?: unknown }).id
+            : undefined,
+        )
         .filter((id): id is string => typeof id === "string");
       const keys: string[] = [];
       for (const id of ids) {
@@ -150,7 +214,11 @@ export function createAdapter(config: LlamaConfig = {}): ProviderAdapter {
         config.inject_agent_prompt === false
           ? options.messages
           : addAgentPrompt(options.messages, config.agent_prompt);
-      return { ...options, model: modelIds.get(options.model) ?? options.model, messages };
+      return {
+        ...options,
+        model: modelIds.get(options.model) ?? options.model,
+        messages,
+      };
     },
 
     async *stream(request: LlmCallOptions): AsyncGenerator<LlmChunk> {

@@ -28,7 +28,11 @@ export class Session {
   }
 
   appendTasks(tasks: unknown[]): void {
-    this.append({ ts: Date.now(), type: "meta", payload: { kind: "tasks", tasks } });
+    this.append({
+      ts: Date.now(),
+      type: "meta",
+      payload: { kind: "tasks", tasks },
+    });
   }
 
   append(rec: SessionRecord): void {
@@ -52,17 +56,29 @@ export class Session {
       }
       if (!r.turnId) r.turnId = currentTurn ?? `legacy-${turnSeq}`;
     }
-    const compacted = records.findLastIndex((r) => r.type === "meta" && r.payload.kind === "compacted");
-    const effective = compacted === -1
-      ? records
-      : [...records.slice(0, compacted).filter((r) => r.type === "meta" && r.payload.kind === "title"), ...records.slice(compacted)];
+    const compacted = records.findLastIndex(
+      (r) => r.type === "meta" && r.payload.kind === "compacted",
+    );
+    const effective =
+      compacted === -1
+        ? records
+        : [
+            ...records
+              .slice(0, compacted)
+              .filter((r) => r.type === "meta" && r.payload.kind === "title"),
+            ...records.slice(compacted),
+          ];
     const messages: Message[] = [];
     for (const r of effective) {
       const p = r.payload;
       if (r.type === "meta" && p.kind === "skill-activated") {
-        if (p.format !== "tool-v1") messages.push({ role: "system", content: skillMessage(p) });
+        if (p.format !== "tool-v1")
+          messages.push({ role: "system", content: skillMessage(p) });
       } else if (r.type === "meta" && p.kind === "compacted") {
-        messages.push({ role: "user", content: `[previous conversation summary]\n${String(p.summary ?? "")}` });
+        messages.push({
+          role: "user",
+          content: `[previous conversation summary]\n${String(p.summary ?? "")}`,
+        });
       } else if (r.type === "user") {
         messages.push({ role: "user", content: String(p.content ?? "") });
       } else if (r.type === "assistant") {
@@ -72,7 +88,11 @@ export class Session {
           ...(p.tool_calls ? { tool_calls: p.tool_calls } : {}),
         });
       } else if (r.type === "tool") {
-        messages.push({ role: "tool", tool_call_id: String(p.tool_call_id ?? ""), content: String(p.content ?? "") });
+        messages.push({
+          role: "tool",
+          tool_call_id: String(p.tool_call_id ?? ""),
+          content: String(p.content ?? ""),
+        });
       }
     }
     return { records: effective, messages };
@@ -87,19 +107,29 @@ export class Session {
       .map((f) => {
         const file = path.join(base, f);
         const stats = fs.statSync(file);
-        const lines = fs.readFileSync(file, "utf8").split("\n").filter(Boolean).slice(0, 100);
+        const lines = fs
+          .readFileSync(file, "utf8")
+          .split("\n")
+          .filter(Boolean)
+          .slice(0, 100);
         let firstUser = "";
         let title = "";
         for (const l of lines) {
           try {
             const r = JSON.parse(l) as SessionRecord;
-            if (r.type === "meta" && r.payload.kind === "title" && !title) title = String(r.payload.title ?? "");
-            else if (r.type === "user" && !firstUser) firstUser = String(r.payload.content ?? "");
+            if (r.type === "meta" && r.payload.kind === "title" && !title)
+              title = String(r.payload.title ?? "");
+            else if (r.type === "user" && !firstUser)
+              firstUser = String(r.payload.content ?? "");
           } catch {
             // Ignore invalid lines.
           }
         }
-        return { id: f.slice(0, -6), updated: stats.mtime.toISOString(), title: (title || firstUser || "(empty)").slice(0, 60) };
+        return {
+          id: f.slice(0, -6),
+          updated: stats.mtime.toISOString(),
+          title: (title || firstUser || "(empty)").slice(0, 60),
+        };
       })
       .sort((a, b) => b.updated.localeCompare(a.updated));
   }
@@ -108,12 +138,15 @@ export class Session {
     const base = dir ?? path.join(os.homedir(), ".cagent", "sessions");
     if (!fs.existsSync(base)) return null;
     let latest: { ts: number; content: string } | null = null;
-    for (const file of fs.readdirSync(base).filter((name) => name.endsWith(".jsonl"))) {
+    for (const file of fs
+      .readdirSync(base)
+      .filter((name) => name.endsWith(".jsonl"))) {
       const records = readRecords(path.join(base, file));
       for (const record of records) {
         if (record.type !== "user") continue;
         const content = String(record.payload.content ?? "");
-        if (content && (!latest || record.ts >= latest.ts)) latest = { ts: record.ts, content };
+        if (content && (!latest || record.ts >= latest.ts))
+          latest = { ts: record.ts, content };
       }
     }
     return latest?.content ?? null;
@@ -122,7 +155,8 @@ export class Session {
 
 function readRecords(file: string): SessionRecord[] {
   try {
-    return fs.readFileSync(file, "utf8")
+    return fs
+      .readFileSync(file, "utf8")
       .split("\n")
       .filter(Boolean)
       .map((line) => JSON.parse(line) as SessionRecord);
@@ -155,7 +189,10 @@ function skillMessage(payload: Record<string, unknown>): string {
 export function estimateTokens(messages: Message[]): number {
   return Math.ceil(
     messages.reduce(
-      (n, m) => n + contentCharCount(m.content) + (m.tool_calls ? JSON.stringify(m.tool_calls).length : 0),
+      (n, m) =>
+        n +
+        contentCharCount(m.content) +
+        (m.tool_calls ? JSON.stringify(m.tool_calls).length : 0),
       0,
     ) / 4,
   );
@@ -171,13 +208,17 @@ function contentCharCount(content: Message["content"]): number {
 }
 
 export function serializeMessages(messages: Message[]): string {
-  return messages.map((m) => `${m.role}: ${serializeContent(m.content)}`).join("\n");
+  return messages
+    .map((m) => `${m.role}: ${serializeContent(m.content)}`)
+    .join("\n");
 }
 
 function serializeContent(content: Message["content"]): string {
   if (typeof content === "string") return content;
-  return content.map((part) => {
-    if (part.type === "text") return part.text;
-    return "[image]";
-  }).join("\n");
+  return content
+    .map((part) => {
+      if (part.type === "text") return part.text;
+      return "[image]";
+    })
+    .join("\n");
 }

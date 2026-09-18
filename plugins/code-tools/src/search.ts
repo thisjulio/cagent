@@ -11,30 +11,56 @@ import { root } from "./state";
 const MAX_MATCHES = 200;
 const RG_BIN = "/usr/bin/rg";
 
-async function rgSearch(pattern: string, abs: string, max: number): Promise<string | null> {
+async function rgSearch(
+  pattern: string,
+  abs: string,
+  max: number,
+): Promise<string | null> {
   const ROOT = root();
-  const r = await runCmd(RG_BIN, ["-n", "--color=never", pattern, abs], { cwd: ROOT, timeoutMs: 30_000 });
+  const r = await runCmd(RG_BIN, ["-n", "--color=never", pattern, abs], {
+    cwd: ROOT,
+    timeoutMs: 30_000,
+  });
   if (r.code !== 0 && r.code !== 1) return null;
   const lines = r.stdout.split("\n").filter((l) => l.length > 0);
   return lines.slice(0, max).join("\n") || "no results";
 }
 
 function evidenceFromOutput(output: string) {
-  return output.split("\n").map((line) => {
-    const match = line.match(/^(.+?):(\d+):/);
-    return match ? { path: match[1], line: Number(match[2]), kind: "code" as const } : undefined;
-  }).filter((item): item is { path: string; line: number; kind: "code" } => Boolean(item));
+  return output
+    .split("\n")
+    .map((line) => {
+      const match = line.match(/^(.+?):(\d+):/);
+      return match
+        ? { path: match[1], line: Number(match[2]), kind: "code" as const }
+        : undefined;
+    })
+    .filter((item): item is { path: string; line: number; kind: "code" } =>
+      Boolean(item),
+    );
 }
 
 // ponytail: JS fallback ignores .gitignore negations; rg is the default path.
-async function jsSearch(pattern: string, abs: string, max: number): Promise<string> {
+async function jsSearch(
+  pattern: string,
+  abs: string,
+  max: number,
+): Promise<string> {
   const ROOT = root();
   const re = new RegExp(pattern, "i");
   const relative = path.relative(ROOT, abs) || ".";
   const stat = fs.statSync(abs);
-  const glob = stat.isDirectory() ? (relative === "." ? "**/*" : `${relative}/**/*`) : relative;
+  const glob = stat.isDirectory()
+    ? relative === "."
+      ? "**/*"
+      : `${relative}/**/*`
+    : relative;
   const files = stat.isDirectory()
-    ? fg.sync(glob, { cwd: ROOT, ignore: gitignorePatterns(ROOT), onlyFiles: true })
+    ? fg.sync(glob, {
+        cwd: ROOT,
+        ignore: gitignorePatterns(ROOT),
+        onlyFiles: true,
+      })
     : [relative];
   const matches: string[] = [];
   for (const file of files) {
@@ -64,21 +90,37 @@ export function searchTool(ctx: PluginContext) {
       type: "object",
       properties: {
         pattern: { type: "string", description: "Regex (case-insensitive)" },
-        target: { type: "string", description: "File or directory (default: workspace)" },
-        max_matches: { type: "number", description: `Max matches (default ${MAX_MATCHES})` },
+        target: {
+          type: "string",
+          description: "File or directory (default: workspace)",
+        },
+        max_matches: {
+          type: "number",
+          description: `Max matches (default ${MAX_MATCHES})`,
+        },
       },
       required: ["pattern"],
     },
     async (args: ToolArgs) => {
       const pattern = String(args.pattern ?? "");
-      if (!pattern) return { output: errorText("E_PARSE", "empty pattern"), isError: true };
+      if (!pattern)
+        return { output: errorText("E_PARSE", "empty pattern"), isError: true };
       const target = String(args.target ?? ".");
-      const max = Math.min(MAX_MATCHES, Math.max(1, Math.trunc(Number(args.max_matches ?? MAX_MATCHES))));
+      const max = Math.min(
+        MAX_MATCHES,
+        Math.max(1, Math.trunc(Number(args.max_matches ?? MAX_MATCHES))),
+      );
       let abs: string;
       try {
         abs = guardPath(target);
       } catch (e) {
-        return { output: errorText("E_PATH", `${target}: ${e instanceof Error ? e.message : String(e)}`), isError: true };
+        return {
+          output: errorText(
+            "E_PATH",
+            `${target}: ${e instanceof Error ? e.message : String(e)}`,
+          ),
+          isError: true,
+        };
       }
       if (fs.existsSync(RG_BIN)) {
         const out = await rgSearch(pattern, abs, max);
@@ -88,7 +130,13 @@ export function searchTool(ctx: PluginContext) {
         const output = await jsSearch(pattern, abs, max);
         return { output, evidence: evidenceFromOutput(output) };
       } catch (e) {
-        return { output: errorText("E_PARSE", `${target}: ${e instanceof Error ? e.message : String(e)}`), isError: true };
+        return {
+          output: errorText(
+            "E_PARSE",
+            `${target}: ${e instanceof Error ? e.message : String(e)}`,
+          ),
+          isError: true,
+        };
       }
     },
   );

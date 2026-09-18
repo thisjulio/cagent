@@ -27,32 +27,62 @@ const duration = (value: string): number => {
   const match = /^(\d+)(ms|s|m|h)?$/.exec(value);
   if (!match) throw new Error(`invalid duration: ${value}`);
   const n = Number(match[1]);
-  return n * ({ ms: 1, s: 1_000, m: 60_000, h: 3_600_000 }[match[2] ?? "ms"] ?? 1);
+  return (
+    n * ({ ms: 1, s: 1_000, m: 60_000, h: 3_600_000 }[match[2] ?? "ms"] ?? 1)
+  );
 };
 
 export function parseCliArgs(args: string[], stdin = ""): CliOptions {
   const options: CliOptions = {
-    prompt: "", files: [], directories: [], output: "human", permissionMode: "ask",
-    yes: false, interactive: false, nonInteractive: false, newSession: true,
-    maxTurns: 20, maxToolCalls: 50, timeoutMs: 600_000, help: false, version: false,
+    prompt: "",
+    files: [],
+    directories: [],
+    output: "human",
+    permissionMode: "ask",
+    yes: false,
+    interactive: false,
+    nonInteractive: false,
+    newSession: true,
+    maxTurns: 20,
+    maxToolCalls: 50,
+    timeoutMs: 600_000,
+    help: false,
+    version: false,
   };
   const positional: string[] = [];
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
-    const next = () => args[++i] ?? (() => { throw new Error(`missing value for ${arg}`); })();
+    const next = () =>
+      args[++i] ??
+      (() => {
+        throw new Error(`missing value for ${arg}`);
+      })();
     if (arg === "--help" || arg === "-h") options.help = true;
     else if (arg === "--version") options.version = true;
     else if (arg === "--interactive") options.interactive = true;
     else if (arg === "--non-interactive") options.nonInteractive = true;
-    else if (arg === "--yes") { options.yes = true; options.permissionMode = "auto"; }
-    else if (arg === "--new-session") options.newSession = true;
-    else if (arg === "--session") { options.session = next(); options.newSession = false; }
-    else if (arg === "--prompt" || arg === "-p") positional.push(next());
+    else if (arg === "--yes") {
+      options.yes = true;
+      options.permissionMode = "auto";
+    } else if (arg === "--new-session") options.newSession = true;
+    else if (arg === "--session") {
+      options.session = next();
+      options.newSession = false;
+    } else if (arg === "--prompt" || arg === "-p") positional.push(next());
     else if (arg === "--file" || arg === "-f") options.files.push(next());
-    else if (arg === "--directory" || arg === "-d") options.directories.push(next());
-    else if (arg === "--output") { const value = next(); if (value !== "human" && value !== "jsonl") throw new Error("--output must be human or jsonl"); options.output = value; }
-    else if (arg === "--permission-mode") { const value = next() as PermissionMode; if (!["ask", "auto", "read-only"].includes(value)) throw new Error("invalid permission mode"); options.permissionMode = value; }
-    else if (arg === "--max-turns") options.maxTurns = Number(next());
+    else if (arg === "--directory" || arg === "-d")
+      options.directories.push(next());
+    else if (arg === "--output") {
+      const value = next();
+      if (value !== "human" && value !== "jsonl")
+        throw new Error("--output must be human or jsonl");
+      options.output = value;
+    } else if (arg === "--permission-mode") {
+      const value = next() as PermissionMode;
+      if (!["ask", "auto", "read-only"].includes(value))
+        throw new Error("invalid permission mode");
+      options.permissionMode = value;
+    } else if (arg === "--max-turns") options.maxTurns = Number(next());
     else if (arg === "--max-tool-calls") options.maxToolCalls = Number(next());
     else if (arg === "--timeout") options.timeoutMs = duration(next());
     else if (arg === "--model") options.model = next();
@@ -63,16 +93,27 @@ export function parseCliArgs(args: string[], stdin = ""): CliOptions {
         throw new Error("invalid log level");
       }
       options.logLevel = value;
-    }
-    else if (arg === "--telemetry") options.telemetry = true;
+    } else if (arg === "--telemetry") options.telemetry = true;
     else if (arg === "--no-telemetry") options.telemetry = false;
     else if (arg === "upgrade") positional.push(arg);
     else if (arg.startsWith("-")) throw new Error(`unknown option: ${arg}`);
     else positional.push(arg);
   }
-  if (options.interactive && (options.nonInteractive || positional.length || stdin.trim())) throw new Error("--interactive cannot be combined with a prompt or --non-interactive");
-  if (options.session && options.newSession) throw new Error("--session cannot be combined with --new-session");
-  if (!Number.isInteger(options.maxTurns) || !Number.isInteger(options.maxToolCalls) || options.maxTurns < 1 || options.maxToolCalls < 1) {
+  if (
+    options.interactive &&
+    (options.nonInteractive || positional.length || stdin.trim())
+  )
+    throw new Error(
+      "--interactive cannot be combined with a prompt or --non-interactive",
+    );
+  if (options.session && options.newSession)
+    throw new Error("--session cannot be combined with --new-session");
+  if (
+    !Number.isInteger(options.maxTurns) ||
+    !Number.isInteger(options.maxToolCalls) ||
+    options.maxTurns < 1 ||
+    options.maxToolCalls < 1
+  ) {
     throw new Error("execution limits must be positive integers");
   }
   options.prompt = [stdin.trim(), ...positional].filter(Boolean).join("\n\n");

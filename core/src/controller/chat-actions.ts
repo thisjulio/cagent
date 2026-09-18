@@ -1,9 +1,16 @@
 import type { UIState } from "./state";
 
-export function toggleToolExpand(state: UIState, index: number | undefined, bump: () => void): void {
+export function toggleToolExpand(
+  state: UIState,
+  index: number | undefined,
+  bump: () => void,
+): void {
   if (index !== undefined) {
     if (state.chat[index]?.kind !== "tool") return;
-    state.chat[index] = { ...state.chat[index], expanded: !state.chat[index].expanded };
+    state.chat[index] = {
+      ...state.chat[index],
+      expanded: !state.chat[index].expanded,
+    };
     bump();
     return;
   }

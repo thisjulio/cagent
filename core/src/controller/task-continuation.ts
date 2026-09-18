@@ -8,12 +8,24 @@ export type TaskContinuationInput = {
 };
 
 export function taskSignature(tasks: Task[]): string {
-  return tasks.map((task) => `${task.id}:${task.status}:${task.evidence ?? ""}`).join("|");
+  return tasks
+    .map((task) => `${task.id}:${task.status}:${task.evidence ?? ""}`)
+    .join("|");
 }
 
-export function shouldContinueTaskWorkflow(input: TaskContinuationInput): boolean {
-  if (input.interrupted || taskSignature(input.tasks) === input.previousSignature) return false;
-  if (!input.tasks.length || input.tasks.some((task) => task.status === "blocked")) return false;
+export function shouldContinueTaskWorkflow(
+  input: TaskContinuationInput,
+): boolean {
+  if (
+    input.interrupted ||
+    taskSignature(input.tasks) === input.previousSignature
+  )
+    return false;
+  if (
+    !input.tasks.length ||
+    input.tasks.some((task) => task.status === "blocked")
+  )
+    return false;
   if (!input.tasks.some((task) => task.status === "pending")) return false;
   return !input.assistantText.trimEnd().endsWith("?");
 }

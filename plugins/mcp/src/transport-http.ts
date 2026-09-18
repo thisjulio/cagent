@@ -7,7 +7,10 @@ export class HttpTransport implements Transport {
   private abortController: AbortController | null = null;
   private closed = false;
 
-  constructor(private url: string, private headers: Record<string, string>) {}
+  constructor(
+    private url: string,
+    private headers: Record<string, string>,
+  ) {}
 
   async send(message: JsonRpcMessage): Promise<void> {
     const response = await fetch(this.url, {
@@ -20,7 +23,9 @@ export class HttpTransport implements Transport {
     });
 
     if (!response.ok) {
-      throw new Error(`MCP HTTP request failed: ${response.status} ${response.statusText}`);
+      throw new Error(
+        `MCP HTTP request failed: ${response.status} ${response.statusText}`,
+      );
     }
 
     // ponytail: MCP over HTTP returns the response directly, not via SSE stream.

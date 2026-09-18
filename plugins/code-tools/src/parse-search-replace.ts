@@ -3,7 +3,8 @@ export interface Region {
   replace: string | null;
 }
 
-const BLOCK_RE = /<<<\s*SEARCH\s*\n([\s\S]*?)\n\s*>>>(?:\s*<<<\s*REPLACE\s*\n([\s\S]*?)\n\s*>>>)?/g;
+const BLOCK_RE =
+  /<<<\s*SEARCH\s*\n([\s\S]*?)\n\s*>>>(?:\s*<<<\s*REPLACE\s*\n([\s\S]*?)\n\s*>>>)?/g;
 
 export function parseSearchReplace(blocks: string): Region[] {
   const regions: Region[] = [];

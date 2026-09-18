@@ -9,11 +9,13 @@ Respond objectively with concrete findings or results. Do not claim to have perf
 actions you did not perform. Clearly report any limitations, missing context, or
 ambiguities that affect the result.`;
 
-const BUILTIN_SUBAGENTS: SubagentDefinition[] = [{
-  name: "general",
-  description: "Handles general-purpose tasks delegated by the main agent.",
-  instructions: GENERAL_INSTRUCTIONS,
-}];
+const BUILTIN_SUBAGENTS: SubagentDefinition[] = [
+  {
+    name: "general",
+    description: "Handles general-purpose tasks delegated by the main agent.",
+    instructions: GENERAL_INSTRUCTIONS,
+  },
+];
 
 export function addBuiltinSubagents(catalog: SubagentCatalog): SubagentCatalog {
   const agents = [...catalog.agents];

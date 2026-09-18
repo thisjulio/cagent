@@ -11,33 +11,61 @@ function summaryForDisplay(previous: string, chunk: string): string {
   return `${current}${chunk}`.slice(-6000);
 }
 
-function boundedCompactionInput(messages: Controller["messages"], toolLimit: number): Controller["messages"] {
+function boundedCompactionInput(
+  messages: Controller["messages"],
+  toolLimit: number,
+): Controller["messages"] {
   return messages.map((message) => {
-    if (message.role !== "tool" || typeof message.content !== "string" || message.content.length <= toolLimit * 4) return message;
-    return { ...message, content: `${message.content.slice(0, toolLimit * 4)}\n[older tool output pruned]` };
+    if (
+      message.role !== "tool" ||
+      typeof message.content !== "string" ||
+      message.content.length <= toolLimit * 4
+    )
+      return message;
+    return {
+      ...message,
+      content: `${message.content.slice(0, toolLimit * 4)}\n[older tool output pruned]`,
+    };
   });
 }
 
-function removeOrphanedToolOutputs(messages: Controller["messages"]): Controller["messages"] {
+function removeOrphanedToolOutputs(
+  messages: Controller["messages"],
+): Controller["messages"] {
   const firstMessage = messages.findIndex((message) => message.role !== "tool");
   return firstMessage === -1 ? [] : messages.slice(firstMessage);
 }
 
-export async function compact(c: Controller, force = false, instructions?: string): Promise<void> {
+export async function compact(
+  c: Controller,
+  force = false,
+  instructions?: string,
+): Promise<void> {
   const s = c.state;
   const threshold = s.threshold;
-  const reason = force ? (instructions ? "manual_with_instructions" : "manual") : "threshold";
+  const reason = force
+    ? instructions
+      ? "manual_with_instructions"
+      : "manual"
+    : "threshold";
   const estimate = (messages: Controller["messages"]): number =>
     estimateForModel(c.adapter, s.model, messages);
   const est = Math.max(s.tokens ?? 0, estimate(c.messages));
   if (!force && est < threshold) {
-    c.observability?.recordEvent("compaction.skipped", { reason: "below_threshold", tokens: est, threshold });
+    c.observability?.recordEvent("compaction.skipped", {
+      reason: "below_threshold",
+      tokens: est,
+      threshold,
+    });
     s.notice = `no compaction (${est} < ${threshold} tokens)`;
     c.bump();
     return;
   }
   const configuredKeep = c.config.compact_keep_tokens;
-  const keepBudget = Math.min(20_000, Math.max(1_000, configuredKeep ?? Math.floor(c.state.contextWindow * 0.2)));
+  const keepBudget = Math.min(
+    20_000,
+    Math.max(1_000, configuredKeep ?? Math.floor(c.state.contextWindow * 0.2)),
+  );
   let keepStart = c.messages.length;
   let keptTokens = 0;
   while (keepStart > 1 && keptTokens < keepBudget) {
@@ -45,7 +73,10 @@ export async function compact(c: Controller, force = false, instructions?: strin
     keptTokens += estimate(c.messages.slice(keepStart, keepStart + 1));
   }
   if (keepStart <= 1) {
-    c.observability?.recordEvent("compaction.skipped", { reason: "too_few_messages", "message.count": c.messages.length });
+    c.observability?.recordEvent("compaction.skipped", {
+      reason: "too_few_messages",
+      "message.count": c.messages.length,
+    });
     s.notice = "(not enough to compact)";
     c.bump();
     return;
@@ -63,7 +94,11 @@ export async function compact(c: Controller, force = false, instructions?: strin
     "message.count": old.length,
   });
   s.compacting = true;
-  const progress = { kind: "thinking" as const, content: "preparing history", timestamp: Date.now() };
+  const progress = {
+    kind: "thinking" as const,
+    content: "preparing history",
+    timestamp: Date.now(),
+  };
   appendChat(s, progress);
   c.bump();
   // Let OpenTUI paint the progress state before serializing a large history.
@@ -86,7 +121,10 @@ export async function compact(c: Controller, force = false, instructions?: strin
         content:
           "Create a structured handoff for another model. Preserve completed work, current work, files and symbols involved, decisions and why, executed commands and results, constraints, risks, and explicit next steps. Be concise but detailed enough to continue without repeating work. Do not invent facts.",
       },
-      { role: "user", content: `${instructions ? `User focus for this compaction:\n${instructions}\n\n` : ""}${serializeMessages(boundedCompactionInput(old, c.config.compact_prune_tool_tokens ?? 2000))}` },
+      {
+        role: "user",
+        content: `${instructions ? `User focus for this compaction:\n${instructions}\n\n` : ""}${serializeMessages(boundedCompactionInput(old, c.config.compact_prune_tool_tokens ?? 2000))}`,
+      },
     ],
     tools: [],
     onText: (text) => {
@@ -107,9 +145,19 @@ export async function compact(c: Controller, force = false, instructions?: strin
   s.compacting = false;
   progress.content = `compaction complete (${est} -> ${estimate(c.messages)} tokens)`;
   c.messages.length = 1;
-  c.messages.push({ role: "user", content: `[context checkpoint handoff]\n${summary}` }, ...rest);
-  c.session.append({ ts: Date.now(), type: "meta", payload: { kind: "compacted", summary } });
-  appendChat(s, { kind: "meta", content: `compacted: ${est} -> ${estimate(c.messages)} tokens` });
+  c.messages.push(
+    { role: "user", content: `[context checkpoint handoff]\n${summary}` },
+    ...rest,
+  );
+  c.session.append({
+    ts: Date.now(),
+    type: "meta",
+    payload: { kind: "compacted", summary },
+  });
+  appendChat(s, {
+    kind: "meta",
+    content: `compacted: ${est} -> ${estimate(c.messages)} tokens`,
+  });
   s.tokens = estimate(c.messages);
   c.observability?.recordEvent("compaction.completed", {
     "tokens.before": est,

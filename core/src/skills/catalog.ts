@@ -8,6 +8,9 @@ export function renderSkillCatalog(catalog: SkillCatalog): string {
     "",
     ...catalog.skills
       .filter((s) => !s.metadata.disableModelInvocation)
-      .map((s) => `- ${s.metadata.name}: ${s.metadata.description} (directory: ${s.directory})`),
+      .map(
+        (s) =>
+          `- ${s.metadata.name}: ${s.metadata.description} (directory: ${s.directory})`,
+      ),
   ].join("\n");
 }

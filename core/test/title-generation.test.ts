@@ -3,8 +3,12 @@ import { sanitizeTitle } from "../src/controller/sessions";
 
 describe("sanitizeTitle", () => {
   it("removes conversational prefixes", () => {
-    expect(sanitizeTitle("I'll check the git status")).toBe("check the git status");
-    expect(sanitizeTitle("I will commit all changes")).toBe("commit all changes");
+    expect(sanitizeTitle("I'll check the git status")).toBe(
+      "check the git status",
+    );
+    expect(sanitizeTitle("I will commit all changes")).toBe(
+      "commit all changes",
+    );
     expect(sanitizeTitle("Let me debug this")).toBe("debug this");
     expect(sanitizeTitle("Here is the title")).toBe("the title");
     expect(sanitizeTitle("Sure, I'll do that")).toBe("I'll do that");
@@ -18,7 +22,9 @@ describe("sanitizeTitle", () => {
   it("preserves legitimate titles", () => {
     expect(sanitizeTitle("Commit Git Changes")).toBe("Commit Git Changes");
     expect(sanitizeTitle("Debug Login Timeout")).toBe("Debug Login Timeout");
-    expect(sanitizeTitle("Improve Session Titles")).toBe("Improve Session Titles");
+    expect(sanitizeTitle("Improve Session Titles")).toBe(
+      "Improve Session Titles",
+    );
     expect(sanitizeTitle("Fix broken build")).toBe("Fix broken build");
   });
 });

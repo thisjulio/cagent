@@ -28,10 +28,11 @@ export function onKey(c: Controller, key: InputKey, input: string): void {
     if (key.escape) {
       c.observability?.recordEvent("model_picker.cancelled");
       s.modelPicker = null;
-    }
-    else if (input && !/^[1-9]$/.test(input)) {
+    } else if (input && !/^[1-9]$/.test(input)) {
       s.modelPicker.query += input;
-      c.observability?.recordEvent("model_picker.query_changed", { "query.length": s.modelPicker.query.length });
+      c.observability?.recordEvent("model_picker.query_changed", {
+        "query.length": s.modelPicker.query.length,
+      });
     }
     c.bump();
     return;
@@ -53,7 +54,9 @@ export function onKey(c: Controller, key: InputKey, input: string): void {
   }
   if (s.helpOpen) {
     if (key.escape || key.return) {
-      c.observability?.recordEvent("help.closed", { reason: key.escape ? "escape" : "return" });
+      c.observability?.recordEvent("help.closed", {
+        reason: key.escape ? "escape" : "return",
+      });
       s.helpOpen = false;
     }
     c.bump();

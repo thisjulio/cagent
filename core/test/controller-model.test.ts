@@ -8,9 +8,18 @@ import { Session } from "../src/session";
 import { Controller, type ControllerDeps } from "../src/controller/controller";
 import { sanitizeTitle } from "../src/controller/sessions";
 
-function deps(permissions = false, configOverrides: Record<string, unknown> = {}): ControllerDeps {
+function deps(
+  permissions = false,
+  configOverrides: Record<string, unknown> = {},
+): ControllerDeps {
   return {
-    config: { plugins: [], allowlist: [], model: "openai/m1", permissions, ...configOverrides } as ControllerDeps["config"],
+    config: {
+      plugins: [],
+      allowlist: [],
+      model: "openai/m1",
+      permissions,
+      ...configOverrides,
+    } as ControllerDeps["config"],
     registry: new Registry(),
     bus: new EventBus(),
     adapter: {
@@ -22,7 +31,7 @@ function deps(permissions = false, configOverrides: Record<string, unknown> = {}
     },
     model: "openai/m1",
     systemPrompt: "sys",
-  sessionDir: fs.mkdtempSync(path.join(os.tmpdir(), "cagent-ui-")),
+    sessionDir: fs.mkdtempSync(path.join(os.tmpdir(), "cagent-ui-")),
   };
 }
 
@@ -32,7 +41,10 @@ describe("controller model and commands", () => {
     d.adapter.prepare_call = async (request) => request;
     d.registry.registerProvider("r1", d.adapter);
     const c = new Controller(d);
-    c.state.modelPicker = { entries: [{ route: "r1", models: ["a", "b", "ab"] }], query: "" };
+    c.state.modelPicker = {
+      entries: [{ route: "r1", models: ["a", "b", "ab"] }],
+      query: "",
+    };
     c.handleKey({}, "a");
     expect(c.state.modelPicker?.query).toBe("a");
     c.pickModel("r1/a");
@@ -97,7 +109,9 @@ describe("controller model and commands", () => {
   });
 
   it("generates the session title from the first message", async () => {
-    expect(sanitizeTitle("**Plan**: `renew catalog`")).toBe("Plan: renew catalog");
+    expect(sanitizeTitle("**Plan**: `renew catalog`")).toBe(
+      "Plan: renew catalog",
+    );
   });
 
   it("thinking stream becomes a chat item", async () => {

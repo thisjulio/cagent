@@ -8,10 +8,17 @@ function read(file: string): SubagentDefinition {
   const match = text.match(/^---\s*\n([\s\S]*?)\n---\s*(?:\n|$)/);
   if (!match) throw new Error(`invalid Claude agent: ${file}`);
   const data = yaml.load(match[1]) as Record<string, unknown>;
-  if (typeof data?.name !== "string" || typeof data?.description !== "string") throw new Error(`Claude agent requires name and description: ${file}`);
-  return { name: data.name, description: data.description, instructions: text.slice(match[0].length).trim(),
+  if (typeof data?.name !== "string" || typeof data?.description !== "string")
+    throw new Error(`Claude agent requires name and description: ${file}`);
+  return {
+    name: data.name,
+    description: data.description,
+    instructions: text.slice(match[0].length).trim(),
     ...(typeof data.model === "string" ? { model: data.model } : {}),
-    ...(Array.isArray(data.tools) ? { tools: data.tools.filter((v): v is string => typeof v === "string") } : {}) };
+    ...(Array.isArray(data.tools)
+      ? { tools: data.tools.filter((v): v is string => typeof v === "string") }
+      : {}),
+  };
 }
 
 const register: Plugin = (ctx) => {

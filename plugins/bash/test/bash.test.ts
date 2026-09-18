@@ -7,8 +7,12 @@ function setup(): { tool: ToolDefinition; events: string[] } {
   let tool: ToolDefinition | undefined;
   const context = {
     config: {},
-    registerTool: (candidate: ToolDefinition) => { tool = candidate; },
-    emit: (event: string) => { events.push(event); },
+    registerTool: (candidate: ToolDefinition) => {
+      tool = candidate;
+    },
+    emit: (event: string) => {
+      events.push(event);
+    },
     promptSection: () => {},
   } as unknown as PluginContext;
   register(context);

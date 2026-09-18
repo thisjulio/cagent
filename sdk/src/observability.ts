@@ -52,19 +52,29 @@ export class InMemoryObservability implements Observability {
 
   startSpan(name: string, attributes: Attributes = {}): Span {
     const id = crypto.randomUUID();
-    const record: SpanRecord = { id, name, attributes: { ...attributes }, events: [] };
+    const record: SpanRecord = {
+      id,
+      name,
+      attributes: { ...attributes },
+      events: [],
+    };
     const started = performance.now();
     appendBounded(this.spans, record);
     return {
       id,
-      setAttribute: (key, value) => { record.attributes[key] = value; },
+      setAttribute: (key, value) => {
+        record.attributes[key] = value;
+      },
       addEvent: (eventName, eventAttributes) => {
         record.events.push({ name: eventName, attributes: eventAttributes });
       },
       recordException: (error) => {
-        record.exception = error instanceof Error ? error.message : String(error);
+        record.exception =
+          error instanceof Error ? error.message : String(error);
       },
-      end: () => { record.durationMs = performance.now() - started; },
+      end: () => {
+        record.durationMs = performance.now() - started;
+      },
     };
   }
 
@@ -79,7 +89,8 @@ export class InMemoryObservability implements Observability {
 
 function appendBounded<T>(records: T[], record: T): void {
   records.push(record);
-  if (records.length > InMemoryObservability.MAX_RECORDS) records.splice(0, records.length - InMemoryObservability.MAX_RECORDS);
+  if (records.length > InMemoryObservability.MAX_RECORDS)
+    records.splice(0, records.length - InMemoryObservability.MAX_RECORDS);
 }
 
 export async function trace<T>(

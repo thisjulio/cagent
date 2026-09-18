@@ -47,12 +47,37 @@ export function InputArea({
   }, [input, inputKey]);
 
   return (
-    <box height={7} flexDirection="column" flexShrink={0} border={["top"]} borderColor="#444444" justifyContent="flex-start" paddingX={1}>
+    <box
+      height={7}
+      flexDirection="column"
+      flexShrink={0}
+      border={["top"]}
+      borderColor="#444444"
+      justifyContent="flex-start"
+      paddingX={1}
+    >
       <box height={1}>
-        {busy ? <ActivitySpinner label={activityLabel ?? (running ? `prompt · running ${running}` : "prompt · processing")} /> : null}
+        {busy ? (
+          <ActivitySpinner
+            label={
+              activityLabel ??
+              (running ? `prompt · running ${running}` : "prompt · processing")
+            }
+          />
+        ) : null}
       </box>
-      <box border borderStyle="rounded" borderColor="#d97757" paddingX={1} width="100%" height={4} flexDirection="row">
-        <text fg="#d97757" width={2} flexShrink={0}>{"> "}</text>
+      <box
+        border
+        borderStyle="rounded"
+        borderColor="#d97757"
+        paddingX={1}
+        width="100%"
+        height={4}
+        flexDirection="row"
+      >
+        <text fg="#d97757" width={2} flexShrink={0}>
+          {"> "}
+        </text>
         <textarea
           ref={textarea}
           initialValue={input}
@@ -79,7 +104,11 @@ export function InputArea({
             // ponytail: intercept up before the textarea's binding handler runs;
             // preventDefault stops move-up in the keypress phase, and the
             // keyrelease move-up is a no-op on a single-line empty field.
-            if (key.name === "up" && textarea.current?.cursorOffset === 0 && onUpArrow) {
+            if (
+              key.name === "up" &&
+              textarea.current?.cursorOffset === 0 &&
+              onUpArrow
+            ) {
               key.preventDefault();
               const recalled = onUpArrow();
               if (recalled !== undefined && textarea.current) {

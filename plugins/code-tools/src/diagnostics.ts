@@ -3,8 +3,13 @@ import path from "node:path";
 import { runCmd } from "./exec";
 
 export async function tscErrors(cwd: string): Promise<string[]> {
-  const r = await runCmd("bun", ["x", "tsc", "--noEmit"], { cwd, timeoutMs: 60_000 });
-  return r.code === 0 ? [] : r.stderr.split("\n").filter((l) => l.includes("error TS"));
+  const r = await runCmd("bun", ["x", "tsc", "--noEmit"], {
+    cwd,
+    timeoutMs: 60_000,
+  });
+  return r.code === 0
+    ? []
+    : r.stderr.split("\n").filter((l) => l.includes("error TS"));
 }
 
 export async function runFormat(cwd: string): Promise<string | undefined> {

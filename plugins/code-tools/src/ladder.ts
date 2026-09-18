@@ -20,7 +20,13 @@ export function levenshtein(a: string, b: string): number {
   for (let i = 1; i <= a.length; i++) {
     const cur = [i];
     for (let j = 1; j <= b.length; j++) {
-      cur.push(Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)));
+      cur.push(
+        Math.min(
+          prev[j] + 1,
+          cur[j - 1] + 1,
+          prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1),
+        ),
+      );
     }
     prev = cur;
   }
@@ -28,17 +34,23 @@ export function levenshtein(a: string, b: string): number {
 }
 
 // ponytail: fuzzy window is O(n·L·M); sufficient for code files, degrades on huge files.
-export function findBlock(lines: string[], search: string, threshold: number): FindResult {
+export function findBlock(
+  lines: string[],
+  search: string,
+  threshold: number,
+): FindResult {
   const sLines = search.split("\n");
   if (!sLines.length) return null;
   const n = lines.length;
   for (let i = 0; i + sLines.length <= n; i++) {
-    if (sLines.every((l, j) => lines[i + j] === l)) return { start: i, count: sLines.length, score: 1, mode: "exact" };
+    if (sLines.every((l, j) => lines[i + j] === l))
+      return { start: i, count: sLines.length, score: 1, mode: "exact" };
   }
   const nLines = lines.map(normalize);
   const ns = sLines.map(normalize);
   for (let i = 0; i + ns.length <= n; i++) {
-    if (ns.every((l, j) => nLines[i + j] === l)) return { start: i, count: ns.length, score: 1, mode: "normalized" };
+    if (ns.every((l, j) => nLines[i + j] === l))
+      return { start: i, count: ns.length, score: 1, mode: "normalized" };
   }
   const target = ns.join("\n");
   let best: Match | null = null;

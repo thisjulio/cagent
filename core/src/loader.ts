@@ -1,6 +1,12 @@
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { noopObservability, trace, type Observability, type Plugin, type PluginContext } from "@cagent/sdk";
+import {
+  noopObservability,
+  trace,
+  type Observability,
+  type Plugin,
+  type PluginContext,
+} from "@cagent/sdk";
 import type { AppConfig } from "./config";
 import { EventBus } from "./events";
 import { Registry } from "./registry";
@@ -35,11 +41,18 @@ export async function loadPlugins(
   for (const p of config.plugins) {
     if (p.enabled === false) continue;
     const source = p.path ?? p.name;
-    const builtin = options.loaders?.[p.name] ?? options.loaders?.[path.basename(source)];
-    const spec = source.startsWith(".") ? pathToFileURL(path.resolve(source)).href : source;
-    const mod = builtin ? undefined : ((await import(spec)) as Record<string, unknown>);
-    const plugin = builtin ?? (mod?.default ?? mod?.register) as Plugin | undefined;
-    if (typeof plugin !== "function") throw new Error(`plugin has no registration function: ${p.name}`);
+    const builtin =
+      options.loaders?.[p.name] ?? options.loaders?.[path.basename(source)];
+    const spec = source.startsWith(".")
+      ? pathToFileURL(path.resolve(source)).href
+      : source;
+    const mod = builtin
+      ? undefined
+      : ((await import(spec)) as Record<string, unknown>);
+    const plugin =
+      builtin ?? ((mod?.default ?? mod?.register) as Plugin | undefined);
+    if (typeof plugin !== "function")
+      throw new Error(`plugin has no registration function: ${p.name}`);
 
     const ctx: PluginContext = {
       name: p.name,
@@ -47,7 +60,16 @@ export async function loadPlugins(
       observability,
       storage: {
         namespace: p.name,
-        path: (...segments) => path.join(path.resolve(process.env.CAGENT_DATA_DIR ?? path.join(process.env.HOME ?? ".", ".cagent"), "plugins", p.name), ...segments),
+        path: (...segments) =>
+          path.join(
+            path.resolve(
+              process.env.CAGENT_DATA_DIR ??
+                path.join(process.env.HOME ?? ".", ".cagent"),
+              "plugins",
+              p.name,
+            ),
+            ...segments,
+          ),
       },
       diagnostics: {
         report: (diagnostic) => {
@@ -56,17 +78,22 @@ export async function loadPlugins(
             "diagnostic.level": diagnostic.level,
             "diagnostic.code": diagnostic.code,
           });
-          if (diagnostic.level === "error") console.error(`[${p.name}] ${diagnostic.code}: ${diagnostic.message}`);
+          if (diagnostic.level === "error")
+            console.error(
+              `[${p.name}] ${diagnostic.code}: ${diagnostic.message}`,
+            );
         },
       },
       registerTool: (tool) => registry.registerTool(tool),
       registerHook: (hook) => registry.registerHook(hook),
-      registerProvider: (route, adapter) => registry.registerProvider(route, adapter),
+      registerProvider: (route, adapter) =>
+        registry.registerProvider(route, adapter),
       registerSubagent: (agent) => registry.registerSubagent(agent),
       emit: (event, payload) => bus.emit(event, payload),
       on: (event, handler) => bus.on(event, handler),
       promptSection: (name, content) => promptSections.set(name, content),
-      registerContextExtension: (extension) => contextExtensions.push(extension),
+      registerContextExtension: (extension) =>
+        contextExtensions.push(extension),
       registerCommandSource: (source) => commandSources.push(source),
       registerSkillSource: (source) => skillSources.push(source),
       registerCommand: (command) => registry.registerCommand(command),
@@ -82,9 +109,17 @@ export async function loadPlugins(
         bus.emit("plugin/activity", { plugin: p.name, content, attributes });
       },
     };
-    await trace(observability, "plugin.load", () => plugin(ctx), { "plugin.name": p.name });
+    await trace(observability, "plugin.load", () => plugin(ctx), {
+      "plugin.name": p.name,
+    });
     contexts.push(ctx);
   }
 
-  return { contexts, promptSections, commandSources, skillSources, contextExtensions };
+  return {
+    contexts,
+    promptSections,
+    commandSources,
+    skillSources,
+    contextExtensions,
+  };
 }

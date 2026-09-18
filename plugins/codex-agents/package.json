@@ -3,5 +3,8 @@
   "version": "0.1.0",
   "type": "module",
   "main": "src/index.ts",
-  "dependencies": { "@cagent/sdk": "workspace:*", "js-yaml": "^4.1.0" }
+  "dependencies": {
+    "@cagent/sdk": "workspace:*",
+    "js-yaml": "^4.1.0"
+  }
 }

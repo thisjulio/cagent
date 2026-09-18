@@ -3,9 +3,14 @@ import type { Controller } from "./controller";
 import { appendChat } from "./chat-buffer";
 import { runToolPipeline } from "../tools";
 
-export async function submitShell(controller: Controller, command: string): Promise<void> {
+export async function submitShell(
+  controller: Controller,
+  command: string,
+): Promise<void> {
   const turnId = crypto.randomUUID();
-  controller.observability?.recordEvent("shell.started", { "command.length": command.length });
+  controller.observability?.recordEvent("shell.started", {
+    "command.length": command.length,
+  });
   const tool = controller.registry.tool("bash");
   if (!tool) {
     controller.state.notice = "bash tool is not available";
@@ -19,12 +24,19 @@ export async function submitShell(controller: Controller, command: string): Prom
   s.busy = true;
   s.turnStartedAt = Date.now();
   controller.resetTurn();
-  controller.session.append({ ts: Date.now(), turnId, type: "user", payload: { content: `$${command}` } });
+  controller.session.append({
+    ts: Date.now(),
+    turnId,
+    type: "user",
+    payload: { content: `$${command}` },
+  });
   controller.messages.push({ role: "user", content: `$${command}` });
   controller.messages.push({
     role: "assistant",
     content: "",
-    tool_calls: [{ id: callId, name: tool.name, arguments: JSON.stringify(args) }],
+    tool_calls: [
+      { id: callId, name: tool.name, arguments: JSON.stringify(args) },
+    ],
   });
   controller.bump();
   try {
@@ -37,24 +49,42 @@ export async function submitShell(controller: Controller, command: string): Prom
       controller.registry.hooks,
       controller.signal,
     );
-    controller.observability?.recordEvent(result.isError ? "shell.failed" : "shell.completed", {
-      "output.bytes": result.output.length,
+    controller.observability?.recordEvent(
+      result.isError ? "shell.failed" : "shell.completed",
+      {
+        "output.bytes": result.output.length,
+      },
+    );
+    controller.messages.push({
+      role: "tool",
+      tool_call_id: callId,
+      content: result.output,
     });
-    controller.messages.push({ role: "tool", tool_call_id: callId, content: result.output });
     controller.session.append({
       ts: Date.now(),
       turnId,
       type: "assistant",
-      payload: { content: "", tool_calls: [{ id: callId, name: tool.name, arguments: JSON.stringify(args) }] },
+      payload: {
+        content: "",
+        tool_calls: [
+          { id: callId, name: tool.name, arguments: JSON.stringify(args) },
+        ],
+      },
     });
     controller.session.append({
       ts: Date.now(),
       turnId,
       type: "tool",
-      payload: { tool_call_id: callId, content: result.output, isError: result.isError, toolName: tool.name },
+      payload: {
+        tool_call_id: callId,
+        content: result.output,
+        isError: result.isError,
+        toolName: tool.name,
+      },
     });
   } finally {
-    if (controller.isInterrupted()) controller.observability?.recordEvent("shell.cancelled");
+    if (controller.isInterrupted())
+      controller.observability?.recordEvent("shell.cancelled");
     s.busy = false;
     s.turnStartedAt = null;
     controller.bump();

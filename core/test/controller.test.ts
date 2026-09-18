@@ -7,9 +7,18 @@ import { Registry } from "../src/registry";
 import { Session } from "../src/session";
 import { Controller, type ControllerDeps } from "../src/controller/controller";
 
-function deps(permissions = false, configOverrides: Record<string, unknown> = {}): ControllerDeps {
+function deps(
+  permissions = false,
+  configOverrides: Record<string, unknown> = {},
+): ControllerDeps {
   return {
-    config: { plugins: [], allowlist: [], model: "openai/m1", permissions, ...configOverrides } as ControllerDeps["config"],
+    config: {
+      plugins: [],
+      allowlist: [],
+      model: "openai/m1",
+      permissions,
+      ...configOverrides,
+    } as ControllerDeps["config"],
     registry: new Registry(),
     bus: new EventBus(),
     adapter: {
@@ -34,7 +43,10 @@ describe("controller", () => {
   });
 
   it("uses the configured compaction percentage", () => {
-    const c = new Controller({ ...deps(false, { compact_threshold_percent: 75 }), contextWindow: 100_000 });
+    const c = new Controller({
+      ...deps(false, { compact_threshold_percent: 75 }),
+      contextWindow: 100_000,
+    });
 
     expect(c.state.threshold).toBe(75_000);
   });
@@ -50,11 +62,17 @@ describe("controller", () => {
     await expect(c.compact()).resolves.toBeUndefined();
 
     expect(c.messages[1]?.content).toContain("[context checkpoint handoff]");
-    expect(c.messages.slice(-2).map((message) => message.content)).toEqual(["recent ".repeat(750), "latest ".repeat(750)]);
+    expect(c.messages.slice(-2).map((message) => message.content)).toEqual([
+      "recent ".repeat(750),
+      "latest ".repeat(750),
+    ]);
   });
 
   it("automatically compacts from the current estimate before the next request", async () => {
-    const d = deps(false, { compact_threshold_tokens: 100, compact_keep_tokens: 1_000 });
+    const d = deps(false, {
+      compact_threshold_tokens: 100,
+      compact_keep_tokens: 1_000,
+    });
     let calls = 0;
     d.adapter.estimate_tokens = () => 150;
     d.adapter.stream = async function* () {
@@ -65,14 +83,20 @@ describe("controller", () => {
     c.state.title = "Existing session";
     c.messages.push(
       ...Array.from({ length: 8 }, (_, index) => ({
-        role: index % 2 === 0 ? "user" as const : "assistant" as const,
+        role: index % 2 === 0 ? ("user" as const) : ("assistant" as const),
         content: `history ${index}`,
       })),
     );
     await c.submit("first");
 
     expect(calls).toBe(2);
-    expect(c.messages.some((message) => typeof message.content === "string" && message.content.includes("[context checkpoint handoff]"))).toBe(true);
+    expect(
+      c.messages.some(
+        (message) =>
+          typeof message.content === "string" &&
+          message.content.includes("[context checkpoint handoff]"),
+      ),
+    ).toBe(true);
   });
 
   it("/skill activates the skill before submitting its prompt", async () => {
@@ -80,44 +104,90 @@ describe("controller", () => {
     const events: string[] = [];
     d.invokeSkill = async (name, args) => {
       events.push(`activate:${name}:${args}`);
-      return { content: "Interview the user before implementation.\nTask: $ARGUMENTS".replace("$ARGUMENTS", args), directory: "/tmp/grill-me" };
+      return {
+        content:
+          "Interview the user before implementation.\nTask: $ARGUMENTS".replace(
+            "$ARGUMENTS",
+            args,
+          ),
+        directory: "/tmp/grill-me",
+      };
     };
     const c = new Controller(d);
     const originalSubmit = c.submit.bind(c);
     d.adapter.stream = async function* ({ messages }) {
-      events.push(`messages:${messages.map((message) => message.content).join("|")}`);
+      events.push(
+        `messages:${messages.map((message) => message.content).join("|")}`,
+      );
       yield { type: "text", text: "question" };
     };
 
     await originalSubmit("/skill grill-me implement clipboard support");
 
     expect(events[0]).toBe("activate:grill-me:implement clipboard support");
-    expect(events.some((event) => event.includes("Interview the user before implementation."))).toBe(true);
-    expect(events.some((event) => event.includes("implement clipboard support"))).toBe(true);
-    expect(c.messages.some((message) => message.role === "tool" && message.content.includes("<skill_content name=\"grill-me\">"))).toBe(true);
-    expect(c.state.chat.some((item) => item.kind === "tool" && item.toolName === "skill" && item.content.includes("<skill_content name=\"grill-me\">"))).toBe(true);
+    expect(
+      events.some((event) =>
+        event.includes("Interview the user before implementation."),
+      ),
+    ).toBe(true);
+    expect(
+      events.some((event) => event.includes("implement clipboard support")),
+    ).toBe(true);
+    expect(
+      c.messages.some(
+        (message) =>
+          message.role === "tool" &&
+          message.content.includes('<skill_content name="grill-me">'),
+      ),
+    ).toBe(true);
+    expect(
+      c.state.chat.some(
+        (item) =>
+          item.kind === "tool" &&
+          item.toolName === "skill" &&
+          item.content.includes('<skill_content name="grill-me">'),
+      ),
+    ).toBe(true);
     expect(c.state.notice).toBe("");
   });
 
   it("does not duplicate an explicitly activated skill", async () => {
     const d = deps();
-    d.invokeSkill = async () => ({ content: "Ask one question at a time.", directory: "/tmp/grill-me" });
+    d.invokeSkill = async () => ({
+      content: "Ask one question at a time.",
+      directory: "/tmp/grill-me",
+    });
     const c = new Controller(d);
 
     expect(await c.invokeSkill("grill-me", "first task")).toBe(true);
     expect(await c.invokeSkill("grill-me", "second task")).toBe(true);
 
-    expect(c.messages.filter((message) => message.role === "tool" && message.content.includes("<skill_content name=\"grill-me\">"))).toHaveLength(1);
+    expect(
+      c.messages.filter(
+        (message) =>
+          message.role === "tool" &&
+          message.content.includes('<skill_content name="grill-me">'),
+      ),
+    ).toHaveLength(1);
   });
 
   it("runs an explicitly invoked skill without arguments", async () => {
     const d = deps();
-    d.invokeSkill = async () => ({ content: "Start the workflow now.", directory: "/tmp/grill-me" });
+    d.invokeSkill = async () => ({
+      content: "Start the workflow now.",
+      directory: "/tmp/grill-me",
+    });
     const c = new Controller(d);
 
     await c.submit("/skill grill-me");
 
-    expect(c.messages.some((message) => message.role === "user" && message.content === "Apply the grill-me skill now.")).toBe(true);
+    expect(
+      c.messages.some(
+        (message) =>
+          message.role === "user" &&
+          message.content === "Apply the grill-me skill now.",
+      ),
+    ).toBe(true);
   });
 
   it("/skill rejects malformed names instead of invoking a partial skill", async () => {
@@ -147,7 +217,9 @@ describe("controller", () => {
     expect(kinds).toContain("user");
     expect(kinds).toContain("assistant");
     expect(c.state.chat[c.state.chat.length - 1].content).toBe("hi");
-    expect(c.messages.some((m) => m.role === "user" && m.content === "hi")).toBe(true);
+    expect(
+      c.messages.some((m) => m.role === "user" && m.content === "hi"),
+    ).toBe(true);
     expect(c.state.input).toBe("");
     expect(c.state.inputKey).toBe(inputKey + 1);
   });
@@ -158,7 +230,12 @@ describe("controller", () => {
     const p = c.submit("hi");
     await new Promise((r) => setTimeout(r, 50));
     await p;
-    expect(c.messages.some((m) => m.role === "user" && m.content.startsWith("[context] Date/time:"))).toBe(true);
+    expect(
+      c.messages.some(
+        (m) =>
+          m.role === "user" && m.content.startsWith("[context] Date/time:"),
+      ),
+    ).toBe(true);
   });
 
   it("does not re-inject with a fresh context", async () => {
@@ -166,7 +243,9 @@ describe("controller", () => {
     const p = c.submit("hi");
     await new Promise((r) => setTimeout(r, 50));
     await p;
-    expect(c.messages.some((m) => m.content.startsWith("[context] Date/time:"))).toBe(false);
+    expect(
+      c.messages.some((m) => m.content.startsWith("[context] Date/time:")),
+    ).toBe(false);
   });
 
   it("pendingAsk: esc nega; y aprova", async () => {
@@ -248,5 +327,4 @@ describe("controller", () => {
     c.handleKey({ upArrow: true }, "");
     expect(c.state.input).toBe("");
   });
-
 });

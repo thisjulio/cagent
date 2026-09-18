@@ -31,10 +31,20 @@ export function ChatViewport({
       {blocks.map((block, index) => {
         const isLast = index === blocks.length - 1;
         if (block.type === "user-turn") {
-          return <UserTurnBlockComponent key={`user-${block.turnId}`} block={block} />;
+          return (
+            <UserTurnBlockComponent
+              key={`user-${block.turnId}`}
+              block={block}
+            />
+          );
         }
         if (block.type === "system") {
-          return <SystemBlockComponent key={`system-${block.turnId}`} block={block} />;
+          return (
+            <SystemBlockComponent
+              key={`system-${block.turnId}`}
+              block={block}
+            />
+          );
         }
         return (
           <AgentTurnBlockComponent

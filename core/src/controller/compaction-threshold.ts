@@ -9,5 +9,5 @@ export function compactionThreshold(
   }
   const configuredPercent = config.compact_threshold_percent ?? 80;
   const percent = Math.min(100, Math.max(1, configuredPercent));
-  return Math.floor(contextWindow * percent / 100);
+  return Math.floor((contextWindow * percent) / 100);
 }
