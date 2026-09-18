@@ -10,6 +10,7 @@ import plugin7 from "./plugins/llama.cpp/src/index";
 import plugin8 from "./plugins/mcp/src/index";
 import plugin9 from "./plugins/openai/src/index";
 import plugin10 from "./plugins/stub/src/index";
+import plugin11 from "./plugins/claude-plugins/src/index";
 
 export const pluginLoaders: Record<string, Plugin> = {
   bash: plugin0,
@@ -23,4 +24,5 @@ export const pluginLoaders: Record<string, Plugin> = {
   mcp: plugin8,
   openai: plugin9,
   stub: plugin10,
+  "claude-plugins": plugin11,
 };

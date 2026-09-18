@@ -4,6 +4,7 @@ set -euo pipefail
 APP="cagent"
 REPO="${CAGENT_REPO:-thisjulio/cagent}"
 INSTALL_DIR="${CAGENT_INSTALL_DIR:-${XDG_BIN_DIR:-$HOME/.local/bin}}"
+PLUGIN_DIR="${CAGENT_PLUGIN_DIR:-$HOME/.claude/plugins}"
 requested_version="${CAGENT_VERSION:-}"
 modify_path=true
 
@@ -81,6 +82,28 @@ fi
 mkdir -p "$INSTALL_DIR"
 install -m 0755 "$binary" "$INSTALL_DIR/$APP"
 echo "Installed $INSTALL_DIR/$APP"
+
+install_plugin() {
+  local name="$1"
+  local repository="$2"
+  local destination="$PLUGIN_DIR/$name"
+
+  if [[ -e "$destination" ]]; then
+    echo "Plugin already exists: $destination"
+    return
+  fi
+
+  mkdir -p "$PLUGIN_DIR"
+  git clone --depth 1 "$repository" "$destination"
+  echo "Installed plugin $name"
+}
+
+if command -v git >/dev/null 2>&1; then
+  install_plugin "i-have-adhd" "https://github.com/ayghri/i-have-adhd.git"
+  install_plugin "ponytail" "https://github.com/DietrichGebert/ponytail.git"
+else
+  echo "Git is required to install Claude plugins; skipping plugin installation" >&2
+fi
 
 if [[ "$modify_path" == true && ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
   shell_name="${SHELL##*/}"
