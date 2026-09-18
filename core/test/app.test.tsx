@@ -3,7 +3,15 @@ import os from "node:os";
 import path from "node:path";
 import React from "react";
 import { act } from "react";
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it, mock } from "bun:test";
+
+// ponytail: isolate tests from real persistence so test model choices
+// (e.g. openai/m2) don't overwrite the user's ~/.cagent/last-model.json
+mock.module("../src/controller/model-persistence", () => ({
+  saveLastChoice: mock(() => {}),
+  loadLastChoice: mock(() => null),
+}));
+
 import { testRender } from "@opentui/react/test-utils";
 import { App } from "../src/ui/components/App";
 import { EventBus } from "../src/events";
