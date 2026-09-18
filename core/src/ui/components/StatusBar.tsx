@@ -15,7 +15,11 @@ export function StatusBar({
   contextWindow: number;
   threshold: number;
 }) {
-  const label = variant ? `${model} (${variant})` : model;
+  const MAX_MODEL_LABEL = 40;
+  let label = variant ? `${model} (${variant})` : model;
+  if (label.length > MAX_MODEL_LABEL) {
+    label = `${label.slice(0, MAX_MODEL_LABEL - 3)}…`;
+  }
   const pct =
     tokens !== undefined && contextWindow
       ? Math.round((tokens / contextWindow) * 100)
