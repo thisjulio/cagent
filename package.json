@@ -14,7 +14,7 @@
     "test": "bun test",
     "typecheck": "tsc --noEmit --noCheck",
     "lint": "biome check --linter-enabled=true --formatter-enabled=false .",
-    "knip": "knip",
+    "knip": "knip --exclude files,exports,types",
     "format": "biome format --write .",
     "graph:update": "graphify update .",
     "build:release": "bun scripts/build-release.ts && bun build release.ts --compile --outfile dist/cagent",
