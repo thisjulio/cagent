@@ -3,7 +3,7 @@ import { serializeMessages } from "../session";
 import { splitRoute } from "../route";
 import type { Controller } from "./controller";
 import { appendChat } from "./chat-buffer";
-import { estimateForModel } from "./token-estimation";
+import { recentContext } from "../context/recent-context";
 
 function summaryForDisplay(previous: string, chunk: string): string {
   const marker = "\n\n";
@@ -42,37 +42,19 @@ export async function compact(
   instructions?: string,
 ): Promise<void> {
   const s = c.state;
-  const threshold = s.threshold;
   const reason = force
     ? instructions
       ? "manual_with_instructions"
       : "manual"
     : "threshold";
-  const estimate = (messages: Controller["messages"]): number =>
-    estimateForModel(c.adapter, s.model, messages);
-  const est = Math.max(s.tokens ?? 0, estimate(c.messages));
-  if (!force && est < threshold) {
-    c.observability?.recordEvent("compaction.skipped", {
-      reason: "below_threshold",
-      tokens: est,
-      threshold,
-    });
-    s.notice = `no compaction (${est} < ${threshold} tokens)`;
-    c.bump();
-    return;
-  }
-  const configuredKeep = c.config.compact_keep_tokens;
-  const keepBudget = Math.min(
-    20_000,
-    Math.max(1_000, configuredKeep ?? Math.floor(c.state.contextWindow * 0.2)),
+  const old = c.messages.slice(1);
+  const recent = recentContext(
+    old,
+    c.config.compact_keep_tokens ?? 32000,
+    c.config.compact_prune_tool_tokens ?? 2000,
+    force,
   );
-  let keepStart = c.messages.length;
-  let keptTokens = 0;
-  while (keepStart > 1 && keptTokens < keepBudget) {
-    keepStart -= 1;
-    keptTokens += estimate(c.messages.slice(keepStart, keepStart + 1));
-  }
-  if (keepStart <= 1) {
+  if (!recent.length || recent.length === old.length) {
     c.observability?.recordEvent("compaction.skipped", {
       reason: "too_few_messages",
       "message.count": c.messages.length,
@@ -81,17 +63,15 @@ export async function compact(
     c.bump();
     return;
   }
-  const old = c.messages.slice(1, keepStart);
+  const recentStart = old.length - recent.length;
+  const compacted = old.slice(0, recentStart);
   c.observability?.recordEvent("compaction.started", {
     force,
     reason,
     "state.tokens": s.tokens,
-    "estimated.tokens": estimate(c.messages),
-    "effective.tokens": est,
     "context.window": s.contextWindow,
-    threshold,
     model: s.model,
-    "message.count": old.length,
+    "message.count": compacted.length,
   });
   s.compacting = true;
   const progress = {
@@ -110,7 +90,8 @@ export async function compact(
     c.bump();
     return;
   }
-  progress.content = `preparing history (${est} tokens)\npruning large tool outputs\ngenerating handoff...`;
+  progress.content =
+    "preparing history\npruning large tool outputs\ngenerating handoff...";
   c.bump();
   const { text: summary } = await streamOnce({
     adapter: c.adapter,
@@ -128,7 +109,7 @@ export async function compact(
     ],
     tools: [],
     onText: (text) => {
-      progress.content = `preparing history (${est} tokens)\npruning large tool outputs\ngenerating handoff...\n\n${summaryForDisplay(progress.content, text)}`;
+      progress.content = `preparing history\npruning large tool outputs\ngenerating handoff...\n\n${summaryForDisplay(progress.content, text)}`;
       c.bump();
     },
     interrupted: () => c.interrupted,
@@ -141,9 +122,9 @@ export async function compact(
     c.bump();
     return;
   }
-  const rest = removeOrphanedToolOutputs(c.messages.slice(keepStart));
+  const rest = removeOrphanedToolOutputs(recent);
   s.compacting = false;
-  progress.content = `compaction complete (${est} -> ${estimate(c.messages)} tokens)`;
+  progress.content = "compaction complete";
   c.messages.length = 1;
   c.messages.push(
     { role: "user", content: `[context checkpoint handoff]\n${summary}` },
@@ -156,13 +137,10 @@ export async function compact(
   });
   appendChat(s, {
     kind: "meta",
-    content: `compacted: ${est} -> ${estimate(c.messages)} tokens`,
+    content: "compacted: history checkpoint created",
   });
-  s.tokens = estimate(c.messages);
   c.observability?.recordEvent("compaction.completed", {
-    "tokens.before": est,
-    "tokens.after": s.tokens,
-    "message.count": old.length,
+    "message.count": compacted.length,
   });
   c.bump();
 }

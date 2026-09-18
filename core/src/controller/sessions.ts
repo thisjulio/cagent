@@ -1,5 +1,5 @@
 import { streamOnce } from "../loop";
-import { Session, estimateTokens } from "../session";
+import { Session } from "../session";
 import { splitRoute } from "../route";
 import type { ChatItem } from "./state";
 import type { Controller } from "./controller";
@@ -148,7 +148,7 @@ export function startNewSession(c: Controller): void {
   s.pendingAsk = null;
   s.modelPicker = null;
   s.sessionList = null;
-  s.tokens = estimateTokens(c.messages);
+  s.tokens = undefined;
   c.bump();
 }
 
@@ -184,7 +184,9 @@ export function restoreSession(c: Controller, id: string): void {
     if (typeof usage.outputTokens === "number")
       c.state.outputTokens = usage.outputTokens;
   } else {
-    c.state.tokens = estimateTokens(c.messages);
+    c.state.tokens = undefined;
+    c.state.inputTokens = undefined;
+    c.state.outputTokens = undefined;
   }
   c.observability?.recordEvent("session.resumed", {
     "message.count": loaded.messages.length,

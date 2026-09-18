@@ -51,7 +51,7 @@ describe("controller", () => {
     expect(c.state.threshold).toBe(75_000);
   });
 
-  it("compacts history without losing the recent messages", async () => {
+  it("compacts history into a checkpoint without losing the recent messages", async () => {
     const c = new Controller(deps(false, { compact_keep_tokens: 2_000 }));
     c.messages.push(
       { role: "user", content: "old ".repeat(750) },
@@ -62,22 +62,27 @@ describe("controller", () => {
     await expect(c.compact()).resolves.toBeUndefined();
 
     expect(c.messages[1]?.content).toContain("[context checkpoint handoff]");
-    expect(c.messages.slice(-2).map((message) => message.content)).toEqual([
-      "recent ".repeat(750),
-      "latest ".repeat(750),
-    ]);
+    expect(c.messages.at(-1)?.content).toBe("latest ".repeat(750));
+    expect(
+      c.messages.some((message) => message.content === "old ".repeat(750)),
+    ).toBe(false);
   });
 
-  it("automatically compacts from the current estimate before the next request", async () => {
+  it("compacts and retries after the provider reports a context limit", async () => {
     const d = deps(false, {
-      compact_threshold_tokens: 100,
-      compact_keep_tokens: 1_000,
+      compact_keep_tokens: 20,
     });
     let calls = 0;
-    d.adapter.estimate_tokens = () => 150;
     d.adapter.stream = async function* () {
       calls++;
+      if (calls <= 3) throw new Error("maximum context length exceeded");
+      if (calls === 4) {
+        yield { type: "text", text: "checkpoint summary" };
+        yield { type: "finish", finish_reason: "stop" };
+        return;
+      }
       yield { type: "text", text: "ok" };
+      yield { type: "finish", finish_reason: "stop" };
     };
     const c = new Controller(d);
     c.state.title = "Existing session";
@@ -89,7 +94,7 @@ describe("controller", () => {
     );
     await c.submit("first");
 
-    expect(calls).toBe(2);
+    expect(calls).toBe(5);
     expect(
       c.messages.some(
         (message) =>
@@ -97,6 +102,12 @@ describe("controller", () => {
           message.content.includes("[context checkpoint handoff]"),
       ),
     ).toBe(true);
+    expect(c.messages.some((message) => message.content === "history 6")).toBe(
+      true,
+    );
+    expect(c.messages.some((message) => message.content === "history 7")).toBe(
+      true,
+    );
   });
 
   it("/skill activates the skill before submitting its prompt", async () => {

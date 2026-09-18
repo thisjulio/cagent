@@ -65,6 +65,9 @@ export class Controller {
   get config(): ControllerDeps["config"] {
     return this.deps.config;
   }
+  get observability(): ControllerDeps["observability"] {
+    return this.deps.observability;
+  }
   get bus(): ControllerDeps["bus"] {
     return this.deps.bus;
   }

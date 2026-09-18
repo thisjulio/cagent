@@ -19,6 +19,7 @@ export type TurnHost = {
   model: string;
   variant?: string;
   messages: Message[];
+  messagesForRequest?: (messages: Message[]) => Message[];
   tools: ToolDefinition[];
   allowlist: string[];
   ask: ToolAsk;
@@ -141,6 +142,7 @@ async function runAgentTurn(
     model: host.model,
     variant: host.variant,
     messages: host.messages,
+    messagesForRequest: host.messagesForRequest,
     tools: host.tools,
     allowlist: host.allowlist,
     ask: host.ask,

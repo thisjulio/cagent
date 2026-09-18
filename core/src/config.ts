@@ -21,6 +21,7 @@ export interface AppConfig {
   compact_auto?: boolean;
   compact_keep_tokens?: number;
   compact_prune_tool_tokens?: number;
+  context_recent_messages?: number;
   retry_attempts?: number;
   permissions?: boolean;
   log_level?: "silent" | "error" | "warn" | "info" | "debug";
@@ -70,11 +71,16 @@ export function loadConfig(cwd: string): AppConfig {
       true,
     compact_keep_tokens:
       (local.compact_keep_tokens as number | undefined) ??
-      (global.compact_keep_tokens as number | undefined),
+      (global.compact_keep_tokens as number | undefined) ??
+      32000,
     compact_prune_tool_tokens:
       (local.compact_prune_tool_tokens as number | undefined) ??
       (global.compact_prune_tool_tokens as number | undefined) ??
       2000,
+    context_recent_messages:
+      (local.context_recent_messages as number | undefined) ??
+      (global.context_recent_messages as number | undefined) ??
+      24,
     retry_attempts:
       (local.retry_attempts as number | undefined) ??
       (global.retry_attempts as number | undefined),

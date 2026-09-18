@@ -21,6 +21,7 @@ export interface StreamOpts {
   model: string;
   variant?: string;
   messages: Message[];
+  messagesForRequest?: (messages: Message[]) => Message[];
   tools: ToolDefinition[];
   onText?: (text: string) => void;
   onReasoning?: (text: string) => void;
@@ -49,7 +50,9 @@ export async function streamOnce(opts: StreamOpts): Promise<{
           opts.adapter.prepare_call({
             model: opts.model,
             variant: opts.variant,
-            messages: opts.messages,
+            messages: opts.messagesForRequest
+              ? opts.messagesForRequest(opts.messages)
+              : opts.messages,
             tools: opts.tools,
           }),
         { "provider.model": opts.model, ...opts.traceAttributes },

@@ -1,5 +1,7 @@
 model: openai/gpt-5.6-luna
 permissions: false
+context_recent_messages: 24
+compact_keep_tokens: 32000
 plugins:
   - name: mcp
     path: ./plugins/mcp
