@@ -52,6 +52,12 @@
         "@cagent/sdk": "workspace:*",
       },
     },
+    "plugins/claude-skills": {
+      "name": "@cagent/claude-skills",
+      "dependencies": {
+        "@cagent/sdk": "workspace:*",
+      },
+    },
     "plugins/code-tools": {
       "name": "@cagent/plugin-code-tools",
       "version": "0.1.0",
@@ -152,6 +158,8 @@
     "@biomejs/cli-win32-x64": ["@biomejs/cli-win32-x64@2.5.13", "", { "os": "win32", "cpu": "x64" }, "sha512-VOofU/nW761XWzUeUNE8zzYNyPrxuMuNFMizL0qz7J75yeV8N7WFheUlk1/K6dOkaFpH9wJ+lDKlwjAbw0346w=="],
 
     "@cagent/claude-commands": ["@cagent/claude-commands@workspace:plugins/claude-commands"],
+
+    "@cagent/claude-skills": ["@cagent/claude-skills@workspace:plugins/claude-skills"],
 
     "@cagent/codex-prompts": ["@cagent/codex-prompts@workspace:plugins/codex-prompts"],
 
