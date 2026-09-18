@@ -30,25 +30,16 @@ export function ChatViewport({
     >
       {blocks.map((block, index) => {
         const isLast = index === blocks.length - 1;
+        const key = `${block.type}-${block.turnId ?? index}`;
         if (block.type === "user-turn") {
-          return (
-            <UserTurnBlockComponent
-              key={`user-${block.turnId}`}
-              block={block}
-            />
-          );
+          return <UserTurnBlockComponent key={key} block={block} />;
         }
         if (block.type === "system") {
-          return (
-            <SystemBlockComponent
-              key={`system-${block.turnId}`}
-              block={block}
-            />
-          );
+          return <SystemBlockComponent key={key} block={block} />;
         }
         return (
           <AgentTurnBlockComponent
-            key={`agent-${block.turnId}`}
+            key={key}
             block={block}
             streaming={busy && isLast}
             controller={controller}

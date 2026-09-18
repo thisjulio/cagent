@@ -9,7 +9,7 @@ import { runTurn, type TurnRecord } from "../loop";
 import type { EventBus } from "../events";
 import { type Session } from "../session";
 import type { ToolAsk } from "../tools";
-import { appendChat } from "./chat-buffer";
+import { appendChat, notify } from "./chat-buffer";
 import type { UIState } from "./state";
 import { appendCapped, MAX_VISIBLE_STREAM_CHARS } from "../stream-buffer";
 
@@ -66,12 +66,19 @@ export async function executeTurn(host: TurnHost): Promise<void> {
     if (turn.inputTokens !== undefined && turn.outputTokens !== undefined) {
       host.state.tokens = turn.inputTokens + turn.outputTokens;
     }
-    host.state.notice = turn.interrupted ? "[interrupted - type to steer]" : "";
+    if (turn.interrupted) {
+      notify(host.state, "[interrupted - type to steer]");
+    } else {
+      host.state.notice = "";
+    }
   } catch (error) {
     host.observability?.recordEvent("agent.turn.error", {
       "error.type": error instanceof Error ? error.name : "unknown",
     });
-    host.state.notice = `error: ${error instanceof Error ? error.message : String(error)}`;
+    notify(
+      host.state,
+      `error: ${error instanceof Error ? error.message : String(error)}`,
+    );
   }
   host.observability?.recordMetric(
     "agent.turn.elapsed_ms",
@@ -110,8 +117,7 @@ async function runAgentTurnWithRecovery(
       threshold: host.state.threshold,
       model: host.model,
     });
-    host.state.notice = "context limit reached; compacting context...";
-    host.bump();
+    notify(host.state, "context limit reached; compacting context...");
     await host.onContextLimit();
     return await runAgentTurn(
       host,

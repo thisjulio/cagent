@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { appendChat } from "./chat-buffer";
+import { appendChat, notify } from "./chat-buffer";
 import { addEnvironmentContext } from "./environment";
 import { executeTurn } from "./turn";
 import { splitRoute } from "../route";
@@ -112,8 +112,7 @@ export async function submitMessage(
     turnId,
     onContextLimit: () => {
       if (controller.config.compact_auto === false) {
-        controller.state.notice = "automatic compaction disabled; use /compact";
-        controller.bump();
+        notify(controller.state, "automatic compaction disabled; use /compact");
         return Promise.resolve();
       }
       controller.observability?.recordEvent("compaction.requested", {
@@ -134,13 +133,15 @@ async function compactBeforeSubmission(controller: Controller): Promise<void> {
   try {
     await compact(controller);
   } catch (error) {
-    state.notice = `compaction failed: ${
-      error instanceof Error ? error.message : String(error)
-    }`;
+    notify(
+      state,
+      `compaction failed: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
   }
 }
 
 function rejectSubmission(controller: Controller, message: string): void {
-  controller.state.notice = message;
-  controller.bump();
+  notify(controller.state, message);
 }

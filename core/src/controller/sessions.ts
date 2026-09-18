@@ -3,7 +3,7 @@ import { Session } from "../session";
 import { splitRoute } from "../route";
 import type { ChatItem } from "./state";
 import type { Controller } from "./controller";
-import { MAX_CHAT_ITEMS } from "./chat-buffer";
+import { MAX_CHAT_ITEMS, notify } from "./chat-buffer";
 import { mergeSystemMessages } from "../message-context";
 import { classifyTool } from "../tool-category";
 import { restoreTasks } from "../tasks";
@@ -163,7 +163,7 @@ export function restoreSession(c: Controller, id: string): void {
   c.state.tasks = restoreTasks(loaded.records);
   c.state.chatVersion += 1;
   c.state.title = toTitle(loaded.records);
-  c.state.notice = `restaurado ${id}`;
+  notify(c.state, `restored session ${id}`);
   c.state.sessionList = null;
   c.state.input = "";
   c.state.inputKey += 1;

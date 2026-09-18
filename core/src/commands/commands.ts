@@ -1,6 +1,6 @@
 import type { Controller } from "../controller/controller";
 import { expandCommand } from "./discovery";
-import { appendChat } from "../controller/chat-buffer";
+import { appendChat, notify } from "../controller/chat-buffer";
 import { saveLastChoice } from "../controller/model-persistence";
 import type { Task } from "../tasks";
 
@@ -58,14 +58,14 @@ const commands: Record<string, SlashHandler> = {
   "/variant": (c, arg) => {
     const val = arg.trim();
     if (!val) {
-      c.state.notice = c.state.variant
-        ? `variant: ${c.state.variant}`
-        : "no variant set";
-      c.bump();
+      notify(
+        c.state,
+        c.state.variant ? `variant: ${c.state.variant}` : "no variant set",
+      );
       return;
     }
     c.state.variant = val;
-    c.state.notice = `variant set to: ${val}`;
+    notify(c.state, `variant set to: ${val}`);
     if (c.state.model) {
       saveLastChoice(c.state.model, val);
     }
@@ -78,8 +78,7 @@ const commands: Record<string, SlashHandler> = {
   },
   "/reload-skills": (c) => {
     if (!c.reloadSkills()) return;
-    c.state.notice = "skills reloaded";
-    c.bump();
+    notify(c.state, "skills reloaded");
   },
   "/skill": async (c, arg) => {
     const match = arg
@@ -88,8 +87,10 @@ const commands: Record<string, SlashHandler> = {
     const name = match?.[1] ?? "";
     const prompt = match?.[2]?.trim() ?? "";
     if (!name || !(await c.invokeSkill(name, prompt))) {
-      c.state.notice = `skill not found or unavailable: ${name || "(missing name)"}`;
-      c.bump();
+      notify(
+        c.state,
+        `skill not found or unavailable: ${name || "(missing name)"}`,
+      );
       return;
     }
     await c.submit(prompt || `Apply the ${name} skill now.`);
@@ -162,13 +163,11 @@ export function runSlash(c: Controller, text: string): void | Promise<void> {
         c.bump();
       })
       .catch((error) => {
-        c.state.notice = error instanceof Error ? error.message : String(error);
-        c.bump();
+        notify(c.state, error instanceof Error ? error.message : String(error));
       });
   }
   if (!handler) {
-    c.state.notice = `unknown command: ${text}`;
-    c.bump();
+    notify(c.state, `unknown command: ${text}`);
     return;
   }
   return handler(c, arg);

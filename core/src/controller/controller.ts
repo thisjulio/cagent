@@ -21,7 +21,7 @@ import { toolDenied, toolPost, toolPre, toolStream } from "./tool-events";
 import { onKey } from "./keys";
 import type { ControllerDeps, InputKey, UIState } from "./state";
 import { invokeSkill as invokeSkillAction } from "./skill-actions";
-import { appendChat, MAX_CHAT_ITEMS } from "./chat-buffer";
+import { appendChat, MAX_CHAT_ITEMS, notify } from "./chat-buffer";
 import { parseSubagentMention } from "../subagents/mention";
 import { mergeSystemMessages } from "../message-context";
 import { toggleToolExpand as toggleToolExpandAction } from "./chat-actions";
@@ -310,9 +310,10 @@ export class Controller {
       const activation = await this.deps.invokeSkill(name, args);
       return invokeSkillAction(this, name, activation);
     } catch (error) {
-      this.state.notice =
-        error instanceof Error ? error.message : String(error);
-      this.bump();
+      notify(
+        this.state,
+        error instanceof Error ? error.message : String(error),
+      );
       return false;
     }
   }

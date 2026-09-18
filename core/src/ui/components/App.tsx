@@ -160,9 +160,6 @@ export function App({ c }: { c: Controller }) {
         />
       )}
       <ProjectContext cwd={process.cwd()} />
-      <box height={1} flexShrink={0}>
-        <text attributes={TextAttributes.DIM}>{s.notice}</text>
-      </box>
       <StatusBar
         model={s.model}
         variant={s.variant}

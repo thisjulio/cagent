@@ -19,3 +19,8 @@ export function appendToolLog(
   if (state.toolLog.length > MAX_CHAT_ITEMS)
     state.toolLog.splice(0, state.toolLog.length - MAX_CHAT_ITEMS);
 }
+
+export function notify(state: UIState, message: string): void {
+  state.notice = message;
+  appendChat(state, { kind: "meta", content: message });
+}

@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import type { Controller } from "./controller";
-import { appendChat } from "./chat-buffer";
+import { appendChat, notify } from "./chat-buffer";
 import { runToolPipeline } from "../tools";
 
 export async function submitShell(
@@ -13,8 +13,7 @@ export async function submitShell(
   });
   const tool = controller.registry.tool("bash");
   if (!tool) {
-    controller.state.notice = "bash tool is not available";
-    controller.bump();
+    notify(controller.state, "bash tool is not available");
     return;
   }
   const callId = `input-bash-${Date.now()}-${controller.nextSkillCallId()}`;

@@ -9,6 +9,7 @@ import { Registry } from "./registry";
 import { buildSystemPrompt } from "./prompt";
 import { splitRoute } from "./route";
 import { Controller } from "./controller/controller";
+import { notify } from "./controller/chat-buffer";
 import { App } from "./ui/components/App";
 import { discoverSkills } from "./skills/discovery";
 import { createReadSkillTool, readSkill } from "./skills/read-tool";
@@ -257,8 +258,7 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
   const renderer = await createCliRenderer({ exitOnCtrlC: false });
   createRoot(renderer).render(React.createElement(App, { c }));
   void initializeModel(c, config.model).catch((error) => {
-    c.state.notice = error instanceof Error ? error.message : String(error);
-    c.bump();
+    notify(c.state, error instanceof Error ? error.message : String(error));
   });
 }
 

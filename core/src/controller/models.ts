@@ -2,6 +2,7 @@ import { splitRoute } from "../route";
 import type { Controller } from "./controller";
 import { saveLastChoice, loadLastChoice } from "./model-persistence";
 import { compactionThreshold } from "./compaction-threshold";
+import { notify } from "./chat-buffer";
 
 // ponytail: providers that fail list_models are ignored; duplicate model names across providers use the first registration.
 export async function openModelPicker(c: Controller): Promise<void> {
@@ -24,43 +25,29 @@ export async function initializeModel(
   c: Controller,
   configured?: string,
 ): Promise<void> {
-  const entries = await discoverModels(c);
-  const configuredEntry =
-    configured &&
-    entries.find(
-      (e) =>
-        e.route === splitRoute(configured)[0] &&
-        e.models.includes(splitRoute(configured)[1]),
-    );
-
   let route = "";
+
+  // ponytail: trust the saved choice; do not validate against list_models()
+  // because providers may be slow to respond (e.g. llama.cpp loading). If the
+  // model is gone, the error surfaces when the user sends a message.
   const last = loadLastChoice();
   if (last?.model) {
-    const lastEntry = entries.find(
-      (e) =>
-        e.route === splitRoute(last.model)[0] &&
-        e.models.includes(splitRoute(last.model)[1]),
-    );
-    if (lastEntry) {
-      route = last.model;
-      if (last.variant) c.state.variant = last.variant;
-    }
+    route = last.model;
+    if (last.variant) c.state.variant = last.variant;
   }
 
-  if (!route && configured && configuredEntry) {
+  if (!route && configured) {
     route = configured;
   }
 
   if (!route) {
+    const entries = await discoverModels(c);
     const first = entries.find((entry) => entry.models.length);
     route = first ? `${first.route}/${first.models[0]}` : "";
   }
 
   if (!route) {
-    c.state.notice = configured
-      ? `Configured model is unavailable: ${configured}`
-      : "No models available";
-    c.bump();
+    notify(c.state, "No models available");
     return;
   }
   const [provider, model] = splitRoute(route);
@@ -73,16 +60,25 @@ export async function initializeModel(
 async function discoverModels(
   c: Controller,
 ): Promise<{ route: string; models: string[] }[]> {
-  const entries = await Promise.all(
-    [...c.registry.providers()].map(async ([route, a]) => {
-      try {
-        return { route, models: await a.list_models() };
-      } catch {
-        return null;
+  const providers = [...c.registry.providers()];
+  const results = await Promise.all(
+    providers.map(async ([route, a]) => {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const models = await a.list_models();
+          if (models.length > 0) return { route, models };
+        } catch {
+          // retry
+        }
+        if (attempt < 2) {
+          // ponytail: wait before retrying; slow providers (llama.cpp loading) need time
+          await new Promise((r) => setTimeout(r, 500));
+        }
       }
+      return null;
     }),
   );
-  return entries.filter(
+  return results.filter(
     (entry): entry is { route: string; models: string[] } => entry !== null,
   );
 }

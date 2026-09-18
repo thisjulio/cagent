@@ -44,7 +44,7 @@ async function frame(w: number): Promise<void> {
 
 for (const w of [60, 80, 120]) await frame(w);
 
-// Seeded state: the three blocks (user / assistant / tool).
+// Scenario: normal conversation with user / assistant / tool blocks.
 controller.state.chat = [
   { kind: "user", content: "run ls" },
   {
@@ -77,4 +77,123 @@ controller.state.chat = [
 ];
 controller.state.tokens = 1200;
 controller.state.title = "snapshot";
+await frame(80);
+
+// Scenario: system messages in chat (variant, errors, compaction).
+controller.state.chat = [
+  { kind: "user", content: "set variant to allow" },
+  { kind: "meta", content: "variant set to: allow" },
+  { kind: "user", content: "run a command" },
+  {
+    kind: "tool",
+    toolName: "bash",
+    cmd: "echo test",
+    content: "test",
+    running: false,
+  },
+  { kind: "meta", content: "error: connection timeout" },
+  { kind: "user", content: "try again" },
+  { kind: "meta", content: "context limit reached; compacting context..." },
+  { kind: "meta", content: "conversation compacted" },
+];
+controller.state.variant = "allow";
+controller.state.tokens = 85000;
+controller.state.contextWindow = 100000;
+controller.state.title = "system messages";
+await frame(80);
+
+// Scenario: long model name with variant in status bar.
+controller.state.chat = [
+  { kind: "user", content: "hello" },
+  { kind: "assistant", content: "hi there" },
+];
+controller.state.model =
+  "llama.cpp/Qwen3.8-27B-TTURBO-Fable-Craft-Thinking-Q4_K_M";
+controller.state.variant = "allow";
+controller.state.tokens = 5000;
+controller.state.contextWindow = 32768;
+controller.state.title = "long model name";
+await frame(80);
+
+// Scenario: assistant thinking before responding.
+controller.state.chat = [
+  { kind: "user", content: "what is the capital of Brazil?" },
+  {
+    kind: "thinking",
+    content:
+      "The user is asking about Brazilian geography. The capital is Brasília, not Rio de Janeiro.",
+  },
+  { kind: "assistant", content: "The capital of Brazil is Brasília." },
+];
+controller.state.tokens = 800;
+controller.state.title = "thinking";
+await frame(80);
+
+// Scenario: user message with attached image.
+controller.state.chat = [
+  {
+    kind: "user",
+    content: "what's in this screenshot?",
+    imagePaths: ["~/Downloads/error.png"],
+  },
+  {
+    kind: "assistant",
+    content: "The screenshot shows a null pointer exception at line 42.",
+  },
+];
+controller.state.tokens = 1500;
+controller.state.title = "image attachment";
+await frame(80);
+
+// Scenario: long text in input box.
+controller.state.chat = [
+  { kind: "user", content: "summarize this" },
+  { kind: "assistant", content: "done" },
+];
+controller.state.input =
+  "please review all the changes in the repository and make sure they follow the coding standards and are properly documented with tests";
+controller.state.tokens = 2000;
+controller.state.title = "long input";
+await frame(80);
+
+// Scenario: running tool with spinner.
+controller.state.chat = [
+  { kind: "user", content: "run tests" },
+  {
+    kind: "tool",
+    toolName: "bash",
+    cmd: "bun test",
+    content: "",
+    running: true,
+  },
+];
+controller.state.busy = true;
+controller.state.tokens = 3000;
+controller.state.title = "tool running";
+await frame(80);
+
+// Scenario: denied tool.
+controller.state.chat = [
+  { kind: "user", content: "delete the database" },
+  {
+    kind: "tool",
+    toolName: "bash",
+    cmd: "rm -rf /var/lib/db",
+    content: "",
+    denied: true,
+  },
+];
+controller.state.tokens = 1000;
+controller.state.title = "tool denied";
+await frame(80);
+
+// Scenario: compaction in progress.
+controller.state.chat = [
+  { kind: "user", content: "continue" },
+  { kind: "meta", content: "context limit reached; compacting context..." },
+];
+controller.state.compacting = true;
+controller.state.tokens = 98000;
+controller.state.contextWindow = 100000;
+controller.state.title = "compacting";
 await frame(80);
