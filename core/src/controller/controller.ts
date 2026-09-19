@@ -4,6 +4,7 @@ import type {
   ToolDefinition,
   ProviderAdapter,
 } from "@cagent/sdk";
+import { QuestionService } from "./question-service";
 import { runSlash } from "../commands/commands";
 import { inputSuggestions } from "../commands/suggest";
 import { Session } from "../session";
@@ -62,6 +63,7 @@ export class Controller {
   private bumpStream: () => void;
   envStamp: number = Date.now();
   private askResolver: ((ok: boolean) => void) | null = null;
+  questionService: QuestionService;
   get config(): ControllerDeps["config"] {
     return this.deps.config;
   }
@@ -76,6 +78,9 @@ export class Controller {
   }
   get observability(): ControllerDeps["observability"] {
     return this.deps.observability;
+  }
+  get verification(): ControllerDeps["verification"] {
+    return this.deps.verification;
   }
   get bus(): ControllerDeps["bus"] {
     return this.deps.bus;
@@ -134,6 +139,12 @@ export class Controller {
       notice: "",
       compacting: false,
       pendingAsk: null,
+      questionRequest: null,
+      questionIndex: 0,
+      questionSelectedOption: 0,
+      questionTextAnswer: "",
+      questionOtherMode: false,
+      questionAnswers: [],
       modelPicker: null,
       sessionList: null,
       helpOpen: false,
@@ -150,6 +161,19 @@ export class Controller {
         content: `resuming session ${this.session.id} (${loaded.messages.length} messages)`,
       });
     this.state = s;
+    this.questionService = new QuestionService();
+    this.questionService.onChange(() => {
+      const pending = this.questionService.list();
+      this.state.questionRequest = pending.length > 0 ? pending[0] : null;
+      if (!this.state.questionRequest) {
+        this.state.questionIndex = 0;
+        this.state.questionSelectedOption = 0;
+        this.state.questionTextAnswer = "";
+        this.state.questionOtherMode = false;
+        this.state.questionAnswers = [];
+      }
+      this.bump();
+    });
   }
 
   onToolPre(p: unknown): void {

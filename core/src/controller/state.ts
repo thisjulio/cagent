@@ -7,6 +7,7 @@ import type { ToolCategory } from "../tool-category";
 import type { Task } from "../tasks";
 import type { CustomCommand } from "../commands/types";
 import type { SubagentRequest } from "../subagents/executor";
+import type { VerificationRunner } from "../verification/runner";
 
 export type ChatItem = {
   kind: "user" | "assistant" | "tool" | "meta" | "thinking";
@@ -38,6 +39,7 @@ export type ToolLogEntry = {
 
 export type UIState = {
   tasks: Task[];
+  taskPanelExpanded?: boolean;
   chat: ChatItem[];
   chatVersion: number;
   toolLog: ToolLogEntry[];
@@ -53,6 +55,12 @@ export type UIState = {
   notice: string;
   compacting: boolean;
   pendingAsk: { tool: string; cmd: string } | null;
+  questionRequest: import("./question-service").QuestionRequest | null;
+  questionIndex: number;
+  questionSelectedOption: number;
+  questionTextAnswer: string;
+  questionOtherMode: boolean;
+  questionAnswers: string[];
   modelPicker: {
     entries: { route: string; models: string[] }[];
     query: string;
@@ -116,4 +124,5 @@ export interface ControllerDeps {
   pluginCommandSubcommands?: Record<string, string[]>;
   invokeSubagent?: (request: SubagentRequest) => Promise<string>;
   observability?: Observability;
+  verification?: VerificationRunner;
 }

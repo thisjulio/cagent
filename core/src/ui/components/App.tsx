@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { TextAttributes, type KeyEvent } from "@opentui/core";
 import { useKeyboard, useRenderer } from "@opentui/react";
 import type { Controller } from "../../controller/controller";
@@ -10,13 +10,14 @@ import { PendingAsk } from "./PendingAsk";
 import { SessionList } from "./SessionList";
 import { StatusBar } from "./StatusBar";
 import { InputArea } from "./InputArea";
-import { TaskPanel } from "./TaskPanel";
+import { TaskPanel, type TaskPanelHandle } from "./TaskPanel";
+import { QuestionPanel } from "./QuestionPanel";
 import { ProjectContext } from "./ProjectContext";
 import { formatHeaderTitle } from "../render/title";
-
 export function App({ c }: { c: Controller }) {
   const [, setV] = useState(0);
   const renderer = useRenderer();
+  const taskPanelRef = useRef<TaskPanelHandle>(null);
 
   useEffect(() => {
     c.bump = () => setV((v) => v + 1);
@@ -24,12 +25,15 @@ export function App({ c }: { c: Controller }) {
       c.bump = () => {};
     };
   }, [c]);
-
   useKeyboard((key: KeyEvent) => {
     const s = c.state;
     const input = key.sequence || (key.name === "space" ? " " : "");
     const overlay =
-      s.helpOpen || s.modelPicker || s.sessionList || s.pendingAsk;
+      s.helpOpen ||
+      s.modelPicker ||
+      s.sessionList ||
+      s.pendingAsk ||
+      s.questionRequest;
 
     if (key.ctrl && key.name === "c" && !key.shift && !overlay) {
       c.observability?.recordEvent("keyboard.ctrl_c", {
@@ -67,15 +71,32 @@ export function App({ c }: { c: Controller }) {
       key.preventDefault();
       return;
     }
-    if (key.name === "escape" || (overlay && (s.pendingAsk || s.helpOpen))) {
+    if (key.ctrl && key.name === "t") {
+      c.state.taskPanelExpanded = !c.state.taskPanelExpanded;
+      c.bump();
+      key.preventDefault();
+      return;
+    }
+    if (s.questionRequest) {
+      c.handleKey(
+        {
+          escape: key.name === "escape",
+          upArrow: key.name === "up",
+          downArrow: key.name === "down",
+          return: key.name === "return",
+          backspace: key.name === "backspace",
+        },
+        input,
+      );
+      key.preventDefault();
+      return;
+    }
+    if (key.name === "escape") {
       c.observability?.recordEvent("keyboard.escape", {
         busy: s.busy,
         overlay: Boolean(overlay),
       });
-      c.handleKey(
-        { escape: key.name === "escape", return: key.name === "enter" },
-        input,
-      );
+      c.handleKey({ escape: true }, input);
       key.preventDefault();
       return;
     }
@@ -91,7 +112,12 @@ export function App({ c }: { c: Controller }) {
   const s = c.state;
   const lastLog = s.toolLog[s.toolLog.length - 1];
   const running = lastLog?.running ? lastLog.tool : undefined;
-  const overlay = s.helpOpen || s.modelPicker || s.sessionList || s.pendingAsk;
+  const overlay =
+    s.helpOpen ||
+    s.modelPicker ||
+    s.sessionList ||
+    s.pendingAsk ||
+    s.questionRequest;
   const status = s.compacting
     ? "compacting"
     : s.pendingAsk
@@ -121,7 +147,11 @@ export function App({ c }: { c: Controller }) {
         </text>
       </box>
       <ChatViewport chat={s.chat} busy={s.busy} controller={c} />
-      <TaskPanel tasks={s.tasks} />
+      <TaskPanel
+        ref={taskPanelRef}
+        tasks={s.tasks}
+        expanded={s.taskPanelExpanded}
+      />
       {s.helpOpen ? (
         <HelpBox />
       ) : s.modelPicker ? (
@@ -134,6 +164,14 @@ export function App({ c }: { c: Controller }) {
         <SessionList
           list={s.sessionList}
           onSelect={(id) => c.resumeSession(id)}
+        />
+      ) : s.questionRequest ? (
+        <QuestionPanel
+          request={s.questionRequest}
+          selectedOption={s.questionSelectedOption}
+          textAnswer={s.questionTextAnswer}
+          otherMode={s.questionOtherMode}
+          questionIndex={s.questionIndex}
         />
       ) : s.pendingAsk ? (
         <PendingAsk ask={s.pendingAsk} />

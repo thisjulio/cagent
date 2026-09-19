@@ -25,6 +25,10 @@ Rules:
 
 - `bun install` - workspace dependencies
 - `bun test` - core + plugins (`bun test core/test/loop.test.ts` for one file)
+- `bun run build` - release build validation
+- `bun run typecheck` - TypeScript validation
+- `bun run lint` - Biome validation
+- `bun run verify` - mandatory build, typecheck, lint, and test pipeline
 - `bun start` - run the agent
 - `bun core/scripts/snap.tsx` - UI snapshot at 60/80/120 columns
 - `graphify update .` - update the knowledge graph (AST, no API cost)
@@ -110,6 +114,10 @@ Only add to an existing file when the change belongs to the same concept already
 ## Definition of Done
 
 - [ ] `bun test` passes, including `core/test/arch.test.ts`
+- [ ] `bun run build` passes
+- [ ] `bun run typecheck` passes
+- [ ] `bun run lint` passes
+- [ ] `bun run verify` passes without skipped checks
 - [ ] no touched file exceeds 250 lines
 - [ ] new code is in the location specified by the table above - nothing added to `app.tsx`
 - [ ] for UI changes: snapshot run and compared with the approved wireframe

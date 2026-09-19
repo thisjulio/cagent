@@ -12,6 +12,7 @@ import type { ToolAsk } from "../tools";
 import { appendChat, notify } from "./chat-buffer";
 import type { UIState } from "./state";
 import { appendCapped, MAX_VISIBLE_STREAM_CHARS } from "../stream-buffer";
+import type { VerificationRunner } from "../verification/runner";
 
 export type TurnHost = {
   state: UIState;
@@ -42,6 +43,7 @@ export type TurnHost = {
   traceAttributes?: Record<string, string | number | boolean>;
   onContextLimit?: () => Promise<void>;
   turnId?: string;
+  verification?: VerificationRunner;
 };
 
 export async function executeTurn(host: TurnHost): Promise<void> {
@@ -171,6 +173,7 @@ async function runAgentTurn(
     maxToolCalls: host.maxToolCalls,
     observability: host.observability ?? noopObservability,
     traceAttributes: host.traceAttributes,
+    verification: host.verification,
     onToolOutput: (content) => {
       host.bumpStream();
     },

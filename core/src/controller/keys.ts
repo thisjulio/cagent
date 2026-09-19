@@ -37,6 +37,58 @@ export function onKey(c: Controller, key: InputKey, input: string): void {
     c.bump();
     return;
   }
+  if (s.questionRequest) {
+    const q = s.questionRequest.questions[s.questionIndex];
+    const options = q.options ?? [];
+    const hasOther = options.length > 0;
+    const otherIndex = options.length;
+    if (key.escape) {
+      if (s.questionOtherMode) {
+        s.questionOtherMode = false;
+        s.questionTextAnswer = "";
+      } else {
+        c.questionService.reject(s.questionRequest.id);
+      }
+    } else if (key.upArrow) {
+      s.questionSelectedOption = Math.max(0, s.questionSelectedOption - 1);
+    } else if (key.downArrow) {
+      const max = hasOther ? otherIndex : 0;
+      s.questionSelectedOption = Math.min(max, s.questionSelectedOption + 1);
+    } else if (key.return) {
+      let answer: string;
+      if (s.questionOtherMode) {
+        answer = s.questionTextAnswer;
+      } else if (hasOther && s.questionSelectedOption === otherIndex) {
+        s.questionOtherMode = true;
+        c.bump();
+        return;
+      } else if (hasOther) {
+        answer = options[s.questionSelectedOption];
+      } else {
+        answer = s.questionTextAnswer;
+      }
+      s.questionAnswers[s.questionIndex] = answer;
+      if (s.questionIndex + 1 < s.questionRequest.questions.length) {
+        s.questionIndex += 1;
+        s.questionSelectedOption = 0;
+        s.questionTextAnswer = s.questionAnswers[s.questionIndex] ?? "";
+        s.questionOtherMode = false;
+      } else {
+        c.questionService.answerCurrent(
+          s.questionRequest.id,
+          s.questionIndex,
+          answer,
+          s.questionAnswers,
+        );
+      }
+    } else if (key.backspace && s.questionOtherMode) {
+      s.questionTextAnswer = s.questionTextAnswer.slice(0, -1);
+    } else if (input && (!hasOther || s.questionOtherMode)) {
+      s.questionTextAnswer += input;
+    }
+    c.bump();
+    return;
+  }
   if (s.pendingAsk) {
     if (key.escape) c.answerAsk(false);
     else if (input === "y") c.answerAsk(true);

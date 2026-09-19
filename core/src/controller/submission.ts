@@ -123,6 +123,7 @@ export async function submitMessage(
       return compact(controller, true);
     },
     traceAttributes: { "turn.id": turnId },
+    verification: controller.verification,
   }).finally(() => clearInterval(timer));
 }
 
