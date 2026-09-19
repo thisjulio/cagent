@@ -2,6 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "bun:test";
+
 import { EventBus } from "../src/events";
 import { Registry } from "../src/registry";
 import { Session } from "../src/session";

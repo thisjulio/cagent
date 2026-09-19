@@ -3,14 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import React from "react";
 import { act } from "react";
-import { describe, expect, it, mock } from "bun:test";
-
-// ponytail: isolate tests from real persistence so test model choices
-// (e.g. openai/m2) don't overwrite the user's ~/.cagent/last-model.json
-mock.module("../src/controller/model-persistence", () => ({
-  saveLastChoice: mock(() => {}),
-  loadLastChoice: mock(() => null),
-}));
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 
 import { testRender } from "@opentui/react/test-utils";
 import { App } from "../src/ui/components/App";
@@ -18,6 +11,23 @@ import { EventBus } from "../src/events";
 import { Registry } from "../src/registry";
 import { Controller, type ControllerDeps } from "../src/controller/controller";
 import { appendChat } from "../src/controller/chat-buffer";
+
+const previousModelFile = process.env.CAGENT_LAST_MODEL_FILE;
+
+beforeEach(() => {
+  process.env.CAGENT_LAST_MODEL_FILE = path.join(
+    fs.mkdtempSync(path.join(os.tmpdir(), "cagent-app-model-")),
+    "last-model.json",
+  );
+});
+
+afterEach(() => {
+  if (previousModelFile === undefined) {
+    delete process.env.CAGENT_LAST_MODEL_FILE;
+  } else {
+    process.env.CAGENT_LAST_MODEL_FILE = previousModelFile;
+  }
+});
 
 function deps(): ControllerDeps {
   return {

@@ -95,7 +95,7 @@ export async function* streamCodex(
         ) {
           const text = data.delta ?? data.text ?? data.part;
           if (typeof text === "string" && text)
-            yield { type: "reasoning", text };
+            yield { type: "reasoning", text: text + "\n" };
         } else if (event === "response.output_item.done") {
           const item = data.item as Record<string, unknown> | undefined;
           if (

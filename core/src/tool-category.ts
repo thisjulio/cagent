@@ -15,6 +15,7 @@ export function classifyTool(toolName: string): ToolCategory {
     return "read";
   if (
     name === "apply_patch" ||
+    name === "replace_lines" ||
     name.includes("write") ||
     name.includes("edit") ||
     name.includes("patch")

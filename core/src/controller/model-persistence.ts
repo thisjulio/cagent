@@ -8,8 +8,12 @@ interface LastChoice {
   timestamp: number;
 }
 
-function lastChoiceFile(): string {
-  return path.join(os.homedir(), ".cagent", "last-model.json");
+function lastChoiceFile(file?: string): string {
+  return (
+    file ??
+    process.env.CAGENT_LAST_MODEL_FILE ??
+    path.join(os.homedir(), ".cagent", "last-model.json")
+  );
 }
 
 function isValidChoice(data: unknown): data is LastChoice {
@@ -22,8 +26,12 @@ function isValidChoice(data: unknown): data is LastChoice {
   return true;
 }
 
-export function saveLastChoice(model: string, variant?: string): void {
-  const file = lastChoiceFile();
+export function saveLastChoice(
+  model: string,
+  variant?: string,
+  destination?: string,
+): void {
+  const file = lastChoiceFile(destination);
   try {
     fs.mkdirSync(path.dirname(file), { recursive: true });
     const choice: LastChoice = { model, variant, timestamp: Date.now() };
@@ -33,8 +41,8 @@ export function saveLastChoice(model: string, variant?: string): void {
   }
 }
 
-export function loadLastChoice(): LastChoice | null {
-  const file = lastChoiceFile();
+export function loadLastChoice(source?: string): LastChoice | null {
+  const file = lastChoiceFile(source);
   try {
     if (!fs.existsSync(file)) return null;
     const raw = fs.readFileSync(file, "utf8");

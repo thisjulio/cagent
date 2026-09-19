@@ -8,6 +8,7 @@ describe("classifyTool", () => {
     expect(classifyTool("write_file")).toBe("write");
     expect(classifyTool("edit_file")).toBe("write");
     expect(classifyTool("apply_patch")).toBe("write");
+    expect(classifyTool("replace_lines")).toBe("write");
     expect(classifyTool("search")).toBe("search");
     expect(classifyTool("search_ast")).toBe("search");
     expect(classifyTool("list_files")).toBe("search");

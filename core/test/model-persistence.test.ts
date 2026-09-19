@@ -7,34 +7,28 @@ import {
   loadLastChoice,
 } from "../src/controller/model-persistence";
 
-function choiceFile(): string {
-  return path.join(os.homedir(), ".cagent", "last-model.json");
-}
-
 describe("model-persistence", () => {
-  let backup: string | null = null;
-  let hadFile = false;
+  let testFile: string;
+
+  function choiceFile(): string {
+    return testFile;
+  }
 
   beforeEach(() => {
-    const file = choiceFile();
-    hadFile = fs.existsSync(file);
-    if (hadFile) {
-      backup = fs.readFileSync(file, "utf8");
-    }
+    testFile = path.join(
+      fs.mkdtempSync(path.join(os.tmpdir(), "cagent-model-persistence-")),
+      "last-model.json",
+    );
+    fs.rmSync(testFile, { force: true });
   });
 
   afterEach(() => {
-    const file = choiceFile();
-    if (hadFile && backup !== null) {
-      fs.writeFileSync(file, backup);
-    } else {
-      fs.rmSync(file, { force: true });
-    }
+    fs.rmSync(testFile, { force: true });
   });
 
   it("saves and loads a model choice", () => {
-    saveLastChoice("openai/gpt-4", "fast");
-    const choice = loadLastChoice();
+    saveLastChoice("openai/gpt-4", "fast", testFile);
+    const choice = loadLastChoice(testFile);
     expect(choice).not.toBeNull();
     expect(choice?.model).toBe("openai/gpt-4");
     expect(choice?.variant).toBe("fast");
@@ -42,15 +36,15 @@ describe("model-persistence", () => {
   });
 
   it("saves choice without variant", () => {
-    saveLastChoice("llama/llama-1");
-    const choice = loadLastChoice();
+    saveLastChoice("llama/llama-1", undefined, testFile);
+    const choice = loadLastChoice(testFile);
     expect(choice?.model).toBe("llama/llama-1");
     expect(choice?.variant).toBeUndefined();
   });
 
   it("returns null when no file exists", () => {
     fs.rmSync(choiceFile(), { force: true });
-    const result = loadLastChoice();
+    const result = loadLastChoice(testFile);
     expect(result).toBeNull();
   });
 
@@ -58,7 +52,7 @@ describe("model-persistence", () => {
     const file = choiceFile();
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, "{ not valid json");
-    const result = loadLastChoice();
+    const result = loadLastChoice(testFile);
     expect(result).toBeNull();
   });
 
@@ -66,7 +60,7 @@ describe("model-persistence", () => {
     const file = choiceFile();
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, JSON.stringify({ model: 123 }));
-    const result = loadLastChoice();
+    const result = loadLastChoice(testFile);
     expect(result).toBeNull();
   });
 
@@ -74,11 +68,13 @@ describe("model-persistence", () => {
     const file = choiceFile();
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, JSON.stringify({ model: "test" }));
-    const result = loadLastChoice();
+    const result = loadLastChoice(testFile);
     expect(result).toBeNull();
   });
 
   it("does not throw on write failure", () => {
-    expect(() => saveLastChoice("openai/gpt-4")).not.toThrow();
+    expect(() =>
+      saveLastChoice("openai/gpt-4", undefined, testFile),
+    ).not.toThrow();
   });
 });
