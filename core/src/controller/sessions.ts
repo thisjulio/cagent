@@ -54,6 +54,10 @@ export function toChatItems(records: LoadedRecord[]): ChatItem[] {
         content: String(p.content ?? ""),
         toolName,
         toolCategory: classifyTool(toolName),
+        display:
+          p.display && typeof p.display === "object"
+            ? (p.display as ChatItem["display"])
+            : undefined,
       });
     } else if (p.kind === "subagent-start") {
       result.push({

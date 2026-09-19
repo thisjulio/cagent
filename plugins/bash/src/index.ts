@@ -159,6 +159,13 @@ const register: Plugin = (ctx) => {
         isError,
         timedOut: result.timedOut,
         changesWorkspace: mayChangeWorkspace(String(args.command)),
+        display: {
+          kind: "terminal",
+          stdout: result.stdout,
+          stderr: result.stderr || undefined,
+          exitCode: result.code,
+          timedOut: result.timedOut,
+        },
       };
     },
   });

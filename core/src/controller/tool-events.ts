@@ -2,6 +2,7 @@ import type { ChatItem, UIState } from "./state";
 import { appendChat, appendToolLog } from "./chat-buffer";
 import { appendCapped, MAX_VISIBLE_STREAM_CHARS } from "../stream-buffer";
 import { classifyTool } from "../tool-category";
+import { toolCommandLabel } from "./tool-label";
 
 function lastRunningChat(chat: ChatItem[], tool: string): ChatItem | undefined {
   for (let i = chat.length - 1; i >= 0; i--) {
@@ -13,8 +14,7 @@ function lastRunningChat(chat: ChatItem[], tool: string): ChatItem | undefined {
 
 export function toolPre(state: UIState, p: unknown): void {
   const { tool, args } = p as { tool: string; args: Record<string, unknown> };
-  const cmd =
-    typeof args.command === "string" ? args.command : JSON.stringify(args);
+  const cmd = toolCommandLabel(tool, args);
   appendChat(state, {
     kind: "tool",
     toolName: tool,
@@ -41,7 +41,7 @@ export function toolStream(state: UIState, p: unknown, prefix = ""): void {
 export function toolPost(state: UIState, p: unknown): void {
   const { tool, result, error } = p as {
     tool: string;
-    result?: { output: string };
+    result?: { output: string; display?: import("@cagent/sdk").ToolDisplay };
     error?: string;
   };
   const e = lastRunningChat(state.chat, tool);
@@ -49,14 +49,14 @@ export function toolPost(state: UIState, p: unknown): void {
     e.running = false;
     if (e.startedAt) e.durationMs = Date.now() - e.startedAt;
     e.isError = !!error;
+    e.display = result?.display;
     if (!e.content) e.content = error ?? result?.output ?? "";
   }
 }
 
 export function toolDenied(state: UIState, p: unknown): void {
   const { tool, args } = p as { tool: string; args: Record<string, unknown> };
-  const cmd =
-    typeof args.command === "string" ? args.command : JSON.stringify(args);
+  const cmd = toolCommandLabel(tool, args);
   appendChat(state, {
     kind: "tool",
     toolName: tool,

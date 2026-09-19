@@ -53,6 +53,7 @@ export async function runToolCall(
     args,
     isError: result.isError,
     changesWorkspace: result.changesWorkspace,
+    display: result.display,
   });
   if (result.changesWorkspace) ctx.changesWorkspace = true;
   opts.onToolOutput?.(result.output);

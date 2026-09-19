@@ -16,11 +16,36 @@ export type ToolEvidence = {
   commit?: string;
   kind?: "code" | "test" | "adr" | "docs";
 };
+
+export type ToolDisplay =
+  | {
+      kind: "diff";
+      content: string;
+      filetype?: string;
+      path?: string;
+    }
+  | {
+      kind: "code";
+      content: string;
+      filetype?: string;
+      path?: string;
+      lineStart?: number;
+      lineNumbers?: boolean;
+    }
+  | {
+      kind: "terminal";
+      stdout: string;
+      stderr?: string;
+      exitCode?: number;
+      timedOut?: boolean;
+    };
+
 export interface ToolResult {
   output: string;
   isError?: boolean;
   evidence?: ToolEvidence[];
   changesWorkspace?: boolean;
+  display?: ToolDisplay;
 }
 
 export {

@@ -1,5 +1,6 @@
 import type { ChatItem } from "../../controller/state";
 import type { ToolCategory } from "../../tool-category";
+import type { ToolDisplay } from "@cagent/sdk";
 
 export type PromptItem = {
   type: "PROMPT";
@@ -34,6 +35,7 @@ export type ToolItem = {
   running?: boolean;
   expanded?: boolean;
   durationMs?: number;
+  display?: ToolDisplay;
   timestamp?: number;
   chatIndex: number;
 };
@@ -145,6 +147,7 @@ export function chatToBlocks(chat: ChatItem[]): Block[] {
           running: item.running,
           expanded: item.expanded,
           durationMs: item.durationMs,
+          display: item.display,
           timestamp: item.timestamp,
           chatIndex: i,
         });

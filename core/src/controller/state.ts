@@ -1,4 +1,4 @@
-import type { Observability, ProviderAdapter } from "@cagent/sdk";
+import type { Observability, ProviderAdapter, ToolDisplay } from "@cagent/sdk";
 import type { AppConfig } from "../config";
 import type { EventBus } from "../events";
 import type { Registry } from "../registry";
@@ -27,6 +27,7 @@ export type ChatItem = {
   command?: string;
   startedAt?: number;
   durationMs?: number;
+  display?: ToolDisplay;
 };
 
 export type ToolLogEntry = {

@@ -5,6 +5,13 @@ const GRAY_ITALIC = "\u001b[3;90m";
 const BOLD = "\u001b[1m";
 const RESET = "\u001b[0m";
 
+function prefixedLines(content: string, prefix: string): string {
+  return content
+    .split("\n")
+    .map((line) => `${prefix}${line}`)
+    .join("\n");
+}
+
 export function renderHumanHistory(
   items: ChatItem[],
   color = process.stdout.isTTY,
@@ -46,9 +53,7 @@ function renderItem(
     const status = item.denied ? "✗" : item.isError ? "✗" : "⏺";
     const name = item.toolName ?? "tool";
     const command = item.cmd ? ` · ${item.cmd}` : "";
-    const body = item.content
-      ? `\n│  ${item.content.replaceAll("\n", "\n│  ")}`
-      : "";
+    const body = item.content ? `\n${prefixedLines(item.content, "│  ")}` : "";
     return `├─ ${status} ${name}${command}${body}`;
   }
   return item.content;

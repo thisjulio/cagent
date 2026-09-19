@@ -96,6 +96,8 @@ describe("code-tools tools", () => {
     expect(r.output).toContain("OK a3.ts");
     expect(r.output).toContain("-beta");
     expect(r.output).toContain("+B");
+    expect(r.display?.kind).toBe("diff");
+    expect(r.display?.content).toContain("@@ -1,4 +1,4 @@");
     expect(fs.readFileSync(path.join(ws, "a3.ts"), "utf8")).toBe(
       "alpha\nB\ngamma\n",
     );

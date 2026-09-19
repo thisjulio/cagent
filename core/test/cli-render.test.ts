@@ -27,4 +27,22 @@ describe("human CLI history renderer", () => {
       "cagent\n├─ \u001b[1mthinking\u001b[0m\n\u001b[3;90m│  private reasoning\u001b[0m",
     );
   });
+
+  test("keeps the tree connector aligned on every multiline tool line", () => {
+    const output = renderHumanHistory(
+      [
+        {
+          kind: "tool",
+          toolName: "bash",
+          cmd: "echo multiline",
+          content: "first\nsecond\nthird",
+        },
+      ],
+      false,
+    );
+
+    expect(output).toBe(
+      "├─ ⏺ bash · echo multiline\n│  first\n│  second\n│  third",
+    );
+  });
 });

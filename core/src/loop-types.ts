@@ -36,6 +36,7 @@ export interface TurnRecord {
   args?: ToolArgs;
   isError?: boolean;
   changesWorkspace?: boolean;
+  display?: import("@cagent/sdk").ToolDisplay;
 }
 
 export interface TurnOpts extends StreamOpts {

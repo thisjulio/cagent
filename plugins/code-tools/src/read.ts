@@ -4,6 +4,7 @@ import { defineTool, type PluginContext, type ToolArgs } from "@cagent/sdk";
 import { errorText } from "./errors";
 import { guardPath } from "./guards";
 import { recordRead, wasReverted } from "./state";
+import { filetypeForPath } from "./display";
 
 const DEFAULT_LIMIT = 200;
 const MAX_LIMIT = 2000;
@@ -104,6 +105,16 @@ export function readTool(ctx: PluginContext) {
       return {
         output: body ? `${metadata}\n${body}` : `${metadata}\n(empty range)`,
         evidence: [{ path: abs, line: offset, kind: "code" }],
+        display: body
+          ? {
+              kind: "code",
+              content: segment.lines.join("\n"),
+              filetype: filetypeForPath(abs),
+              path: abs,
+              lineStart: offset,
+              lineNumbers: true,
+            }
+          : undefined,
       };
     },
   );

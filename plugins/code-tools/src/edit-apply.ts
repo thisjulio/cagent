@@ -9,6 +9,7 @@ import { errorText } from "./errors";
 import { guardPath } from "./guards";
 import { ensureShadow, shadowCommit } from "./git-shadow";
 import { applyRanges, type LineRange } from "./apply-lines";
+import { diffDisplay, unifiedPatch } from "./display";
 import {
   bumpFailure,
   clearFailures,
@@ -35,7 +36,13 @@ function rel(abs: string): string {
 
 async function processTarget(
   t: Target,
-  o: { seed: string; blocks: number; patch: number; out: string[] },
+  o: {
+    seed: string;
+    blocks: number;
+    patch: number;
+    out: string[];
+    displays: import("@cagent/sdk").ToolDisplay[];
+  },
 ): Promise<boolean> {
   let abs: string;
   try {
@@ -175,6 +182,11 @@ async function processTarget(
   o.out.push(
     `OK ${label}\n${diff.slice(0, 100).join("\n")}${diff.length > 100 ? "\n…" : ""}`,
   );
+  const display = diffDisplay(
+    unifiedPatch(oldLines, applied.lines, label),
+    label,
+  );
+  if (display) o.displays.push(display);
   return true;
 }
 
@@ -187,11 +199,14 @@ export async function applyTargets(
   output: string;
   isError: boolean;
   changesWorkspace?: boolean;
+  display?: import("@cagent/sdk").ToolDisplay;
 }> {
   const tscBefore = await tscErrors(root());
   const out: string[] = [];
+  const displays: import("@cagent/sdk").ToolDisplay[] = [];
   let ok = 0;
-  for (const t of targets) if (await processTarget(t, { ...o, out })) ok++;
+  for (const t of targets)
+    if (await processTarget(t, { ...o, out, displays })) ok++;
 
   const fmt = await runFormat(root());
   const tscAfter = await tscErrors(root());
@@ -208,5 +223,6 @@ export async function applyTargets(
     output: out.join("\n"),
     isError: ok === 0,
     changesWorkspace: ok > 0,
+    display: displays.length === 1 ? displays[0] : undefined,
   };
 }

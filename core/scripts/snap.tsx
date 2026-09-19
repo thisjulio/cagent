@@ -7,6 +7,50 @@ import { EventBus } from "../src/events.js";
 import { Registry } from "../src/registry.js";
 import { loadConfig } from "../src/config.js";
 
+type SnapTool = "write" | "read" | "bash";
+const TOOL_ALIASES: Record<string, SnapTool> = {
+  write: "write",
+  write_file: "write",
+  read: "read",
+  read_file: "read",
+  bash: "bash",
+};
+
+function selectedTools(): Set<SnapTool> | null {
+  const argument = process.argv.find((value) => value.startsWith("--tool="));
+  if (!argument) return null;
+  const values = argument.slice("--tool=".length).split(",");
+  const selected = new Set<SnapTool>();
+  for (const value of values) {
+    const tool = TOOL_ALIASES[value.trim().toLowerCase()];
+    if (!tool) {
+      throw new Error(
+        `Unknown snap tool "${value}". Use write, read, or bash.`,
+      );
+    }
+    selected.add(tool);
+  }
+  return selected;
+}
+
+function printHelp(): void {
+  console.log(
+    [
+      "Usage: bun core/scripts/snap.tsx [--tool=write,read,bash]",
+      "",
+      "Render all snapshot scenarios by default.",
+      "With --tool, render only the selected multiline tool fixtures.",
+      "Aliases: write/write_file, read/read_file, bash.",
+    ].join("\n"),
+  );
+}
+
+const tools = selectedTools();
+if (process.argv.includes("--help") || process.argv.includes("-h")) {
+  printHelp();
+  process.exit(0);
+}
+
 // Provider stub: the snapshot only renders and never calls the LLM.
 const adapter = {
   list_models: async () => ["stub-model"],
@@ -26,10 +70,116 @@ controller.state.chat = []; // Empty, deterministic state (the constructor creat
 controller.state.toolLog = [];
 controller.state.tokens = 0;
 
-async function frame(w: number): Promise<void> {
+function multilineToolScenarios() {
+  const scenarios = [
+    {
+      kind: "user" as const,
+      content: "edit a temporary file, read it, and run a multiline echo",
+    },
+    {
+      kind: "thinking" as const,
+      content:
+        "**Planning temporary file editing and pipeline execution**\n*Setting up temporary file writing task*",
+    },
+    {
+      kind: "tool" as const,
+      toolName: "tasks",
+      toolCategory: "generic" as const,
+      cmd: "tasks",
+      content: "created 3 tasks",
+      running: false,
+    },
+    {
+      kind: "tool" as const,
+      toolName: "write_file",
+      toolCategory: "write" as const,
+      cmd: "temporary-layout-check.txt",
+      content: "written temporary-layout-check.txt",
+      running: false,
+      expanded: true,
+      display: {
+        kind: "diff" as const,
+        content:
+          "--- a/temporary-layout-check.txt\n+++ b/temporary-layout-check.txt\n@@ -0,0 +1,3 @@\n+first temporary line\n+second temporary line\n+third temporary line",
+        filetype: "text",
+      },
+    },
+    {
+      kind: "tool" as const,
+      toolName: "tasks",
+      toolCategory: "generic" as const,
+      cmd: "tasks",
+      content: "completed write task",
+      running: false,
+    },
+    {
+      kind: "tool" as const,
+      toolName: "read_file",
+      toolCategory: "read" as const,
+      cmd: "temporary-layout-check.txt",
+      content:
+        "1\tfirst temporary line\n2\tsecond temporary line\n3\tthird temporary line",
+      running: false,
+      expanded: true,
+      display: {
+        kind: "code" as const,
+        content:
+          "first temporary line\nsecond temporary line\nthird temporary line",
+        filetype: "text",
+        lineNumbers: true,
+        lineStart: 1,
+      },
+    },
+    {
+      kind: "tool" as const,
+      toolName: "tasks",
+      toolCategory: "generic" as const,
+      cmd: "tasks",
+      content: "completed read task",
+      running: false,
+    },
+    {
+      kind: "tool" as const,
+      toolName: "bash",
+      toolCategory: "shell" as const,
+      cmd: "echo 'first echo line'; echo 'second echo line'; echo 'third echo line'",
+      content: "first echo line\nsecond echo line\nthird echo line",
+      running: false,
+      expanded: true,
+      display: {
+        kind: "terminal" as const,
+        stdout: "first echo line\nsecond echo line\nthird echo line",
+        exitCode: 0,
+      },
+    },
+    {
+      kind: "tool" as const,
+      toolName: "tasks",
+      toolCategory: "generic" as const,
+      cmd: "tasks",
+      content: "completed echo task",
+      running: false,
+    },
+    {
+      kind: "assistant" as const,
+      content:
+        "Concluído:\n\n- Criei o arquivo temporário.\n- Li o arquivo.\n- Executei o echo multilinhas.",
+    },
+  ];
+  if (!tools) return scenarios;
+  return scenarios.filter(
+    (item) =>
+      item.kind !== "tool" ||
+      (item.toolName === "write_file" && tools.has("write")) ||
+      (item.toolName === "read_file" && tools.has("read")) ||
+      (item.toolName === "bash" && tools.has("bash")),
+  );
+}
+
+async function frame(w: number, height = 24): Promise<void> {
   const setup = await testRender(<App c={controller} />, {
     width: w,
-    height: 24,
+    height,
   });
   await act(async () => {
     await setup.flush();
@@ -43,6 +193,17 @@ async function frame(w: number): Promise<void> {
 }
 
 for (const w of [60, 80, 120]) await frame(w);
+
+if (tools) {
+  controller.state.chat = multilineToolScenarios();
+  controller.state.title = `multiline tools: ${[...tools].join(", ")}`;
+  await frame(80, 40);
+  process.exit(0);
+}
+
+controller.state.chat = multilineToolScenarios();
+controller.state.title = "multiline tool outputs";
+await frame(80, 40);
 
 // Scenario: normal conversation with user / assistant / tool blocks.
 controller.state.chat = [

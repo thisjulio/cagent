@@ -3,6 +3,8 @@ import { atomicWrite } from "./atomic-write";
 import { errorText } from "./errors";
 import { guardPath } from "./guards";
 import { recordRead, recordWrite } from "./state";
+import { diffDisplay, filetypeForPath, unifiedPatch } from "./display";
+import fs from "node:fs";
 
 export function writeFileTool(ctx: PluginContext) {
   return defineTool(
@@ -34,6 +36,12 @@ export function writeFileTool(ctx: PluginContext) {
           isError: true,
         };
       }
+      let previous = "";
+      try {
+        previous = fs.readFileSync(abs, "utf8");
+      } catch {
+        // A missing file is represented as an all-added diff.
+      }
       try {
         atomicWrite(abs, content);
       } catch (e) {
@@ -48,7 +56,19 @@ export function writeFileTool(ctx: PluginContext) {
       recordRead(abs);
       recordWrite(abs, content);
       ctx.emit("code-tools/write", { path: abs });
-      return { output: `written ${abs}`, changesWorkspace: true };
+      const oldLines = previous ? previous.split(/\r?\n/) : [];
+      const newLines = content ? content.split(/\r?\n/) : [];
+      const diff = unifiedPatch(oldLines, newLines, abs);
+      return {
+        output: `written ${abs}`,
+        changesWorkspace: true,
+        display: diffDisplay(diff, abs) ?? {
+          kind: "code",
+          content,
+          filetype: filetypeForPath(abs),
+          path: abs,
+        },
+      };
     },
   );
 }

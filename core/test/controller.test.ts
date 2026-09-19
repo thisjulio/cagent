@@ -295,6 +295,22 @@ describe("controller", () => {
     expect(done.content).toBe("a\n");
   });
 
+  it("keeps structured tool output collapsed until the user expands it", () => {
+    const c = new Controller(deps());
+    c.onToolPre({ tool: "bash", args: { command: "printf output" } });
+    c.onToolPost({
+      tool: "bash",
+      result: {
+        output: "output",
+        display: { kind: "terminal", stdout: "output" },
+      },
+    });
+    const done = c.state.chat[c.state.chat.length - 1];
+    expect(done.expanded).toBeFalsy();
+    c.handleKey({ ctrl: true }, "o");
+    expect(c.state.chat[c.state.chat.length - 1].expanded).toBe(true);
+  });
+
   it("onToolDenied marks a denied item", () => {
     const c = new Controller(deps());
     c.onToolDenied({ tool: "bash", args: { command: "rm -rf /" } });

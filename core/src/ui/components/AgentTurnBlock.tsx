@@ -1,12 +1,66 @@
-import { TextAttributes } from "@opentui/core";
+import { SyntaxStyle, TextAttributes } from "@opentui/core";
 import type { AgentTurnBlock, AgentItem } from "../render/blocks";
 import type { Controller } from "../../controller/controller";
-import { Markdown, plainLine } from "../render/markdown";
 import { categoryLabel } from "../../tool-category";
 import { formatTime } from "../render/time";
+import { ToolDisplayComponent } from "./ToolDisplay";
+import type { ToolDisplay } from "@cagent/sdk";
 
 const MAX_THINKING_LINES = 12;
 const MAX_THINKING_CHARS = 2400;
+const markdownSyntaxStyle = SyntaxStyle.create();
+
+function displayLineCount(display: ToolDisplay): number {
+  if (display.kind === "terminal") {
+    const stdout = display.stdout.trimEnd();
+    const stderr = (display.stderr ?? "").trimEnd();
+    const outputLines = [
+      ...(stdout ? stdout.split("\n") : []),
+      ...(stderr ? stderr.split("\n") : []),
+    ].slice(0, 12);
+    const statusLine =
+      display.timedOut ||
+      (display.exitCode !== undefined && display.exitCode !== 0)
+        ? 1
+        : 0;
+    return Math.max(1, outputLines.length + statusLine);
+  }
+
+  if (display.kind === "diff") {
+    const lines = display.content
+      .replace(/\r\n/g, "\n")
+      .trimEnd()
+      .split("\n")
+      .filter(
+        (line) =>
+          line.length > 0 &&
+          !line.startsWith("---") &&
+          !line.startsWith("+++") &&
+          !line.startsWith("@@"),
+      );
+    return Math.max(1, Math.min(lines.length, 14));
+  }
+
+  const maximum = 12;
+  return Math.max(
+    1,
+    display.content.trimEnd().split("\n").slice(0, maximum).length,
+  );
+}
+
+function wrapCommand(command: string, width: number): string[] {
+  if (command.length <= width) return [command];
+  const lines: string[] = [];
+  let remaining = command;
+  while (remaining.length > width) {
+    const splitAt = remaining.lastIndexOf(" ", width);
+    const index = splitAt > 0 ? splitAt : width;
+    lines.push(remaining.slice(0, index));
+    remaining = remaining.slice(index).trimStart();
+  }
+  lines.push(remaining);
+  return lines;
+}
 
 function ThinkingItemComponent({
   item,
@@ -35,7 +89,7 @@ function ThinkingItemComponent({
             wrapMode="word"
           >
             <span fg="#d97757">│ </span>
-            <span fg="#888888">{plainLine(line) || " "}</span>
+            <span fg="#888888">{line || " "}</span>
           </text>
         ))}
       </box>
@@ -77,7 +131,7 @@ function ToolItemComponent({
         }
       }}
     >
-      <text>
+      <text wrapMode="word" width="100%">
         <span fg="#d97757">├─ </span>
         <span fg={color}>{status}</span>
         <span fg="#d97757"> </span>
@@ -89,19 +143,44 @@ function ToolItemComponent({
           <span attributes={TextAttributes.DIM}>
             {" "}
             ·{" "}
-            {item.expanded
-              ? item.cmd
-              : item.cmd.length > 40
-                ? item.cmd.slice(0, 40) + "..."
-                : item.cmd}
+            {wrapCommand(
+              item.expanded
+                ? item.cmd
+                : item.cmd.length > 40
+                  ? item.cmd.slice(0, 40) + "..."
+                  : item.cmd,
+              71,
+            ).join("\n│")}
           </span>
         ) : null}
         {details ? (
           <span attributes={TextAttributes.DIM}> {details}</span>
         ) : null}
       </text>
-      {item.expanded && item.content ? (
-        <box flexDirection="column">
+      {item.expanded && item.display ? (
+        <box
+          flexDirection="row"
+          width="100%"
+          minWidth={0}
+          overflow="hidden"
+          paddingLeft={0}
+        >
+          <box flexDirection="column" width={3} flexShrink={0}>
+            {Array.from(
+              { length: displayLineCount(item.display) },
+              (_, index) => (
+                <text key={`display-line-${index}`} fg="#d97757">
+                  │{" "}
+                </text>
+              ),
+            )}
+          </box>
+          <box flexGrow={1} flexBasis={0} minWidth={0} flexShrink={1}>
+            <ToolDisplayComponent display={item.display} />
+          </box>
+        </box>
+      ) : item.expanded && item.content ? (
+        <box flexDirection="column" width="100%" minWidth={0}>
           {item.content.split("\n").map((line, lineIndex) => (
             <text
               key={`tool-line-${lineIndex}`}
@@ -127,11 +206,18 @@ function ResponseItemComponent({
   streaming: boolean;
 }) {
   return (
-    <box flexDirection="row">
+    <box flexDirection="row" minWidth={0}>
       <text fg="#d97757">└─ </text>
-      <box flexGrow={1} paddingLeft={1}>
+      <box flexGrow={1} flexBasis={0} minWidth={0} paddingLeft={1}>
         {item.content ? (
-          <Markdown content={item.content} streaming={streaming} />
+          <markdown
+            content={item.content}
+            syntaxStyle={markdownSyntaxStyle}
+            streaming={streaming}
+            width="100%"
+            minWidth={0}
+            height="auto"
+          />
         ) : (
           <text>...</text>
         )}

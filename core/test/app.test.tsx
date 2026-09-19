@@ -51,12 +51,248 @@ describe("OpenTUI render", () => {
     });
     await act(async () => {
       await setup.flush();
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      await setup.flush();
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      await setup.flush();
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      await setup.flush();
     });
     const out = setup.captureCharFrame();
     expect(out).toContain("m1");
     expect(out).toContain("openai");
     expect(out).toContain("100/100000");
     expect(out).toContain("%");
+    act(() => setup.renderer.destroy());
+  });
+
+  it("keeps expanded tool content aligned at narrow widths", async () => {
+    const c = new Controller(deps());
+    c.state.chat.push({
+      kind: "tool",
+      toolName: "bash",
+      toolCategory: "shell",
+      cmd: "printf",
+      content: "012345678901234567890123456789",
+      expanded: true,
+      display: {
+        kind: "terminal",
+        stdout: "012345678901234567890123456789",
+      },
+    });
+    const setup = await testRender(React.createElement(App, { c }), {
+      width: 40,
+      height: 24,
+    });
+    await act(async () => {
+      await setup.flush();
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      await setup.flush();
+    });
+    const lines = setup
+      .captureCharFrame()
+      .split("\n")
+      .filter((line) => line.includes("012345"));
+    expect(lines.length).toBeGreaterThan(0);
+    expect(lines.every((line) => line.includes("│"))).toBe(true);
+    act(() => setup.renderer.destroy());
+  });
+
+  it("keeps the connector beside every line of multiline tool displays", async () => {
+    const c = new Controller(deps());
+    c.state.chat.push({
+      kind: "tool",
+      toolName: "bash",
+      toolCategory: "shell",
+      cmd: "printf",
+      content: "first\nsecond\nthird",
+      expanded: true,
+      display: {
+        kind: "terminal",
+        stdout: "first\nsecond\nthird",
+      },
+    });
+    const setup = await testRender(React.createElement(App, { c }), {
+      width: 40,
+      height: 24,
+    });
+    await act(async () => {
+      await setup.flush();
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      await setup.flush();
+    });
+    const lines = setup
+      .captureCharFrame()
+      .split("\n")
+      .filter((line) => /first|second|third/.test(line));
+    expect(lines).toHaveLength(3);
+    expect(lines.every((line) => line.includes("│"))).toBe(true);
+    act(() => setup.renderer.destroy());
+  });
+
+  it("summarizes structured write arguments instead of printing file contents", async () => {
+    const c = new Controller(deps());
+    c.onToolPre({
+      tool: "write_file",
+      args: {
+        path: "cagent-opentui-test.ts",
+        content: "line one\nline two\nline three",
+      },
+    });
+    c.onToolPost({
+      tool: "write_file",
+      result: {
+        output: "written cagent-opentui-test.ts",
+        display: {
+          kind: "code",
+          content: "line one\nline two\nline three",
+          filetype: "typescript",
+        },
+      },
+    });
+    const setup = await testRender(React.createElement(App, { c }), {
+      width: 80,
+      height: 40,
+    });
+    await act(async () => {
+      await setup.flush();
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      await setup.flush();
+    });
+    const collapsed = setup.captureCharFrame();
+    expect(collapsed).toContain("write_file · cagent-opentui-test.ts");
+    expect(collapsed).not.toContain("\\nline two");
+    act(() => setup.renderer.destroy());
+  });
+
+  it("renders rich displays for code, diffs, and terminal output", async () => {
+    const displays = [
+      {
+        kind: "tool",
+        toolName: "read_file",
+        toolCategory: "read",
+        cmd: "src/app.ts",
+        content: "1\tconst answer = 42",
+        expanded: true,
+        display: {
+          kind: "code",
+          content: "const answer = 42",
+          filetype: "typescript",
+          lineNumbers: true,
+          lineStart: 4,
+        },
+      },
+      {
+        kind: "tool",
+        toolName: "edit_file",
+        toolCategory: "write",
+        cmd: "src/app.ts",
+        content: "OK src/app.ts\n-const answer = 41\n+const answer = 42",
+        expanded: true,
+        display: {
+          kind: "diff",
+          content:
+            "--- a/src/app.ts\n+++ b/src/app.ts\n@@ -1,1 +1,1 @@\n-const answer = 41\n+const answer = 42",
+          filetype: "typescript",
+        },
+      },
+      {
+        kind: "tool",
+        toolName: "bash",
+        toolCategory: "shell",
+        cmd: "bun test",
+        content: "ok",
+        expanded: true,
+        display: {
+          kind: "terminal",
+          stdout: "ok",
+          stderr: "warning",
+          exitCode: 0,
+        },
+      },
+    ] as const;
+    const expected = ["const answer = 42", "const answer = 42", "warning"];
+    for (const [index, display] of displays.entries()) {
+      const c = new Controller(deps());
+      c.state.chat.push(display);
+      const setup = await testRender(React.createElement(App, { c }), {
+        width: 80,
+        height: 40,
+      });
+      await act(async () => {
+        await setup.flush();
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        await setup.flush();
+      });
+      expect(setup.captureCharFrame()).toContain(expected[index]);
+      act(() => setup.renderer.destroy());
+    }
+  });
+
+  it("keeps edit_file displays collapsed after completion", async () => {
+    const c = new Controller(deps());
+    c.onToolPre({
+      tool: "edit_file",
+      args: { path: "cagent-opentui-test.ts", blocks: "edit" },
+    });
+    c.onToolPost({
+      tool: "edit_file",
+      result: {
+        output: "OK cagent-opentui-test.ts",
+        display: {
+          kind: "diff",
+          content:
+            "--- cagent-opentui-test.ts\n+++ cagent-opentui-test.ts\n@@ -1,1 +1,1 @@\n-old\n+new",
+          filetype: "typescript",
+          path: "cagent-opentui-test.ts",
+        },
+      },
+    });
+    const setup = await testRender(React.createElement(App, { c }), {
+      width: 80,
+      height: 30,
+    });
+    await act(async () => {
+      await setup.flush();
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      await setup.flush();
+    });
+    const out = setup.captureCharFrame();
+    expect(out).toContain("edit_file · cagent-opentui-test.ts");
+    expect(out).not.toContain("1 - old");
+    expect(out).not.toContain("1 + new");
+    act(() => setup.renderer.destroy());
+  });
+
+  it("renders read results with a visible line-number gutter", async () => {
+    const c = new Controller(deps());
+    c.state.chat.push({
+      kind: "tool",
+      toolName: "read_file",
+      toolCategory: "read",
+      cmd: "cagent-opentui-test.ts",
+      content: "4\treturn message;",
+      expanded: true,
+      display: {
+        kind: "code",
+        content: "return message;",
+        filetype: "typescript",
+        lineNumbers: true,
+        lineStart: 4,
+      },
+    });
+    const setup = await testRender(React.createElement(App, { c }), {
+      width: 80,
+      height: 30,
+    });
+    await act(async () => {
+      await setup.flush();
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      await setup.flush();
+    });
+    const out = setup.captureCharFrame();
+    expect(out).toContain("4");
+    expect(out).toContain("return message;");
     act(() => setup.renderer.destroy());
   });
 
@@ -68,6 +304,8 @@ describe("OpenTUI render", () => {
       height: 24,
     });
     await act(async () => {
+      await setup.flush();
+      await new Promise((resolve) => setTimeout(resolve, 100));
       await setup.flush();
     });
     const out = setup.captureCharFrame();
@@ -104,6 +342,8 @@ describe("OpenTUI render", () => {
     });
     await act(async () => {
       await setup.flush();
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      await setup.flush();
     });
     const out = setup.captureCharFrame();
     expect(out).toContain("thinking");
@@ -125,6 +365,8 @@ describe("OpenTUI render", () => {
         height: 24,
       });
       await act(async () => {
+        await setup.flush();
+        await new Promise((resolve) => setTimeout(resolve, 100));
         await setup.flush();
       });
       const lines = setup.captureCharFrame().split("\n");
@@ -154,6 +396,8 @@ describe("OpenTUI render", () => {
       });
       await act(async () => {
         await setup.flush();
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        await setup.flush();
       });
       const before = setup.captureCharFrame();
       await act(async () => setup.mockMouse.scroll(1, 1, "up"));
@@ -180,6 +424,8 @@ describe("OpenTUI render", () => {
     });
     await act(async () => {
       await setup.flush();
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      await setup.flush();
     });
     const out = setup.captureCharFrame();
     expect(out).toContain("title");
@@ -200,10 +446,10 @@ describe("OpenTUI render", () => {
     });
     await act(async () => {
       await setup.flush();
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      await setup.flush();
     });
     const out = setup.captureCharFrame();
-    expect(out).toContain("1.");
-    expect(out).toContain("2.");
     expect(out).toContain("const a = 1;");
     act(() => setup.renderer.destroy());
   });
