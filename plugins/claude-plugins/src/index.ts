@@ -16,7 +16,7 @@ type ClaudePluginManifest = {
   version?: string;
   description?: string;
   hooks?: string; // path to hooks config file
-  commands?: string; // path to commands directory
+  commands?: string | string[]; // path(s) to commands directories
   skills?: string; // path to skills directory
 };
 
@@ -244,34 +244,40 @@ const register: Plugin = (ctx) => {
 
       // Discover and register commands
       if (manifest.commands) {
-        const commandsDir = path.join(fullPluginDir, manifest.commands);
-        if (fs.existsSync(commandsDir)) {
-          const source: CommandSource = {
-            discover: (_cwd: string) => {
-              const commands: {
-                name: string;
-                file: string;
-                content: string;
-              }[] = [];
-              const cmdEntries = fs.readdirSync(commandsDir, {
-                withFileTypes: true,
-              });
-              for (const cmdEntry of cmdEntries) {
-                if (!cmdEntry.isFile() || !cmdEntry.name.endsWith(".md"))
-                  continue;
-                const cmdFile = path.join(commandsDir, cmdEntry.name);
-                const name = cmdEntry.name.slice(0, -3);
-                if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(name)) continue;
-                commands.push({
-                  name,
-                  file: cmdFile,
-                  content: fs.readFileSync(cmdFile, "utf8").trim(),
+        const commandDirs = (
+          Array.isArray(manifest.commands)
+            ? manifest.commands
+            : [manifest.commands]
+        ).map((commandsPath) => path.join(fullPluginDir, commandsPath));
+        for (const commandsDir of commandDirs) {
+          if (fs.existsSync(commandsDir)) {
+            const source: CommandSource = {
+              discover: (_cwd: string) => {
+                const commands: {
+                  name: string;
+                  file: string;
+                  content: string;
+                }[] = [];
+                const cmdEntries = fs.readdirSync(commandsDir, {
+                  withFileTypes: true,
                 });
-              }
-              return commands;
-            },
-          };
-          ctx.registerCommandSource(source);
+                for (const cmdEntry of cmdEntries) {
+                  if (!cmdEntry.isFile() || !cmdEntry.name.endsWith(".md"))
+                    continue;
+                  const cmdFile = path.join(commandsDir, cmdEntry.name);
+                  const name = cmdEntry.name.slice(0, -3);
+                  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(name)) continue;
+                  commands.push({
+                    name,
+                    file: cmdFile,
+                    content: fs.readFileSync(cmdFile, "utf8").trim(),
+                  });
+                }
+                return commands;
+              },
+            };
+            ctx.registerCommandSource(source);
+          }
         }
       }
 
