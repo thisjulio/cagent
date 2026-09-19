@@ -76,6 +76,22 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
     loaders: options.pluginLoaders,
     observability: telemetry,
   });
+
+  // ponytail: Run plugin cleanup handlers on process exit.
+  let cleaningUp = false;
+  const runCleanup = async () => {
+    if (cleaningUp) return;
+    cleaningUp = true;
+    await loadedPlugins.cleanup();
+  };
+  process.once("SIGINT", async () => {
+    await runCleanup();
+    process.exit(0);
+  });
+  process.once("SIGTERM", async () => {
+    await runCleanup();
+    process.exit(0);
+  });
   if (options.headless) telemetry.recordEvent("headless.submit.ready");
   const subagents = addBuiltinSubagents(discoverSubagents(process.cwd()));
   for (const agent of subagents.agents) registry.registerSubagent(agent);
