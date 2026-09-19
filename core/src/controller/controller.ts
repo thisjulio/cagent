@@ -293,7 +293,7 @@ export class Controller {
   reloadSkills(): boolean {
     if (!this.deps.reloadSkills) return false;
     this.deps.reloadSkills();
-    s.suggest = inputSuggestions(
+    this.state.suggest = inputSuggestions(
       this.state.input,
       this.deps.skillNames?.() ?? [],
       [
