@@ -181,7 +181,6 @@ const register: Plugin = async (ctx) => {
         },
       );
       ctx.registerTool(toolDef);
-      ctx.registerTool(toolDef);
     }
   }
   // Register cleanup to close MCP connections on shutdown
