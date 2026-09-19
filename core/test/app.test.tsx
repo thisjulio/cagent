@@ -400,8 +400,9 @@ describe("OpenTUI render", () => {
         await setup.flush();
       });
       const before = setup.captureCharFrame();
-      await act(async () => setup.mockMouse.scroll(1, 1, "up"));
       await act(async () => {
+        setup.mockMouse.scroll(20, 8, "up");
+        await new Promise((resolve) => setTimeout(resolve, 100));
         await setup.flush();
       });
       expect(setup.captureCharFrame()).not.toBe(before);

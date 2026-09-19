@@ -6,9 +6,9 @@
   - Verification: Human decisions recorded in `tasks/plan.md`.
   - Dependencies: None.
   - Scope: XS; documentation/decision only.
-- [ ] **Task 2 — Define queue domain and immutable state transitions**
+- [x] **Task 2 — Define queue domain and immutable state transitions**
   - Acceptance: focused domain module supports FIFO enqueue, grouping, processing/drain transitions, immutable records, and failure retention.
-  - Verification: focused queue unit tests cover ordering, grouping, immutability, drain, and failure.
+  - Verification: `bun test core/test/message-queue.test.ts` passes all 4 focused tests.
   - Dependencies: Task 1.
   - Scope: S; one domain module and one test file.
 
