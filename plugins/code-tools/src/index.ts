@@ -1,5 +1,6 @@
 import type { Plugin } from "@cagent/sdk";
-import { editFileTool, replaceLinesTool } from "./edit-file";
+import { editFileTool } from "./edit-file";
+import { replaceLinesTool } from "./replace-lines";
 import { globTool } from "./glob";
 import { readTool } from "./read";
 import { searchAstTool } from "./search-ast";
