@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { Registry } from "../src/registry";
 import type { ControllerDeps } from "../src/controller/controller";
-import { resolveRoute } from "../src/bootstrap";
+import { resolveRoute } from "../src/route-resolver";
 
 describe("resolveRoute", () => {
   const adapter = {
