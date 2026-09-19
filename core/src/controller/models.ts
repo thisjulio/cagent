@@ -33,7 +33,6 @@ export async function initializeModel(
   const last = loadLastChoice();
   if (last?.model) {
     route = last.model;
-    if (last.variant) c.state.variant = last.variant;
   }
 
   if (!route && configured) {
@@ -50,10 +49,22 @@ export async function initializeModel(
     notify(c.state, "No models available");
     return;
   }
+
+  // ponytail: if the user picked a model via the picker before initialization
+  // completed, don't override their choice
+  if (!last?.model && c.state.model && c.state.model !== route) {
+    return;
+  }
+
   const [provider, model] = splitRoute(route);
   const adapter = c.registry.provider(provider);
   if (!adapter) return;
-  await applyModelSelection(c, route, adapter);
+  await applyModelSelection(
+    c,
+    route,
+    adapter,
+    last?.variant ?? c.state.variant,
+  );
   c.bump();
 }
 
@@ -98,7 +109,7 @@ export async function pickModel(c: Controller, route: string): Promise<void> {
   c.observability?.recordEvent("model_picker.selected", {
     "model.route": route,
   });
-  saveLastChoice(route, c.state.variant);
+  saveLastChoice(route);
   c.bump();
 }
 
@@ -106,10 +117,12 @@ async function applyModelSelection(
   c: Controller,
   route: string,
   adapter: Controller["adapter"],
+  variant?: string,
 ): Promise<void> {
   const [, model] = splitRoute(route);
   c.adapter = adapter;
   c.state.model = route;
+  c.state.variant = variant;
   c.state.contextWindow =
     (await adapter.context_window?.(model)) ?? c.state.contextWindow;
   c.state.threshold = compactionThreshold(c.state.contextWindow, c.config);

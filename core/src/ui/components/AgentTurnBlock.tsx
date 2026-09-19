@@ -32,6 +32,7 @@ function ThinkingItemComponent({
           <text
             key={`thinking-line-${lineIndex}`}
             attributes={TextAttributes.ITALIC}
+            wrapMode="word"
           >
             <span fg="#d97757">│ </span>
             <span fg="#888888">{plainLine(line) || " "}</span>
