@@ -102,6 +102,7 @@ export async function runTurn(opts: TurnOpts): Promise<TurnResult> {
   };
   const records: TurnRecord[] = [];
   let inputTokens: number | undefined;
+  let outputTokens: number | undefined;
   const ctx = { opts, nameToCanonical, records, evidence: [] };
   let turns = 0;
   let toolCalls = 0;
@@ -117,9 +118,17 @@ export async function runTurn(opts: TurnOpts): Promise<TurnResult> {
           "prompt.assembling",
           workflowPayload(opts, { query: lastUserMessage(opts.messages) }),
         );
-        const result = await streamOnce(streamOpts);
+        const result = await streamOnce({
+          ...streamOpts,
+          onUsage: (usage) => {
+            if (usage.inputTokens !== undefined)
+              inputTokens = usage.inputTokens;
+            if (usage.outputTokens !== undefined)
+              outputTokens = usage.outputTokens;
+            streamOpts.onUsage?.(usage);
+          },
+        });
         const { text, toolCalls: streamedToolCalls } = result;
-        inputTokens = result.inputTokens ?? inputTokens;
         const assistant = {
           role: "assistant" as const,
           content: text,
@@ -163,6 +172,7 @@ export async function runTurn(opts: TurnOpts): Promise<TurnResult> {
         records,
         interrupted: opts.interrupted?.() ?? false,
         inputTokens,
+        outputTokens,
       };
     },
     opts.traceAttributes,

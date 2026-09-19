@@ -55,4 +55,5 @@ export type TurnResult = {
   records: TurnRecord[];
   interrupted: boolean;
   inputTokens?: number;
+  outputTokens?: number;
 };
