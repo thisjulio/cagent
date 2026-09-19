@@ -116,7 +116,7 @@ export async function submitMessage(
         return Promise.resolve();
       }
       controller.observability?.recordEvent("compaction.requested", {
-        ...compactionEventFields(controller.state),
+        ...compactionEventFields(controller.state, controller.state.model),
         reason: "provider_context_limit",
         error: controller.state.notice,
       });

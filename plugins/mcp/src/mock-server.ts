@@ -41,7 +41,7 @@ input.on("data", (chunk: string) => {
 });
 
 function handleRequest(message: Record<string, unknown>) {
-  const id = message.id;
+  const id = message.id as number | string;
   const method = message.method as string;
   const params = message.params as Record<string, unknown>;
 

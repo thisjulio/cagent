@@ -11,7 +11,7 @@ export async function* streamApi(
 ): AsyncGenerator<LlmChunk> {
   const res = await client.chat.completions.create({
     model: request.model,
-    messages: toChatMessages(request.messages),
+    messages: toChatMessages(request.messages) as any,
     tools: request.tools.length
       ? request.tools.map((t) => ({
           type: "function",

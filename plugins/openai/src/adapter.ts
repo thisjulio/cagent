@@ -28,7 +28,7 @@ function makeClient(apiKey: string, accountId?: string): OpenAI {
 function makeAuthResolver(opts: AdapterOptions): () => Promise<AuthState> {
   let authPromise: Promise<AuthState> | undefined;
   return () => {
-    if (opts.auth) return opts.auth;
+    if (opts.auth) return Promise.resolve(opts.auth);
     if (opts.client) return Promise.resolve({ kind: "api", apiKey: "test" });
     authPromise ??= (async () => {
       const apiKey =

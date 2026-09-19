@@ -148,13 +148,14 @@ export function runSlash(c: Controller, text: string): void | Promise<void> {
     return c.submit(expandCommand(custom, arg));
   }
   if (!handler && pluginCommand) {
-    return pluginCommand
-      .execute({
+    return Promise.resolve(
+      pluginCommand.execute({
         name: pluginCommand.name,
         arguments: arg,
         values: parseValues(arg),
-      })
-      .then((output) => {
+      }),
+    )
+      .then((output: string) => {
         appendChat(c.state, {
           kind: "assistant",
           content: output,
@@ -162,7 +163,7 @@ export function runSlash(c: Controller, text: string): void | Promise<void> {
         });
         c.bump();
       })
-      .catch((error) => {
+      .catch((error: unknown) => {
         notify(c.state, error instanceof Error ? error.message : String(error));
       });
   }

@@ -68,7 +68,7 @@ export async function compact(
   c.observability?.recordEvent("compaction.started", {
     force,
     reason,
-    "state.tokens": s.tokens,
+    "state.tokens": s.tokens ?? 0,
     "context.window": s.contextWindow,
     model: s.model,
     "message.count": compacted.length,
@@ -83,7 +83,7 @@ export async function compact(
   c.bump();
   // Let OpenTUI paint the progress state before serializing a large history.
   await new Promise<void>((resolve) => setTimeout(resolve, 0));
-  if (c.interrupted) {
+  if (c.isInterrupted()) {
     c.observability?.recordEvent("compaction.interrupted");
     s.compacting = false;
     progress.content = "compaction interrupted";
@@ -112,10 +112,10 @@ export async function compact(
       progress.content = `preparing history\npruning large tool outputs\ngenerating handoff...\n\n${summaryForDisplay(progress.content, text)}`;
       c.bump();
     },
-    interrupted: () => c.interrupted,
+    interrupted: () => c.isInterrupted(),
     attempts: 3,
   });
-  if (c.interrupted) {
+  if (c.isInterrupted()) {
     c.observability?.recordEvent("compaction.interrupted");
     s.compacting = false;
     progress.content = "compaction interrupted";

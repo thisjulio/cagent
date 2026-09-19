@@ -24,7 +24,7 @@ export class EventBus {
   }
 
   onWorkflow(event: WorkflowEventName, handler: WorkflowEventHandler): void {
-    this.on(event, handler);
+    this.on(event, handler as Handler);
   }
 
   waterfall(event: string, payload: unknown): unknown {

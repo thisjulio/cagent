@@ -38,7 +38,8 @@ function parseMcpJson(filePath: string): McpServerConfig[] {
       };
     });
   } catch (e) {
-    console.error(`[mcp] Failed to parse ${filePath}: ${e.message}`);
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error(`[mcp] Failed to parse ${filePath}: ${msg}`);
     return [];
   }
 }

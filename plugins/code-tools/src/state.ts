@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { LruMap } from "./lru-map";
 
 // root() resolves the workspace per call - cwd can change between loads (tests).
 export function root(): string {
@@ -13,10 +14,11 @@ export function hash(s: string): string {
   return h.toString(36);
 }
 
-const reads = new Map<string, { hash: string; mtimeMs: number }>();
-const failures = new Map<string, number>();
-const lastWrite = new Map<string, string>();
-const lineAnchor = new Set<string>();
+// ponytail: LRU Maps with 1000-entry cap prevent unbounded growth in long sessions.
+const reads = new LruMap<string, { hash: string; mtimeMs: number }>(1000);
+const failures = new LruMap<string, number>(1000);
+const lastWrite = new LruMap<string, string>(1000);
+const lineAnchor = new LruMap<string, true>(1000);
 
 export function recordRead(absPath: string): void {
   const buf = fs.readFileSync(absPath);
@@ -24,7 +26,7 @@ export function recordRead(absPath: string): void {
     hash: hash(buf.toString("utf8")),
     mtimeMs: fs.statSync(absPath).mtimeMs,
   });
-  lineAnchor.add(absPath);
+  lineAnchor.set(absPath, true);
 }
 
 export function getRead(

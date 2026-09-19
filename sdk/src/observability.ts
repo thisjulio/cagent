@@ -45,7 +45,7 @@ export type MetricRecord = {
 };
 
 export class InMemoryObservability implements Observability {
-  private static readonly MAX_RECORDS = 10_000;
+  static readonly MAX_RECORDS = 10_000;
   readonly spans: SpanRecord[] = [];
   readonly metrics: MetricRecord[] = [];
   readonly events: { name: string; attributes?: Attributes }[] = [];

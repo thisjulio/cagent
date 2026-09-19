@@ -10,7 +10,6 @@ import {
 import type { AppConfig } from "./config";
 import { EventBus } from "./events";
 import { Registry } from "./registry";
-import fs from "node:fs";
 
 export interface LoadResult {
   contexts: PluginContext[];
@@ -18,6 +17,7 @@ export interface LoadResult {
   commandSources: import("@cagent/sdk").CommandSource[];
   skillSources: import("@cagent/sdk").SkillSource[];
   contextExtensions: import("@cagent/sdk").ContextExtension[];
+  cleanup: () => Promise<void>;
 }
 
 export interface LoadOptions {
@@ -36,6 +36,7 @@ export async function loadPlugins(
   const commandSources: import("@cagent/sdk").CommandSource[] = [];
   const skillSources: import("@cagent/sdk").SkillSource[] = [];
   const contextExtensions: import("@cagent/sdk").ContextExtension[] = [];
+  const cleanupHandlers: Array<() => void | Promise<void>> = [];
   const observability = options.observability ?? noopObservability;
 
   for (const p of config.plugins) {
@@ -60,7 +61,7 @@ export async function loadPlugins(
       observability,
       storage: {
         namespace: p.name,
-        path: (...segments) =>
+        path: (...segments: string[]) =>
           path.join(
             path.resolve(
               process.env.CAGENT_DATA_DIR ??
@@ -72,7 +73,7 @@ export async function loadPlugins(
           ),
       },
       diagnostics: {
-        report: (diagnostic) => {
+        report: (diagnostic: import("@cagent/sdk").Diagnostic) => {
           observability.recordEvent("plugin.diagnostic", {
             "plugin.name": p.name,
             "diagnostic.level": diagnostic.level,
@@ -90,7 +91,8 @@ export async function loadPlugins(
         registry.registerProvider(route, adapter),
       registerSubagent: (agent) => registry.registerSubagent(agent),
       emit: (event, payload) => bus.emit(event, payload),
-      on: (event, handler) => bus.on(event, handler),
+      on: (event, handler) =>
+        bus.on(event, handler as (payload: unknown) => unknown),
       promptSection: (name, content) => promptSections.set(name, content),
       registerContextExtension: (extension) =>
         contextExtensions.push(extension),
@@ -108,6 +110,7 @@ export async function loadPlugins(
       activity: (content, attributes = {}) => {
         bus.emit("plugin/activity", { plugin: p.name, content, attributes });
       },
+      registerCleanup: (fn) => cleanupHandlers.push(fn),
     };
     await trace(observability, "plugin.load", () => plugin(ctx), {
       "plugin.name": p.name,
@@ -121,5 +124,14 @@ export async function loadPlugins(
     commandSources,
     skillSources,
     contextExtensions,
+    cleanup: async () => {
+      for (const fn of cleanupHandlers) {
+        try {
+          await fn();
+        } catch (e) {
+          console.error(`plugin cleanup error: ${e}`);
+        }
+      }
+    },
   };
 }

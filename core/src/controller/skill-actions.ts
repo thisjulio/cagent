@@ -10,11 +10,13 @@ export async function invokeSkill(
   activation: SkillActivation | undefined,
 ): Promise<boolean> {
   if (activation === undefined) return false;
-  const activated = controller.messages.some(
-    (message) =>
-      message.content.includes(`<skill_content name="${name}"`) ||
-      message.content.includes(`<name>${name}</name>`),
-  );
+  const activated = controller.messages.some((message) => {
+    const content = typeof message.content === "string" ? message.content : "";
+    return (
+      content.includes(`<skill_content name="${name}"`) ||
+      content.includes(`<name>${name}</name>`)
+    );
+  });
   if (!activated) appendSkillActivation(controller, name, activation);
   controller.state.notice = "";
   controller.bump();

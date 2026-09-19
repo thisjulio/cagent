@@ -82,10 +82,13 @@ export class Session {
       } else if (r.type === "user") {
         messages.push({ role: "user", content: String(p.content ?? "") });
       } else if (r.type === "assistant") {
+        const toolCalls = p.tool_calls as
+          | { id: string; name: string; arguments: string }[]
+          | undefined;
         messages.push({
           role: "assistant",
           content: String(p.content ?? ""),
-          ...(p.tool_calls ? { tool_calls: p.tool_calls } : {}),
+          ...(toolCalls ? { tool_calls: toolCalls } : {}),
         });
       } else if (r.type === "tool") {
         messages.push({

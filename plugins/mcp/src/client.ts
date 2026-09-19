@@ -19,10 +19,10 @@ function adaptTransport(transport: Transport | LegacyTransport): Transport {
     async send(message) {
       await legacy.send(message as JsonRpcMessage);
     },
-    set onmessage(handler) {
-      legacy.onMessage(handler as (message: JsonRpcMessage) => void);
+    set onmessage(handler: (message: JsonRpcMessage) => void) {
+      legacy.onMessage(handler);
     },
-    set onerror(_handler) {},
+    set onerror(_handler: (error: Error) => void) {},
   } as Transport;
 }
 

@@ -12,7 +12,7 @@ export async function openModelPicker(c: Controller): Promise<void> {
     query: "",
   };
   c.observability?.recordEvent("model_picker.opened", {
-    "provider.count": c.deps.registry.providers().length,
+    "provider.count": [...c.registry.providers()].length,
     "model.count": c.state.modelPicker.entries.reduce(
       (count, entry) => count + entry.models.length,
       0,
@@ -102,7 +102,7 @@ export async function pickModel(c: Controller, route: string): Promise<void> {
     (e) => e.route === prov && e.models.includes(model),
   );
   if (!entry) return;
-  const a = c.deps.registry.provider(prov);
+  const a = c.registry.provider(prov);
   if (!a) return;
   c.state.modelPicker = null;
   // ponytail: clear variant when switching models via UI so the new model

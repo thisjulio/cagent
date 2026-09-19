@@ -56,7 +56,7 @@ export class Controller {
   }
 
   private deps: ControllerDeps;
-  private interrupted = false;
+  interrupted = false;
   private skillCallId = 0;
   private abortController: AbortController | null = null;
   private bumpStream: () => void;
@@ -64,6 +64,12 @@ export class Controller {
   private askResolver: ((ok: boolean) => void) | null = null;
   get config(): ControllerDeps["config"] {
     return this.deps.config;
+  }
+  get sessionDir(): string | undefined {
+    return this.deps.sessionDir;
+  }
+  get systemPrompt(): string | undefined {
+    return this.deps.systemPrompt;
   }
   get modelChoiceFile(): string | undefined {
     return this.deps.modelChoiceFile;

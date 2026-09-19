@@ -97,7 +97,7 @@ function runCommand(opts: RunOptions): Promise<{
     child.on("close", (code) => {
       clearTimeout(timer);
       resolve({
-        code,
+        code: code ?? -1,
         stdout: output(out),
         stderr: output(err),
         timedOut,

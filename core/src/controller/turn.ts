@@ -112,7 +112,7 @@ async function runAgentTurnWithRecovery(
     host.observability?.recordEvent("compaction.recovery", {
       reason: "provider_context_limit",
       error: error instanceof Error ? error.message : String(error),
-      "state.tokens": host.state.tokens,
+      "state.tokens": host.state.tokens ?? 0,
       "context.window": host.state.contextWindow,
       threshold: host.state.threshold,
       model: host.model,

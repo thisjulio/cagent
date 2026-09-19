@@ -52,13 +52,11 @@ function jwtClaims(token: string): Record<string, unknown> | undefined {
 
 export function extractResidency(token: string): string | undefined {
   const claims = jwtClaims(token);
-  const r =
-    (
-      claims?.["https://api.openai.com/auth"] as
-        | Record<string, unknown>
-        | undefined
-    )?.chatgpt_compute_residency ??
-    (claims?.chatgpt_compute_residency as string | undefined);
+  const auth = claims?.["https://api.openai.com/auth"] as
+    | Record<string, unknown>
+    | undefined;
+  const r = (auth?.chatgpt_compute_residency ??
+    claims?.chatgpt_compute_residency) as string | undefined;
   return r && r !== "no_constraint" ? r : undefined;
 }
 

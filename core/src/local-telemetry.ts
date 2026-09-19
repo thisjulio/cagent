@@ -183,7 +183,7 @@ export class LocalFileObservability implements Observability {
     }
   }
 
-  private enqueue(record: TelemetryRecord): void {
+  enqueue(record: TelemetryRecord): void {
     this.buffer += `${JSON.stringify(record)}\n`;
     if (!this.flushTimer) {
       this.flushTimer = setTimeout(() => {
