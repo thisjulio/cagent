@@ -81,7 +81,6 @@ function ThinkingItemComponent({
         <span fg="#d97757">├─ </span>
         <strong fg="#ffffff">thinking</strong>
       </text>
-      <text fg="#d97757">│ </text>
       <box flexDirection="column">
         {lines.map((line, lineIndex) => (
           <text
