@@ -124,7 +124,21 @@ export async function submitMessage(
     },
     traceAttributes: { "turn.id": turnId },
     verification: controller.verification,
-  }).finally(() => clearInterval(timer));
+  }).finally(async () => {
+    clearInterval(timer);
+    const queued = controller.takeQueuedMessages();
+    if (queued.length > 0) {
+      for (const message of queued) {
+        controller.messages.push({ role: "user", content: message.content });
+        controller.session.append({
+          ts: message.submittedAt,
+          turnId,
+          type: "user",
+          payload: { content: message.content, queueStatus: "processing" },
+        });
+      }
+    }
+  });
 }
 
 async function compactBeforeSubmission(controller: Controller): Promise<void> {

@@ -1,9 +1,4 @@
-export type QueueMessage = {
-  id: string;
-  content: string;
-  submittedAt: number;
-  status: "queued" | "processing";
-};
+import type { QueueMessage } from "../session";
 
 export type QueueInput = Omit<QueueMessage, "status">;
 
@@ -40,4 +35,8 @@ export function retainQueueAfterFailure(
   queue: readonly QueueMessage[],
 ): QueueMessage[] {
   return queue.map((message) => ({ ...message }));
+}
+
+export function queueContents(queue: readonly QueueMessage[]): string {
+  return queue.map((message) => message.content).join("\n");
 }

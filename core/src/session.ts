@@ -3,6 +3,12 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import type { Message } from "@cagent/sdk";
+export type QueueMessage = {
+  id: string;
+  content: string;
+  submittedAt: number;
+  status: "queued" | "processing";
+};
 
 export type SessionRecord = {
   ts: number;
@@ -39,8 +45,13 @@ export class Session {
     fs.appendFileSync(this.file, JSON.stringify(rec) + "\n");
   }
 
-  load(): { records: SessionRecord[]; messages: Message[] } {
-    if (!fs.existsSync(this.file)) return { records: [], messages: [] };
+  load(): {
+    records: SessionRecord[];
+    messages: Message[];
+    queuedMessages: QueueMessage[];
+  } {
+    if (!fs.existsSync(this.file))
+      return { records: [], messages: [], queuedMessages: [] };
     const records = fs
       .readFileSync(this.file, "utf8")
       .split("\n")
@@ -69,8 +80,18 @@ export class Session {
             ...records.slice(compacted),
           ];
     const messages: Message[] = [];
+    const queuedMessages: QueueMessage[] = [];
     for (const r of effective) {
       const p = r.payload;
+      if (r.type === "meta" && p.kind === "queued-message") {
+        queuedMessages.push({
+          id: String(p.id ?? ""),
+          content: String(p.content ?? ""),
+          submittedAt: Number(p.submittedAt ?? r.ts),
+          status: p.status === "processing" ? "processing" : "queued",
+        });
+        continue;
+      }
       if (r.type === "meta" && p.kind === "skill-activated") {
         if (p.format !== "tool-v1")
           messages.push({ role: "system", content: skillMessage(p) });
@@ -98,7 +119,7 @@ export class Session {
         });
       }
     }
-    return { records: effective, messages };
+    return { records: effective, messages, queuedMessages };
   }
 
   static list(dir?: string): { id: string; updated: string; title: string }[] {

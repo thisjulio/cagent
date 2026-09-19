@@ -4,10 +4,11 @@ import type {
   ToolDefinition,
   ProviderAdapter,
 } from "@cagent/sdk";
+import crypto from "node:crypto";
 import { QuestionService } from "./question-service";
 import { runSlash } from "../commands/commands";
 import { inputSuggestions } from "../commands/suggest";
-import { Session } from "../session";
+import { Session, type QueueMessage } from "../session";
 import type { ToolAsk } from "../tools";
 import { generateTitle, toChatItems, toTitle } from "./sessions";
 import {
@@ -34,6 +35,7 @@ import { submitShell as submitShellAction } from "./shell-submission";
 import { submitSubagent as submitSubagentAction } from "./subagent-submission";
 import { createStreamThrottle } from "./stream-throttle";
 import { compactionThreshold } from "./compaction-threshold";
+import { createQueue, enqueueMessage } from "./message-queue";
 
 export class Controller {
   state: UIState;
@@ -49,6 +51,19 @@ export class Controller {
   get registry(): ControllerDeps["registry"] {
     return this.deps.registry;
   }
+
+  queuedMessages(): readonly QueueMessage[] {
+    return this.queue;
+  }
+
+  takeQueuedMessages(): QueueMessage[] {
+    const messages = this.queue.map((message) => ({
+      ...message,
+      status: "processing" as const,
+    }));
+    this.queue = [];
+    return messages;
+  }
   customCommand(name: string): CustomCommand | undefined {
     return this.deps.commands?.get(name.slice(1));
   }
@@ -63,6 +78,7 @@ export class Controller {
   private bumpStream: () => void;
   envStamp: number = Date.now();
   private askResolver: ((ok: boolean) => void) | null = null;
+  private queue: QueueMessage[] = createQueue();
   questionService: QuestionService;
   get config(): ControllerDeps["config"] {
     return this.deps.config;
@@ -118,6 +134,7 @@ export class Controller {
     this.bumpStream = createStreamThrottle(() => this.bump());
     const loaded = this.session.load();
     this.messages = mergeSystemMessages(deps.systemPrompt, loaded.messages);
+    this.queue = loaded.queuedMessages;
     const contextWindow = deps.contextWindow ?? 100_000;
     const threshold = compactionThreshold(contextWindow, deps.config);
     const s: UIState = {
@@ -159,6 +176,13 @@ export class Controller {
       appendChat(s, {
         kind: "meta",
         content: `resuming session ${this.session.id} (${loaded.messages.length} messages)`,
+      });
+    for (const message of this.queue)
+      appendChat(s, {
+        kind: "user",
+        content: message.content,
+        queueStatus: message.status,
+        turnId: undefined,
       });
     this.state = s;
     this.questionService = new QuestionService();
@@ -210,7 +234,23 @@ export class Controller {
   }
 
   async submit(text: string): Promise<void> {
-    if (!text || !this.state.model || this.state.busy) return;
+    if (!text || !this.state.model) return;
+    if (this.state.busy) {
+      const message = {
+        id: crypto.randomUUID(),
+        content: text,
+        submittedAt: Date.now(),
+      };
+      this.queue = enqueueMessage(this.queue, message);
+      appendChat(this.state, {
+        kind: "user",
+        content: text,
+        queueStatus: "queued",
+        turnId: this.state.currentTurnId,
+      });
+      this.bump();
+      return;
+    }
     this.state.input = "";
     this.state.inputKey += 1;
     if (text.startsWith("$") && text.slice(1).trim()) {
