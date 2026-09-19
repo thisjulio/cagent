@@ -20,7 +20,7 @@ export function getGitInfo(cwd: string): GitInfo {
   };
 
   try {
-    const root = execSync("git rev-parse --show-toplevel", {
+    const root = execSync("git rev-parse --show-toplevel 2>/dev/null", {
       cwd,
       encoding: "utf-8",
       timeout: 3000,
@@ -30,13 +30,13 @@ export function getGitInfo(cwd: string): GitInfo {
     info.isRepo = true;
 
     info.branch =
-      execSync("git branch --show-current", {
+      execSync("git branch --show-current 2>/dev/null", {
         cwd,
         encoding: "utf-8",
         timeout: 3000,
       }).trim() || null;
 
-    const status = execSync("git status --porcelain", {
+    const status = execSync("git status --porcelain 2>/dev/null", {
       cwd,
       encoding: "utf-8",
       timeout: 3000,
@@ -48,11 +48,14 @@ export function getGitInfo(cwd: string): GitInfo {
       { cwd, encoding: "utf-8", timeout: 3000 },
     ).trim();
     if (upstream) {
-      const counts = execSync("git rev-list --left-right --count HEAD...@{u}", {
-        cwd,
-        encoding: "utf-8",
-        timeout: 3000,
-      }).trim();
+      const counts = execSync(
+        "git rev-list --left-right --count HEAD...@{u} 2>/dev/null",
+        {
+          cwd,
+          encoding: "utf-8",
+          timeout: 3000,
+        },
+      ).trim();
       const [ahead, behind] = counts.split("\t").map(Number);
       info.ahead = ahead || 0;
       info.behind = behind || 0;
