@@ -4,6 +4,7 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "jsx": "react-jsx",
+    "jsxImportSource": "@opentui/react",
     "strict": true,
     "noEmit": true,
     "skipLibCheck": true,
@@ -14,8 +15,7 @@
     "core/src/**/*.ts",
     "core/src/**/*.tsx",
     "sdk/src/**/*.ts",
-    "plugins/*/src/**/*.ts",
-    "release.ts"
+    "plugins/*/src/**/*.ts"
   ],
-  "exclude": ["node_modules", "graphify-out"]
+  "exclude": ["node_modules", "graphify-out", "release-plugins.ts"]
 }

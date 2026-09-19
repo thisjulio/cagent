@@ -12,7 +12,7 @@
   "scripts": {
     "start": "bun core/src/main.ts",
     "test": "bun test",
-    "typecheck": "tsc --noEmit --noCheck",
+    "typecheck": "tsc --noEmit",
     "lint": "biome check --linter-enabled=true --formatter-enabled=false .",
     "knip": "knip --exclude files,exports,types",
     "format": "biome format --write .",
