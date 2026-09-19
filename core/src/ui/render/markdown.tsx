@@ -32,7 +32,7 @@ export function Markdown({
         key={`code-${children.length}`}
         content={code.join("\n")}
         filetype={language || undefined}
-        syntaxStyle={complete || !streaming ? syntaxStyle : undefined}
+        syntaxStyle={syntaxStyle}
         width="100%"
       />,
     );

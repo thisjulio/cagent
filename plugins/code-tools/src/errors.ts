@@ -9,7 +9,8 @@ export type ErrorCode =
   | "E_REPEATED_FAILURE"
   | "E_WRITE"
   | "E_SEARCH"
-  | "E_RANGE";
+  | "E_RANGE"
+  | "E_LANG";
 
 // Convention: the first line is always `ERROR <CODE> - <detail>` (detail starts with the path).
 export function errorText(code: ErrorCode, detail: string): string {

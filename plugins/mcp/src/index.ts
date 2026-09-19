@@ -1,9 +1,9 @@
 import { defineTool, type Plugin, type ToolDefinition } from "@cagent/sdk";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { McpClient } from "./client.ts";
-import { discoverMcpServers } from "./discovery.ts";
-import type { McpServerConfig, McpTool } from "./types.ts";
+import { McpClient } from "./client";
+import { discoverMcpServers } from "./discovery";
+import type { McpServerConfig, McpTool } from "./types";
 
 // ponytail: MCP plugin connects to configured MCP servers at startup, discovers
 // their tools, and registers them in the cagent registry. Tool names use an
@@ -45,10 +45,17 @@ function connectServer(
       if (server.transport === "stdio") {
         if (!server.command)
           throw new Error(`Server ${server.name}: missing command`);
+        const stdioEnv: Record<string, string> = {};
+        for (const [k, v] of Object.entries({
+          ...process.env,
+          ...server.env,
+        })) {
+          if (v !== undefined) stdioEnv[k] = v;
+        }
         const stdio = new StdioClientTransport({
           command: server.command,
           args: server.args || [],
-          env: { ...process.env, ...server.env },
+          env: stdioEnv,
           stderr: "pipe",
         });
         if (stdio.stderr && (logLevel === "info" || logLevel === "debug")) {
@@ -95,7 +102,10 @@ function connectServer(
           timeout,
         ),
       );
-      const tools = await Promise.race([toolsPromise, toolsTimeout]);
+      const tools = (await Promise.race([
+        toolsPromise,
+        toolsTimeout,
+      ])) as McpTool[];
 
       resolve({ name: server.name, client, tools });
     } catch (e) {
@@ -165,13 +175,25 @@ const register: Plugin = async (ctx) => {
               .join("\n");
             return { output: text, isError: result.isError };
           } catch (e) {
-            return { output: `MCP tool error: ${e.message}`, isError: true };
+            const msg = e instanceof Error ? e.message : String(e);
+            return { output: `MCP tool error: ${msg}`, isError: true };
           }
         },
       );
       ctx.registerTool(toolDef);
+      ctx.registerTool(toolDef);
     }
   }
+  // Register cleanup to close MCP connections on shutdown
+  ctx.registerCleanup(async () => {
+    for (const server of connected) {
+      try {
+        await server.client.close();
+      } catch (e) {
+        console.error(`[mcp] Failed to close ${server.name}: ${e}`);
+      }
+    }
+  });
 
   // Emit event for UI/logging
   ctx.emit("mcp:servers_connected", {

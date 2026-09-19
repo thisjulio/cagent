@@ -28,7 +28,7 @@ export class StdioTransport implements Transport {
   }
 
   private async startReadingStderr(): Promise<void> {
-    const stderr = this.proc.stderr;
+    const stderr = this.proc.stderr as ReadableStream<Uint8Array> | null;
     if (!stderr) return;
     const reader = stderr.getReader();
     const decoder = new TextDecoder();
@@ -46,7 +46,8 @@ export class StdioTransport implements Transport {
   }
 
   private async startReading(): Promise<void> {
-    const reader = this.proc.stdout.getReader();
+    const stdout = this.proc.stdout as ReadableStream<Uint8Array>;
+    const reader = stdout.getReader();
     try {
       while (!this.closed) {
         const { done, value } = await reader.read();
@@ -81,7 +82,14 @@ export class StdioTransport implements Transport {
   async send(message: JsonRpcMessage): Promise<void> {
     const line = JSON.stringify(message) + "\n";
     const encoder = new TextEncoder();
-    this.proc.stdin.write(encoder.encode(line));
+    const stdin = this.proc.stdin;
+    if (
+      stdin &&
+      typeof stdin === "object" &&
+      typeof stdin.write === "function"
+    ) {
+      stdin.write(encoder.encode(line));
+    }
   }
 
   onMessage(handler: (message: JsonRpcMessage) => void): void {

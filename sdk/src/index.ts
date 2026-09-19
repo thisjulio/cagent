@@ -1,3 +1,12 @@
+import type { Observability } from "./observability";
+import type {
+  ContextContribution,
+  ContextExtension,
+  ContextExtensionInput,
+} from "./context-extension";
+import type { PluginDiagnostics, PluginStorage } from "./plugin-services";
+import type { PluginCommand } from "./plugin-command";
+
 export type ToolArgs = Record<string, unknown>;
 
 export type ToolEvidence = {
@@ -233,6 +242,7 @@ export interface ProviderAdapter {
   tool_overrides?(): ToolOverrides;
   prepare_call(options: LlmCallOptions): Promise<LlmCallOptions>;
   stream(request: LlmCallOptions): AsyncGenerator<LlmChunk>;
+  estimate_tokens?(model: string, messages: Message[]): number | undefined;
 }
 
 export interface PluginContext {
@@ -265,6 +275,7 @@ export interface PluginContext {
     content: string,
     attributes?: Readonly<Record<string, string | number | boolean>>,
   ): void;
+  registerCleanup(fn: () => void | Promise<void>): void;
 }
 
 export type Plugin = (ctx: PluginContext) => void | Promise<void>;

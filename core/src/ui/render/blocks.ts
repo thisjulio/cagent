@@ -84,7 +84,7 @@ export function chatToBlocks(chat: ChatItem[]): Block[] {
       currentAgentBlock = null;
       blocks.push({
         type: "user-turn",
-        turnId: item.turnId,
+        turnId: item.turnId ?? `turn-${i}`,
         author: "user",
         timestamp: item.timestamp ?? Date.now(),
         items: [
@@ -102,7 +102,7 @@ export function chatToBlocks(chat: ChatItem[]): Block[] {
       currentAgentBlock = null;
       blocks.push({
         type: "system",
-        turnId: item.turnId,
+        turnId: item.turnId ?? `turn-${i}`,
         item: {
           type: "META",
           content: item.content,
@@ -116,7 +116,7 @@ export function chatToBlocks(chat: ChatItem[]): Block[] {
       if (!currentAgentBlock || currentAgentBlock.turnId !== item.turnId) {
         currentAgentBlock = {
           type: "agent-turn",
-          turnId: item.turnId,
+          turnId: item.turnId ?? `turn-${i}`,
           author: "cagent",
           subagent: item.subagent,
           timestamp: item.timestamp ?? Date.now(),
@@ -124,16 +124,17 @@ export function chatToBlocks(chat: ChatItem[]): Block[] {
         };
         blocks.push(currentAgentBlock);
       }
+      const block = currentAgentBlock;
 
       if (item.kind === "thinking") {
-        currentAgentBlock.items.push({
+        block.items.push({
           type: "THINKING",
           content: item.content,
           timestamp: item.timestamp,
           chatIndex: i,
         });
       } else if (item.kind === "tool") {
-        currentAgentBlock.items.push({
+        block.items.push({
           type: "TOOL",
           toolName: item.toolName,
           toolCategory: item.toolCategory,
@@ -149,9 +150,9 @@ export function chatToBlocks(chat: ChatItem[]): Block[] {
         });
       } else if (item.kind === "assistant") {
         if (item.subagentHeader) {
-          currentAgentBlock.subagent = item.subagent;
+          block.subagent = item.subagent;
         }
-        currentAgentBlock.items.push({
+        block.items.push({
           type: "RESPONSE",
           content: item.content,
           timestamp: item.timestamp,
