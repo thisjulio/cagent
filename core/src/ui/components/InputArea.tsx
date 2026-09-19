@@ -57,7 +57,9 @@ export function InputArea({
       paddingX={1}
     >
       <box height={1}>
-        {busy ? (
+        {suggest && suggest.length > 0 ? (
+          <text fg="#666666">{"  tab: " + suggest.join("  ")}</text>
+        ) : busy ? (
           <ActivitySpinner
             label={
               activityLabel ??
@@ -72,7 +74,7 @@ export function InputArea({
         borderColor="#d97757"
         paddingX={1}
         width="100%"
-        height={4}
+        height={5}
         flexDirection="row"
       >
         <text fg="#d97757" width={2} flexShrink={0}>
@@ -83,7 +85,7 @@ export function InputArea({
           initialValue={input}
           focused={active}
           flexGrow={1}
-          height={2}
+          height={3}
           wrapMode="word"
           keyBindings={[
             { name: "return", action: "submit" },
@@ -126,9 +128,6 @@ export function InputArea({
           onSubmit={() => onSubmit(textarea.current?.plainText ?? input)}
         />
       </box>
-      {suggest && suggest.length > 0 ? (
-        <text fg="#666666">{"  tab: " + suggest.join("  ")}</text>
-      ) : null}
     </box>
   );
 }
