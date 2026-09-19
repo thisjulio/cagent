@@ -10,3 +10,4 @@ graphify-out/
 *.log
 npm-debug.log*
 .npm
+release-plugins.ts

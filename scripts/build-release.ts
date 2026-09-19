@@ -20,7 +20,10 @@ const imports = names
   )
   .join("\n");
 const entries = names
-  .map((name, index) => `  ${JSON.stringify(name)}: plugin${index},`)
+  .map((name, index) => {
+    const key = /^[A-Za-z_$][\w$]*$/.test(name) ? name : JSON.stringify(name);
+    return `  ${key}: plugin${index},`;
+  })
   .join("\n");
 const output = `import type { Plugin } from "@cagent/sdk";\n${imports}\n\nexport const pluginLoaders: Record<string, Plugin> = {\n${entries}\n};\n`;
 fs.writeFileSync(path.join(root, "release-plugins.ts"), output);
