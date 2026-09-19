@@ -17,7 +17,8 @@ type LoadedRecord = {
 };
 
 export function toChatItems(records: LoadedRecord[]): ChatItem[] {
-  return records.flatMap((r) => {
+  const result: ChatItem[] = [];
+  for (const r of records) {
     const p = r.payload as Record<string, unknown>;
     if (r.type === "user") {
       const imagePaths = Array.isArray(p.imagePaths)
@@ -27,62 +28,53 @@ export function toChatItems(records: LoadedRecord[]): ChatItem[] {
             ),
           )
         : [];
-      return [
-        {
-          kind: "user",
-          content: String(p.content ?? ""),
-          imagePaths,
-          timestamp: r.ts,
-        },
-      ];
-    }
-    if (r.type === "assistant") {
+      result.push({
+        kind: "user",
+        content: String(p.content ?? ""),
+        imagePaths,
+        timestamp: r.ts,
+      });
+    } else if (r.type === "assistant") {
       const content = String(p.content ?? "");
       const subagent = typeof p.subagent === "string" ? p.subagent : undefined;
-      return content
-        ? [{ kind: "assistant", content, subagent, timestamp: r.ts }]
-        : [];
-    }
-    if (r.type === "thinking") {
+      if (content) {
+        result.push({ kind: "assistant", content, subagent, timestamp: r.ts });
+      }
+    } else if (r.type === "thinking") {
       const content = String(p.content ?? "");
-      return content ? [{ kind: "thinking", content, timestamp: r.ts }] : [];
-    }
-    if (r.type === "tool") {
+      if (content) {
+        result.push({ kind: "thinking", content, timestamp: r.ts });
+      }
+    } else if (r.type === "tool") {
       const toolName = p.toolName
         ? String(p.toolName)
         : String(p.tool_call_id ?? "");
-      return [
-        {
-          kind: "tool",
-          content: String(p.content ?? ""),
-          toolName,
-          toolCategory: classifyTool(toolName),
-        },
-      ];
+      result.push({
+        kind: "tool",
+        content: String(p.content ?? ""),
+        toolName,
+        toolCategory: classifyTool(toolName),
+      });
+    } else if (p.kind === "subagent-start") {
+      result.push({
+        kind: "assistant",
+        content: "",
+        subagent: String(p.name ?? ""),
+        subagentHeader: true,
+        timestamp: r.ts,
+      });
+    } else if (p.kind === "skill-activated") {
+      if (p.format !== "tool-v1") {
+        result.push({
+          kind: "meta",
+          content: `skill activated: ${String(p.name ?? "")}`,
+        });
+      }
+    } else if (p.kind === "compacted") {
+      result.push({ kind: "meta", content: "conversation compacted" });
     }
-    if (p.kind === "subagent-start")
-      return [
-        {
-          kind: "assistant",
-          content: "",
-          subagent: String(p.name ?? ""),
-          subagentHeader: true,
-          timestamp: r.ts,
-        },
-      ];
-    if (p.kind === "skill-activated")
-      return p.format === "tool-v1"
-        ? []
-        : [
-            {
-              kind: "meta",
-              content: `skill activated: ${String(p.name ?? "")}`,
-            },
-          ];
-    if (p.kind === "compacted")
-      return [{ kind: "meta", content: "conversation compacted" }];
-    return [];
-  });
+  }
+  return result;
 }
 
 export function sanitizeTitle(value: string): string {
@@ -128,8 +120,8 @@ export function toTitle(records: LoadedRecord[]): string {
 
 export function startNewSession(c: Controller): void {
   c.observability?.recordEvent("session.created");
-  c.session = new Session(undefined, c.deps.sessionDir);
-  c.messages = [{ role: "system" as const, content: c.deps.systemPrompt }];
+  c.session = new Session(undefined, c.sessionDir);
+  c.messages = [{ role: "system" as const, content: c.systemPrompt ?? "" }];
   c.interrupted = false;
   const s = c.state;
   s.chat = [];
@@ -155,10 +147,10 @@ export function startNewSession(c: Controller): void {
 export function restoreSession(c: Controller, id: string): void {
   const entry = c.state.sessionList?.find((x) => x.id === id);
   if (!entry) return;
-  const session = new Session(id, c.deps.sessionDir);
+  const session = new Session(id, c.sessionDir);
   const loaded = session.load();
   c.session = session;
-  c.messages = mergeSystemMessages(c.deps.systemPrompt, loaded.messages);
+  c.messages = mergeSystemMessages(c.systemPrompt ?? "", loaded.messages);
   c.state.chat = toChatItems(loaded.records).slice(-MAX_CHAT_ITEMS);
   c.state.tasks = restoreTasks(loaded.records);
   c.state.chatVersion += 1;
