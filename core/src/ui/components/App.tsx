@@ -144,7 +144,7 @@ export function App({ c }: { c: Controller }) {
           )}
         </text>
         <text fg={s.busy ? "#d97757" : "#777777"}>
-          {s.busy ? "working" : status}
+          {s.busy ? "queued input" : status}
         </text>
       </box>
       {s.chat.length === 0 ? (

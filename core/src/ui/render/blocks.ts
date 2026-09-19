@@ -5,6 +5,7 @@ import type { ToolDisplay } from "@cagent/sdk";
 export type PromptItem = {
   type: "PROMPT";
   content: string;
+  queueStatus?: "queued" | "processing";
   imagePaths?: string[];
   timestamp?: number;
   chatIndex: number;
@@ -93,6 +94,7 @@ export function chatToBlocks(chat: ChatItem[]): Block[] {
           {
             type: "PROMPT",
             content: item.content,
+            queueStatus: item.queueStatus,
             imagePaths: item.imagePaths,
             timestamp: item.timestamp,
             chatIndex: i,

@@ -63,7 +63,9 @@ export function InputArea({
           <ActivitySpinner
             label={
               activityLabel ??
-              (running ? `prompt · running ${running}` : "prompt · processing")
+              (running
+                ? `prompt · running ${running}`
+                : "prompt · queued while agent is working")
             }
           />
         ) : null}

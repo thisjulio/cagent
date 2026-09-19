@@ -39,6 +39,7 @@ export function UserTurnBlockComponent({ block }: { block: UserTurnBlock }) {
       </text>
       <text>
         <span fg="#d97757">└─ </span>
+        {item.queueStatus ? `[${item.queueStatus}] ` : ""}
         {textWithoutImages || " "}
       </text>
       {imagePaths.map((path) => (
