@@ -158,14 +158,16 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
       }
     : undefined;
   if (skills) registry.registerTool(createReadSkillTool(skills));
-  let route = await resolveRoute(config, registry);
+  // ponytail: apply last choice before resolveRoute to avoid validating
+  // a config model that will be overridden anyway
   if (
     !options.headless?.model &&
     lastChoice?.model &&
     registry.provider(splitRoute(lastChoice.model)[0])
   ) {
-    route = lastChoice.model;
+    config.model = lastChoice.model;
   }
+  let route = await resolveRoute(config, registry);
   let adapter = registry.provider(splitRoute(route)[0]);
   if (!adapter) throw new Error("(no provider - nothing to do)");
   if (route) telemetry.recordEvent("route.resolved", { "model.route": route });

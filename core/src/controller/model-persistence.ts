@@ -11,6 +11,7 @@ interface LastChoice {
 function lastChoiceFile(file?: string): string {
   return (
     file ??
+    // ponytail: env var kept for backward compatibility with existing deployments
     process.env.CAGENT_LAST_MODEL_FILE ??
     path.join(os.homedir(), ".cagent", "last-model.json")
   );
