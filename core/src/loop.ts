@@ -3,35 +3,18 @@ import {
   noopObservability,
   overrideNameMap,
   trace,
-  type LlmCallOptions,
-  type Message,
-  type Observability,
-  type ProviderAdapter,
-  type ToolArgs,
-  type ToolDefinition,
-  type ToolEvidence,
-  type WorkflowEventPayload,
 } from "@cagent/sdk";
-import type { EventBus } from "./events";
-import { runToolPipeline, type ToolAsk } from "./tools";
-import { appendCapped, MAX_RESPONSE_CHARS } from "./stream-buffer";
+import { lastUserMessage, workflowPayload } from "./loop-utils";
+import { runToolCall } from "./tool-loop";
+import type { TurnOpts, TurnRecord, TurnResult } from "./loop-types";
+import type { StreamOpts } from "./loop-types";
 
-export interface StreamOpts {
-  adapter: ProviderAdapter;
-  model: string;
-  variant?: string;
-  messages: Message[];
-  messagesForRequest?: (messages: Message[]) => Message[];
-  tools: ToolDefinition[];
-  onText?: (text: string) => void;
-  onReasoning?: (text: string) => void;
-  onToolOutput?: (content: string) => void;
-  onUsage?: (usage: { inputTokens?: number; outputTokens?: number }) => void;
-  interrupted?: () => boolean;
-  attempts?: number;
-  observability?: Observability;
-  traceAttributes?: Record<string, string | number | boolean>;
-}
+export type {
+  StreamOpts,
+  TurnRecord,
+  TurnOpts,
+  TurnResult,
+} from "./loop-types";
 
 export async function streamOnce(opts: StreamOpts): Promise<{
   text: string;
@@ -43,7 +26,7 @@ export async function streamOnce(opts: StreamOpts): Promise<{
   for (let i = 0; i < attempts; i++) {
     try {
       const observability = opts.observability ?? noopObservability;
-      const request: LlmCallOptions = await trace(
+      const request: any = await trace(
         observability,
         "provider.prepare_call",
         () =>
@@ -80,7 +63,7 @@ export async function streamOnce(opts: StreamOpts): Promise<{
         }
         if (opts.interrupted?.()) break;
         if (chunk.type === "text") {
-          text = appendCapped(text, chunk.text, MAX_RESPONSE_CHARS);
+          text += chunk.text;
           outputChars += chunk.text.length;
           opts.onText?.(chunk.text);
         } else if (chunk.type === "reasoning") {
@@ -110,101 +93,7 @@ export async function streamOnce(opts: StreamOpts): Promise<{
   throw lastErr;
 }
 
-export interface TurnRecord {
-  role: "assistant" | "tool";
-  content: string;
-  tool_calls?: Message["tool_calls"];
-  tool_call_id?: string;
-  toolName?: string;
-  args?: ToolArgs;
-  isError?: boolean;
-}
-
-export interface TurnOpts extends StreamOpts {
-  allowlist: string[];
-  ask: ToolAsk;
-  bus: EventBus;
-  hooks?: {
-    run(
-      event: import("@cagent/sdk").HookEvent,
-    ): Promise<import("@cagent/sdk").HookResponse[]>;
-  };
-  signal?: AbortSignal;
-  maxTurns?: number;
-  maxToolCalls?: number;
-  observability?: Observability;
-  traceAttributes?: Record<string, string | number | boolean>;
-}
-
-interface ToolLoopCtx {
-  opts: TurnOpts;
-  nameToCanonical: Record<string, string>;
-  records: TurnRecord[];
-  evidence: ToolEvidence[];
-}
-
-async function runToolCall(
-  ctx: ToolLoopCtx,
-  tc: { id: string; name: string; arguments: string },
-): Promise<void> {
-  const { opts } = ctx;
-  const tool = opts.tools.find(
-    (t) => t.name === (ctx.nameToCanonical[tc.name] ?? tc.name),
-  );
-  let args: ToolArgs = {};
-  try {
-    args = JSON.parse(tc.arguments) as ToolArgs;
-  } catch {
-    // Custom/freeform tools return their payload directly instead of JSON.
-    if (tool?.name === "edit_file" && tc.name === "apply_patch")
-      args = { patch: tc.arguments };
-  }
-  const result = tool
-    ? await runToolPipeline(
-        tool,
-        args,
-        opts.allowlist,
-        opts.ask,
-        opts.bus,
-        opts.hooks,
-        opts.signal,
-        opts.observability,
-      )
-    : { output: `tool not found: ${tc.name}`, isError: true };
-  opts.messages.push({
-    role: "tool",
-    tool_call_id: tc.id,
-    content: result.output,
-  });
-  ctx.records.push({
-    role: "tool",
-    tool_call_id: tc.id,
-    content: result.output,
-    toolName: tool?.name ?? tc.name,
-    args,
-    isError: result.isError,
-  });
-  opts.onToolOutput?.(result.output);
-  ctx.evidence.push(...(result.evidence ?? []));
-  opts.bus.emit(
-    "tool.completed",
-    workflowPayload(opts, {
-      tool: tool?.name ?? tc.name,
-      content: result.output.slice(0, 4000),
-      isError: result.isError === true,
-      evidence: result.evidence,
-    }),
-  );
-}
-
-export type TurnResult = {
-  records: TurnRecord[];
-  interrupted: boolean;
-  inputTokens?: number;
-};
-
 export async function runTurn(opts: TurnOpts): Promise<TurnResult> {
-  // ponytail: the override belongs to the provider surface; the registry keeps the canonical name.
   const overrides = opts.adapter.tool_overrides?.() ?? {};
   const nameToCanonical = overrideNameMap(overrides);
   const streamOpts: StreamOpts = {
@@ -213,7 +102,7 @@ export async function runTurn(opts: TurnOpts): Promise<TurnResult> {
   };
   const records: TurnRecord[] = [];
   let inputTokens: number | undefined;
-  const ctx: ToolLoopCtx = { opts, nameToCanonical, records, evidence: [] };
+  const ctx = { opts, nameToCanonical, records, evidence: [] };
   let turns = 0;
   let toolCalls = 0;
   const observability = opts.observability ?? noopObservability;
@@ -231,8 +120,8 @@ export async function runTurn(opts: TurnOpts): Promise<TurnResult> {
         const result = await streamOnce(streamOpts);
         const { text, toolCalls: streamedToolCalls } = result;
         inputTokens = result.inputTokens ?? inputTokens;
-        const assistant: Message = {
-          role: "assistant",
+        const assistant = {
+          role: "assistant" as const,
           content: text,
           ...(streamedToolCalls.length
             ? { tool_calls: streamedToolCalls }
@@ -278,22 +167,4 @@ export async function runTurn(opts: TurnOpts): Promise<TurnResult> {
     },
     opts.traceAttributes,
   );
-}
-
-function lastUserMessage(messages: Message[]): string | undefined {
-  const userMsg = [...messages]
-    .reverse()
-    .find((message) => message.role === "user");
-  if (!userMsg) return "";
-  if (typeof userMsg.content === "string") return userMsg.content;
-  return userMsg.content
-    .map((p) => (p.type === "text" ? p.text : "[image]"))
-    .join(" ");
-}
-
-function workflowPayload(
-  opts: TurnOpts,
-  data: Record<string, unknown>,
-): WorkflowEventPayload {
-  return { version: 1, data };
 }

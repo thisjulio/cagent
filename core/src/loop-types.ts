@@ -1,0 +1,58 @@
+import type {
+  Message,
+  Observability,
+  ProviderAdapter,
+  ToolArgs,
+  ToolDefinition,
+} from "@cagent/sdk";
+import type { EventBus } from "./events";
+import type { ToolAsk } from "./tools";
+
+export interface StreamOpts {
+  adapter: ProviderAdapter;
+  model: string;
+  variant?: string;
+  messages: Message[];
+  messagesForRequest?: (messages: Message[]) => Message[];
+  tools: ToolDefinition[];
+  onText?: (text: string) => void;
+  onReasoning?: (text: string) => void;
+  onToolOutput?: (content: string) => void;
+  onUsage?: (usage: { inputTokens?: number; outputTokens?: number }) => void;
+  interrupted?: () => boolean;
+  attempts?: number;
+  observability?: Observability;
+  traceAttributes?: Record<string, string | number | boolean>;
+}
+
+export interface TurnRecord {
+  role: "assistant" | "tool";
+  content: string;
+  tool_calls?: Message["tool_calls"];
+  tool_call_id?: string;
+  toolName?: string;
+  args?: ToolArgs;
+  isError?: boolean;
+}
+
+export interface TurnOpts extends StreamOpts {
+  allowlist: string[];
+  ask: ToolAsk;
+  bus: EventBus;
+  hooks?: {
+    run(
+      event: import("@cagent/sdk").HookEvent,
+    ): Promise<import("@cagent/sdk").HookResponse[]>;
+  };
+  signal?: AbortSignal;
+  maxTurns?: number;
+  maxToolCalls?: number;
+  observability?: Observability;
+  traceAttributes?: Record<string, string | number | boolean>;
+}
+
+export type TurnResult = {
+  records: TurnRecord[];
+  interrupted: boolean;
+  inputTokens?: number;
+};
