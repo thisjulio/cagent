@@ -90,6 +90,7 @@ export interface ControllerDeps {
   adapter: ProviderAdapter;
   model: string;
   variant?: string;
+  modelChoiceFile?: string;
   contextWindow?: number;
   systemPrompt: string;
   sessionDir?: string;

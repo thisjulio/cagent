@@ -65,6 +65,9 @@ export class Controller {
   get config(): ControllerDeps["config"] {
     return this.deps.config;
   }
+  get modelChoiceFile(): string | undefined {
+    return this.deps.modelChoiceFile;
+  }
   get observability(): ControllerDeps["observability"] {
     return this.deps.observability;
   }

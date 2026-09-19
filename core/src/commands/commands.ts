@@ -67,7 +67,7 @@ const commands: Record<string, SlashHandler> = {
     c.state.variant = val;
     notify(c.state, `variant set to: ${val}`);
     if (c.state.model) {
-      saveLastChoice(c.state.model, val);
+      saveLastChoice(c.state.model, val, c.modelChoiceFile);
     }
     c.bump();
   },

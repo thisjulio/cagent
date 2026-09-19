@@ -30,7 +30,7 @@ export async function initializeModel(
   // ponytail: trust the saved choice; do not validate against list_models()
   // because providers may be slow to respond (e.g. llama.cpp loading). If the
   // model is gone, the error surfaces when the user sends a message.
-  const last = loadLastChoice();
+  const last = loadLastChoice(c.modelChoiceFile);
   if (last?.model) {
     route = last.model;
   }
@@ -105,11 +105,13 @@ export async function pickModel(c: Controller, route: string): Promise<void> {
   const a = c.deps.registry.provider(prov);
   if (!a) return;
   c.state.modelPicker = null;
-  await applyModelSelection(c, route, a);
+  // ponytail: clear variant when switching models via UI so the new model
+  // starts without inheriting the previous model's variant
+  await applyModelSelection(c, route, a, undefined);
   c.observability?.recordEvent("model_picker.selected", {
     "model.route": route,
   });
-  saveLastChoice(route);
+  saveLastChoice(route, undefined, c.modelChoiceFile);
   c.bump();
 }
 

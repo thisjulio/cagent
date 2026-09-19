@@ -27,6 +27,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { createLocalObservability } from "./local-telemetry";
 import { initializeModel } from "./controller/models";
+import { loadLastChoice } from "./controller/model-persistence";
 
 export async function resolveRoute(
   config: AppConfig,
@@ -89,6 +90,7 @@ export interface BootstrapOptions {
   defaultPlugins?: AppConfig["plugins"];
   pluginLoaders?: Record<string, Plugin>;
   observability?: Observability;
+  modelChoiceFile?: string;
   cli?: CliOptions;
   headless?: CliOptions;
 }
@@ -112,6 +114,10 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
   if (options.headless?.model) config.model = options.headless.model;
   if (options.headless?.variant) config.variant = options.headless.variant;
   if (options.headless?.logLevel) config.log_level = options.headless.logLevel;
+  const lastChoice = loadLastChoice(options.modelChoiceFile);
+  if (!options.headless?.variant && lastChoice?.variant) {
+    config.variant = lastChoice.variant;
+  }
   const telemetryOverride =
     options.headless?.telemetry ?? options.cli?.telemetry;
   if (telemetryOverride !== undefined) {
@@ -153,6 +159,13 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
     : undefined;
   if (skills) registry.registerTool(createReadSkillTool(skills));
   let route = await resolveRoute(config, registry);
+  if (
+    !options.headless?.model &&
+    lastChoice?.model &&
+    registry.provider(splitRoute(lastChoice.model)[0])
+  ) {
+    route = lastChoice.model;
+  }
   let adapter = registry.provider(splitRoute(route)[0]);
   if (!adapter) throw new Error("(no provider - nothing to do)");
   if (route) telemetry.recordEvent("route.resolved", { "model.route": route });
@@ -180,6 +193,7 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
     adapter,
     model: route,
     variant: config.variant,
+    modelChoiceFile: options.modelChoiceFile,
     contextWindow,
     sessionId: options.headless?.session,
     maxTurns: options.headless?.maxTurns,

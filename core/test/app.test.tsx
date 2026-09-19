@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import React from "react";
 import { act } from "react";
-import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { describe, expect, it } from "bun:test";
 
 import { testRender } from "@opentui/react/test-utils";
 import { App } from "../src/ui/components/App";
@@ -11,23 +11,6 @@ import { EventBus } from "../src/events";
 import { Registry } from "../src/registry";
 import { Controller, type ControllerDeps } from "../src/controller/controller";
 import { appendChat } from "../src/controller/chat-buffer";
-
-const previousModelFile = process.env.CAGENT_LAST_MODEL_FILE;
-
-beforeEach(() => {
-  process.env.CAGENT_LAST_MODEL_FILE = path.join(
-    fs.mkdtempSync(path.join(os.tmpdir(), "cagent-app-model-")),
-    "last-model.json",
-  );
-});
-
-afterEach(() => {
-  if (previousModelFile === undefined) {
-    delete process.env.CAGENT_LAST_MODEL_FILE;
-  } else {
-    process.env.CAGENT_LAST_MODEL_FILE = previousModelFile;
-  }
-});
 
 function deps(): ControllerDeps {
   return {
@@ -49,6 +32,10 @@ function deps(): ControllerDeps {
     model: "openai/m1",
     systemPrompt: "sys",
     sessionDir: fs.mkdtempSync(path.join(os.tmpdir(), "cagent-ui-")),
+    modelChoiceFile: path.join(
+      fs.mkdtempSync(path.join(os.tmpdir(), "cagent-app-model-")),
+      "last-model.json",
+    ),
   };
 }
 

@@ -8,6 +8,8 @@ import { Registry } from "../src/registry";
 import { Session } from "../src/session";
 import { Controller, type ControllerDeps } from "../src/controller/controller";
 import { sanitizeTitle } from "../src/controller/sessions";
+import { loadLastChoice } from "../src/controller/model-persistence";
+import { initializeModel } from "../src/controller/models";
 
 function deps(
   permissions = false,
@@ -33,6 +35,10 @@ function deps(
     model: "openai/m1",
     systemPrompt: "sys",
     sessionDir: fs.mkdtempSync(path.join(os.tmpdir(), "cagent-ui-")),
+    modelChoiceFile: path.join(
+      fs.mkdtempSync(path.join(os.tmpdir(), "cagent-model-choice-")),
+      "last-model.json",
+    ),
   };
 }
 
@@ -51,6 +57,36 @@ describe("controller model and commands", () => {
     c.pickModel("r1/a");
     expect(c.state.model).toBe("r1/a");
     expect(c.state.modelPicker).toBeNull();
+  });
+
+  it("clears the variant when selecting a model via UI", async () => {
+    const d = deps();
+    d.registry.registerProvider("openai", d.adapter);
+    const c = new Controller(d);
+    c.state.modelPicker = {
+      entries: [{ route: "openai", models: ["model-a"] }],
+      query: "",
+    };
+    c.state.variant = "fast";
+
+    await c.pickModel("openai/model-a");
+
+    expect(c.state.variant).toBeUndefined();
+    expect(loadLastChoice(d.modelChoiceFile)).toMatchObject({
+      model: "openai/model-a",
+    });
+  });
+
+  it("restores the persisted choice instead of the configured model", async () => {
+    const d = deps();
+    d.registry.registerProvider("openai", d.adapter);
+    const c = new Controller(d);
+    saveChoice(d.modelChoiceFile, "openai/model-b", "balanced");
+
+    await initializeModel(c, "openai/model-a");
+
+    expect(c.state.model).toBe("openai/model-b");
+    expect(c.state.variant).toBe("balanced");
   });
 
   it("selecting a model from another provider changes the adapter", async () => {
@@ -217,3 +253,16 @@ describe("controller model and commands", () => {
     expect(c.state.notice).toContain("interrupted");
   });
 });
+
+function saveChoice(
+  file: string | undefined,
+  model: string,
+  variant: string,
+): void {
+  if (!file) throw new Error("test model choice file is missing");
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(
+    file,
+    JSON.stringify({ model, variant, timestamp: Date.now() }),
+  );
+}
