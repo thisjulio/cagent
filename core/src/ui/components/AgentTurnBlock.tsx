@@ -81,6 +81,7 @@ function ThinkingItemComponent({
         <span fg="#d97757">├─ </span>
         <strong fg="#ffffff">thinking</strong>
       </text>
+      <text fg="#d97757">│ </text>
       <box flexDirection="column">
         {lines.map((line, lineIndex) => (
           <text
@@ -93,6 +94,7 @@ function ThinkingItemComponent({
           </text>
         ))}
       </box>
+      <text fg="#d97757">│ </text>
     </box>
   );
 }
@@ -194,6 +196,7 @@ function ToolItemComponent({
           ))}
         </box>
       ) : null}
+      <text fg="#d97757">│ </text>
     </box>
   );
 }
@@ -243,6 +246,7 @@ export function AgentTurnBlockComponent({
           {formatTime(block.timestamp)}
         </span>
       </text>
+      <text fg="#d97757">│ </text>
       {block.items.map((item, index) => {
         if (item.type === "THINKING") {
           return (
