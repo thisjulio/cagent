@@ -43,10 +43,43 @@ describe("code-tools tools", () => {
     const r = await tools
       .get("read_file")!
       .execute({ path: "a1.ts", offset: 2, limit: 2 });
-    expect(r.output).toBe("2\tl2\n3\tl3");
+    expect(r.output).toBe(
+      "startLine=2 | endLine=3 | totalLines=unknown | hasMore=true | nextOffset=4\n2\tl2\n3\tl3",
+    );
     expect(fs.readFileSync(path.join(ws, "a1.ts"), "utf8")).toBe(
       "l1\nl2\nl3\nl4\n",
     );
+  });
+
+  it("read_file uses a bounded default and exposes the next page", async () => {
+    const { tools } = freshTools();
+    const content = Array.from({ length: 205 }, (_, i) => `line-${i + 1}`).join(
+      "\n",
+    );
+    await tools.get("write_file")!.execute({ path: "large.ts", content });
+    const r = await tools.get("read_file")!.execute({ path: "large.ts" });
+    expect(r.output).toContain(
+      "startLine=1 | endLine=200 | totalLines=unknown | hasMore=true | nextOffset=201",
+    );
+    expect(r.output).toContain("1\tline-1");
+    expect(r.output).toContain("200\tline-200");
+    expect(r.output).not.toContain("201\tline-201");
+  });
+
+  it("read_file caps an oversized limit at the maximum", async () => {
+    const { tools } = freshTools();
+    const content = Array.from(
+      { length: 2001 },
+      (_, i) => `line-${i + 1}`,
+    ).join("\n");
+    await tools.get("write_file")!.execute({ path: "huge.ts", content });
+    const r = await tools
+      .get("read_file")!
+      .execute({ path: "huge.ts", limit: 9999 });
+    expect(r.output).toContain(
+      "startLine=1 | endLine=2000 | totalLines=unknown | hasMore=true | nextOffset=2001",
+    );
+    expect(r.output).not.toContain("2001\tline-2001");
   });
 
   it("edit_file: replace exato via blocks", async () => {
