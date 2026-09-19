@@ -48,7 +48,15 @@ export function updateTasks(
     else if (operation === "clear") controller.state.tasks = [];
     else if (operation === "list")
       return JSON.stringify(controller.state.tasks);
-    else throw new Error(`unknown task operation: ${operation}`);
+    else if (operation === "batch") {
+      const ops = args.operations as Array<Record<string, unknown>>;
+      if (!Array.isArray(ops))
+        throw new Error("batch requires operations array");
+      for (const op of ops) {
+        const result = updateTasks(controller, String(op.op), op);
+        if (result.startsWith("ERROR TASK")) throw new Error(result);
+      }
+    } else throw new Error(`unknown task operation: ${operation}`);
     controller.session.appendTasks(controller.state.tasks);
     controller.bump();
     controller.observability?.recordEvent("task.completed", {
