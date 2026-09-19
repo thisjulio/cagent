@@ -1,10 +1,11 @@
 export interface LineRange {
   start: number; // 1-based, inclusive
   end: number; // 1-based, inclusive
+  expected: string; // exact content currently occupying the range
   content: string; // "" removes the lines
 }
 
-export type RangeError = { code: "E_RANGE"; message: string };
+export type RangeError = { code: "E_RANGE" | "E_EXPECTED"; message: string };
 
 function toLines(content: string): string[] {
   const body = content.replace(/\r\n/g, "\n");
@@ -35,6 +36,20 @@ export function applyRanges(
         error: {
           code: "E_RANGE",
           message: `range ${r.start}-${r.end} is past the end of the file, which has ${lines.length} lines - call read_file again and use the numbers it returns`,
+        },
+      };
+    }
+    const actual = lines.slice(r.start - 1, r.end);
+    const expected = toLines(r.expected);
+    if (
+      actual.length !== expected.length ||
+      actual.some((line, index) => line !== expected[index])
+    ) {
+      return {
+        lines,
+        error: {
+          code: "E_EXPECTED",
+          message: `lines ${r.start}-${r.end} do not match old_content - call read_file again and copy the current lines exactly`,
         },
       };
     }

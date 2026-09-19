@@ -183,7 +183,11 @@ export async function applyTargets(
   o: { seed: string; blocks: number; patch: number },
   ctx: PluginContext,
   label: string,
-): Promise<{ output: string; isError: boolean }> {
+): Promise<{
+  output: string;
+  isError: boolean;
+  changesWorkspace?: boolean;
+}> {
   const tscBefore = await tscErrors(root());
   const out: string[] = [];
   let ok = 0;
@@ -200,5 +204,9 @@ export async function applyTargets(
     await shadowCommit(`${label} ${ok} file(s)`);
   }
   ctx.emit("code-tools/edit", { ok, failed: targets.length - ok, newErrors });
-  return { output: out.join("\n"), isError: ok === 0 };
+  return {
+    output: out.join("\n"),
+    isError: ok === 0,
+    changesWorkspace: ok > 0,
+  };
 }

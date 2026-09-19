@@ -14,6 +14,8 @@
     "test": "bun test",
     "typecheck": "tsc --noEmit",
     "lint": "biome check --linter-enabled=true --formatter-enabled=false .",
+    "build": "bun run build:release",
+    "verify": "bun run build && bun run typecheck && bun run lint && bun test",
     "knip": "knip --exclude files,exports,types",
     "format": "biome format --write .",
     "graph:update": "graphify update .",

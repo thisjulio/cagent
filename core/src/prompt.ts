@@ -23,6 +23,9 @@ const PERSONA = [
   "Keep final answers to five lines unless the user asks for detail.",
 ].join("\n");
 
+export const MANDATORY_VERIFICATION =
+  "After any workspace change, run `bun run build`, `bun run typecheck`, `bun run lint`, and `bun test`. Every command must pass before reporting completion.";
+
 const TASK_PROTOCOL = [
   "# Task protocol",
   "Use `tasks` when the request changes files or needs more than one step.",
@@ -43,6 +46,8 @@ const TASK_PROTOCOL = [
   "A command includes its exit code and output.",
   "A file verification includes the changed lines read after editing.",
   "A test verification includes its result.",
+  "After any code change, run the mandatory verification pipeline: bun run build, bun run typecheck, bun run lint, and bun test.",
+  "Every mandatory verification command must pass; any failure blocks completion. Do not claim completion when verification is skipped or fails.",
   "A description of expected behavior is not evidence.",
   "",
   "# Error recovery",
@@ -71,6 +76,6 @@ export function buildSystemPrompt(
   const skillText = skills && renderSkillCatalog(skills);
   if (skillText) parts.push(`## Available skills\n${skillText}`);
   for (const [name, content] of sections) parts.push(`## ${name}\n${content}`);
-  parts.push(TASK_PROTOCOL);
+  parts.push(TASK_PROTOCOL, MANDATORY_VERIFICATION);
   return parts.join("\n\n");
 }

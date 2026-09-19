@@ -32,6 +32,12 @@ function output(buffer: OutputBuffer): string {
   );
 }
 
+function mayChangeWorkspace(command: string): boolean {
+  return /(^|[;&|]\s*)(cat|cp|install|ln|mkdir|mv|perl|python|rm|rmdir|sed| tee|touch|truncate|write|bun\s+(run\s+)?format|git\s+(apply|checkout|clean|mv|reset|restore|switch)|>\s*|>>\s*)/m.test(
+    command,
+  );
+}
+
 function runCommand(opts: RunOptions): Promise<{
   code: number;
   stdout: string;
@@ -148,7 +154,12 @@ const register: Plugin = (ctx) => {
       const output = result.stderr
         ? `${result.stdout}\n[stderr] ${result.stderr}`
         : result.stdout;
-      return { output, isError, timedOut: result.timedOut };
+      return {
+        output,
+        isError,
+        timedOut: result.timedOut,
+        changesWorkspace: mayChangeWorkspace(String(args.command)),
+      };
     },
   });
   ctx.promptSection(

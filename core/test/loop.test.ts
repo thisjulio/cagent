@@ -228,4 +228,75 @@ describe("agent loop", () => {
     expect(messages).toHaveLength(2);
     expect(messages[1].role).toBe("assistant");
   });
+
+  it("runs mandatory verification after a workspace-changing tool", async () => {
+    let verified = 0;
+    const edit = defineTool("edit_file", "edit", {}, async () => ({
+      output: "edited",
+      changesWorkspace: true,
+    }));
+    const r = await runTurn({
+      adapter: fakeAdapter([
+        [
+          {
+            type: "tool-call",
+            tool_call: { id: "edit", name: "edit_file", arguments: "{}" },
+          },
+          { type: "finish", finish_reason: "stop" },
+        ],
+        [
+          { type: "text", text: "done" },
+          { type: "finish", finish_reason: "stop" },
+        ],
+      ]),
+      model: "m",
+      messages: [{ role: "user", content: "edit" }],
+      tools: [edit],
+      allowlist: [],
+      ask: async () => true,
+      bus,
+      verification: {
+        run: async () => {
+          verified++;
+          return { passed: true, output: "all checks passed" };
+        },
+      },
+    });
+
+    expect(verified).toBe(1);
+    expect(r.verification?.passed).toBe(true);
+  });
+
+  it("does not complete when mandatory verification fails repeatedly", async () => {
+    const edit = defineTool("edit_file", "edit", {}, async () => ({
+      output: "edited",
+      changesWorkspace: true,
+    }));
+    await expect(
+      runTurn({
+        adapter: fakeAdapter([
+          [
+            {
+              type: "tool-call",
+              tool_call: { id: "edit", name: "edit_file", arguments: "{}" },
+            },
+            { type: "finish", finish_reason: "stop" },
+          ],
+          [
+            { type: "text", text: "done" },
+            { type: "finish", finish_reason: "stop" },
+          ],
+        ]),
+        model: "m",
+        messages: [{ role: "user", content: "edit" }],
+        tools: [edit],
+        allowlist: [],
+        ask: async () => true,
+        bus,
+        verification: {
+          run: async () => ({ passed: false, output: "lint failed" }),
+        },
+      }),
+    ).rejects.toThrow("mandatory verification failed twice");
+  });
 });

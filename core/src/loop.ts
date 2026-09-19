@@ -103,9 +103,18 @@ export async function runTurn(opts: TurnOpts): Promise<TurnResult> {
   const records: TurnRecord[] = [];
   let inputTokens: number | undefined;
   let outputTokens: number | undefined;
-  const ctx = { opts, nameToCanonical, records, evidence: [] };
+  const ctx = {
+    opts,
+    nameToCanonical,
+    records,
+    evidence: [],
+    changesWorkspace: false,
+  };
   let turns = 0;
   let toolCalls = 0;
+  let verificationFailures = 0;
+  let verifiedChanges = false;
+  let verification: TurnResult["verification"];
   const observability = opts.observability ?? noopObservability;
   return trace(
     observability,
@@ -142,11 +151,38 @@ export async function runTurn(opts: TurnOpts): Promise<TurnResult> {
           content: text,
           tool_calls: streamedToolCalls.length ? streamedToolCalls : undefined,
         });
-        if (!streamedToolCalls.length || opts.interrupted?.()) break;
+        if (!streamedToolCalls.length || opts.interrupted?.()) {
+          if (opts.verification && ctx.changesWorkspace && !verifiedChanges) {
+            const result = await opts.verification.run();
+            verification = result;
+            if (result.passed) {
+              verifiedChanges = true;
+              break;
+            }
+            verificationFailures++;
+            if (verificationFailures >= 2)
+              throw new Error(
+                `mandatory verification failed twice:\n${result.output}`,
+              );
+            const message = [
+              "Mandatory verification failed. Do not report completion.",
+              "Fix the errors, then stop so verification can run again.",
+              result.output,
+            ].join("\n\n");
+            opts.messages.push({ role: "user", content: message });
+            records.push({ role: "assistant", content: message });
+            continue;
+          }
+          break;
+        }
         for (const tc of streamedToolCalls) {
           if (++toolCalls > (opts.maxToolCalls ?? Infinity))
             throw new Error("maximum tool calls exceeded");
           await runToolCall(ctx, tc);
+          if (ctx.records.at(-1)?.changesWorkspace) {
+            verifiedChanges = false;
+            verificationFailures = 0;
+          }
           if (opts.interrupted?.()) break;
         }
       }
@@ -173,6 +209,7 @@ export async function runTurn(opts: TurnOpts): Promise<TurnResult> {
         interrupted: opts.interrupted?.() ?? false,
         inputTokens,
         outputTokens,
+        verification,
       };
     },
     opts.traceAttributes,

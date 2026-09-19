@@ -63,7 +63,7 @@ export function Markdown({
   flushCode(false);
 
   return (
-    <box flexDirection="column" width="100%">
+    <box flexDirection="column" flexGrow={1}>
       {children}
     </box>
   );

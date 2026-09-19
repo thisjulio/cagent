@@ -48,7 +48,7 @@ export function writeFileTool(ctx: PluginContext) {
       recordRead(abs);
       recordWrite(abs, content);
       ctx.emit("code-tools/write", { path: abs });
-      return { output: `written ${abs}` };
+      return { output: `written ${abs}`, changesWorkspace: true };
     },
   );
 }

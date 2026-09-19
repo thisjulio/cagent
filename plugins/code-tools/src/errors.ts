@@ -10,6 +10,7 @@ export type ErrorCode =
   | "E_WRITE"
   | "E_SEARCH"
   | "E_RANGE"
+  | "E_EXPECTED"
   | "E_LANG";
 
 // Convention: the first line is always `ERROR <CODE> - <detail>` (detail starts with the path).

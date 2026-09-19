@@ -42,9 +42,9 @@ export const LLAMA_TOOL_OVERRIDES: ToolOverrides = {
   replace_lines: {
     name: "replace_lines",
     description: [
-      "Replaces lines in a file. Call read_file on the file first and use the line numbers it shows.",
-      'Example: {"path":"src/index.ts","edits":[{"start_line":12,"end_line":14,"content":"export interface A {\\n  id: string;\\n}"}]}',
-      "Prefer this tool over edit_file when the region you are changing is longer than three lines.",
+      "Replaces lines in a file. Call read_file on the file first and copy the current lines into old_content.",
+      'Example: {"path":"src/index.ts","edits":[{"start_line":12,"end_line":14,"old_content":"interface A {\\n  id: number;\\n}","content":"export interface A {\\n  id: string;\\n}"}]}',
+      "The edit is rejected when old_content does not exactly match the numbered lines.",
       "After it succeeds, call read_file again before editing the same file.",
     ].join(" "),
     parameters: {
@@ -70,13 +70,18 @@ export const LLAMA_TOOL_OVERRIDES: ToolOverrides = {
                 minimum: 1,
                 description: "Last line to replace. Inclusive.",
               },
+              old_content: {
+                type: "string",
+                description:
+                  "Exact current content of the numbered lines, copied from read_file",
+              },
               content: {
                 type: "string",
                 description:
                   'New text for those lines. Empty string ("") deletes them.',
               },
             },
-            required: ["start_line", "end_line", "content"],
+            required: ["start_line", "end_line", "old_content", "content"],
             additionalProperties: false,
           },
         },

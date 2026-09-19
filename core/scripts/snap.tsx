@@ -197,3 +197,93 @@ controller.state.tokens = 98000;
 controller.state.contextWindow = 100000;
 controller.state.title = "compacting";
 await frame(80);
+
+// Scenario: task panel (collapsed - default).
+controller.state.chat = [
+  { kind: "user", content: "implement the feature" },
+  { kind: "assistant", content: "I'll create a task list." },
+];
+controller.state.tasks = [
+  {
+    id: "t1",
+    title: "Plan the implementation",
+    status: "completed" as const,
+    evidence: "done",
+  },
+  { id: "t2", title: "Write the code", status: "in_progress" as const },
+  { id: "t3", title: "Run tests", status: "pending" as const },
+];
+controller.state.tokens = 4000;
+controller.state.title = "tasks collapsed";
+await frame(80);
+
+// Scenario: task panel (expanded).
+controller.state.tasks = [
+  {
+    id: "t1",
+    title: "Plan the implementation",
+    status: "completed" as const,
+    evidence: "done",
+  },
+  { id: "t2", title: "Write the code", status: "in_progress" as const },
+  { id: "t3", title: "Run tests", status: "pending" as const },
+  { id: "t4", title: "Deploy", status: "pending" as const },
+];
+controller.state.taskPanelExpanded = true;
+controller.state.title = "tasks expanded";
+await frame(80);
+
+// Scenario: task panel (collapsed again after being expanded).
+controller.state.taskPanelExpanded = false;
+controller.state.tasks = [
+  {
+    id: "t1",
+    title: "Plan the implementation",
+    status: "completed" as const,
+    evidence: "done",
+  },
+  { id: "t2", title: "Write the code", status: "in_progress" as const },
+  { id: "t3", title: "Run tests", status: "pending" as const },
+];
+controller.state.title = "tasks collapsed again";
+await frame(80);
+
+// Scenario: question panel (options).
+controller.state.chat = [{ kind: "user", content: "which framework?" }];
+controller.state.questionRequest = {
+  id: "snap-q1",
+  questions: [
+    {
+      question: "Which framework do you prefer?",
+      options: ["React", "Vue", "Svelte", "Angular"],
+    },
+  ],
+  createdAt: new Date(),
+};
+controller.state.tokens = 500;
+controller.state.title = "question options";
+await frame(80);
+
+// Scenario: question panel (free text).
+controller.state.questionRequest = {
+  id: "snap-q2",
+  questions: [{ question: "What is your name?" }],
+  createdAt: new Date(),
+};
+controller.state.title = "question text";
+await frame(80);
+
+// Scenario: question panel (multi-question progress).
+controller.state.questionRequest = {
+  id: "snap-q3",
+  questions: [
+    { question: "What is your name?" },
+    {
+      question: "What is your role?",
+      options: ["Developer", "Designer", "Manager"],
+    },
+  ],
+  createdAt: new Date(),
+};
+controller.state.title = "question multi";
+await frame(80);

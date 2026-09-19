@@ -9,6 +9,7 @@ export interface ToolLoopCtx {
   nameToCanonical: Record<string, string>;
   records: TurnRecord[];
   evidence: ToolEvidence[];
+  changesWorkspace: boolean;
 }
 
 export async function runToolCall(
@@ -51,7 +52,9 @@ export async function runToolCall(
     toolName: tool?.name ?? tc.name,
     args,
     isError: result.isError,
+    changesWorkspace: result.changesWorkspace,
   });
+  if (result.changesWorkspace) ctx.changesWorkspace = true;
   opts.onToolOutput?.(result.output);
   ctx.evidence.push(...(result.evidence ?? []));
   opts.bus.emit(

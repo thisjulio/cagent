@@ -4,6 +4,10 @@ import type { EventBus } from "../events";
 import type { ToolAsk } from "../tools";
 import { splitRoute } from "../route";
 import type { Registry } from "../registry";
+import type { VerificationRunner } from "../verification/runner";
+
+const VERIFICATION_RULE =
+  "After any workspace change, run bun run build, bun run typecheck, bun run lint, and bun test. Every command must pass before reporting completion.";
 
 export type SubagentRequest = {
   name: string;
@@ -25,6 +29,7 @@ export type SubagentExecutionDeps = {
   allowlist: string[];
   ask: ToolAsk;
   bus: EventBus;
+  verification?: VerificationRunner;
 };
 
 export function createSubagentExecutor(
@@ -42,7 +47,10 @@ export function createSubagentExecutor(
       ? available.filter((tool) => agent.tools?.includes(tool.name))
       : available;
     const messages: Message[] = [
-      { role: "system", content: agent.instructions },
+      {
+        role: "system",
+        content: `${agent.instructions}\n\n${VERIFICATION_RULE}`,
+      },
       ...context,
       { role: "user", content: task },
     ];
@@ -60,6 +68,7 @@ export function createSubagentExecutor(
       ask: deps.ask,
       bus: deps.bus,
       hooks: deps.registry.hooks,
+      verification: deps.verification,
     });
     return (
       result.records

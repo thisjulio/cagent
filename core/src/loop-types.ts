@@ -7,6 +7,7 @@ import type {
 } from "@cagent/sdk";
 import type { EventBus } from "./events";
 import type { ToolAsk } from "./tools";
+import type { VerificationRunner } from "./verification/runner";
 
 export interface StreamOpts {
   adapter: ProviderAdapter;
@@ -23,6 +24,7 @@ export interface StreamOpts {
   attempts?: number;
   observability?: Observability;
   traceAttributes?: Record<string, string | number | boolean>;
+  verification?: VerificationRunner;
 }
 
 export interface TurnRecord {
@@ -33,6 +35,7 @@ export interface TurnRecord {
   toolName?: string;
   args?: ToolArgs;
   isError?: boolean;
+  changesWorkspace?: boolean;
 }
 
 export interface TurnOpts extends StreamOpts {
@@ -56,4 +59,8 @@ export type TurnResult = {
   interrupted: boolean;
   inputTokens?: number;
   outputTokens?: number;
+  verification?: {
+    passed: boolean;
+    output: string;
+  };
 };

@@ -20,6 +20,7 @@ export interface ToolResult {
   output: string;
   isError?: boolean;
   evidence?: ToolEvidence[];
+  changesWorkspace?: boolean;
 }
 
 export {

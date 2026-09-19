@@ -17,6 +17,8 @@ import { createReadSkillTool, readSkill } from "./skills/read-tool";
 import { addBuiltinSkills } from "./skills/builtin";
 import { applySkillArguments } from "./skills/arguments";
 import { createTaskTool } from "./tasks/task-tool";
+import { createQuestionTool } from "./controller/question-tool";
+import { createVerificationRunner } from "./verification/runner";
 import { createCommandSource, discoverCommands } from "./commands/discovery";
 import { discoverSubagents } from "./subagents/discovery";
 import { addBuiltinSubagents } from "./subagents/builtin";
@@ -72,6 +74,7 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
   }
   const registry = new Registry();
   const bus = new EventBus();
+  const verification = createVerificationRunner(process.cwd());
   const loadedPlugins = await loadPlugins(config, registry, bus, {
     loaders: options.pluginLoaders,
     observability: telemetry,
@@ -147,6 +150,7 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
     allowlist: config.allowlist,
     ask: (...args) => ask(...args),
     bus,
+    verification,
   });
   const c = new Controller({
     config,
@@ -209,6 +213,7 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
   registry.registerTool(
     createTaskTool((operation, args) => c.updateTasks(operation, args)),
   );
+  registry.registerTool(createQuestionTool(c.questionService));
   bus.on("tools/pre", (p) => c.onToolPre(p));
   bus.on("tools/post", (p) => c.onToolPost(p));
   bus.on("tools/denied", (p) => c.onToolDenied(p));
