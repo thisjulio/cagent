@@ -13,6 +13,7 @@ import { InputArea } from "./InputArea";
 import { TaskPanel, type TaskPanelHandle } from "./TaskPanel";
 import { QuestionPanel } from "./QuestionPanel";
 import { ProjectContext } from "./ProjectContext";
+import { WelcomePanel } from "./WelcomePanel";
 import { formatHeaderTitle } from "../render/title";
 export function App({ c }: { c: Controller }) {
   const [, setV] = useState(0);
@@ -146,7 +147,11 @@ export function App({ c }: { c: Controller }) {
           {s.busy ? "working" : status}
         </text>
       </box>
-      <ChatViewport chat={s.chat} busy={s.busy} controller={c} />
+      {s.chat.length === 0 ? (
+        <WelcomePanel />
+      ) : (
+        <ChatViewport chat={s.chat} busy={s.busy} controller={c} />
+      )}
       <TaskPanel
         ref={taskPanelRef}
         tasks={s.tasks}
