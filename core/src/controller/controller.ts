@@ -64,6 +64,15 @@ export class Controller {
     this.queue = [];
     return messages;
   }
+
+  removeQueuedChatMessage(id: string): void {
+    const index = this.state.chat.findIndex(
+      (item) => item.kind === "user" && item.queueMessageId === id,
+    );
+    if (index === -1) return;
+    this.state.chat.splice(index, 1);
+    this.state.chatVersion += 1;
+  }
   customCommand(name: string): CustomCommand | undefined {
     return this.deps.commands?.get(name.slice(1));
   }
@@ -241,11 +250,25 @@ export class Controller {
         content: text,
         submittedAt: Date.now(),
       };
-      this.queue = enqueueMessage(this.queue, message);
+      const nextQueue = enqueueMessage(this.queue, message);
+      if (nextQueue.length === this.queue.length) {
+        notify(this.state, "queued input limit reached");
+        return;
+      }
+      this.queue = nextQueue;
+      this.state.input = "";
+      this.state.inputKey += 1;
+      this.session.append({
+        ts: message.submittedAt,
+        turnId: this.state.currentTurnId,
+        type: "meta",
+        payload: { kind: "queued-message", ...message, status: "queued" },
+      });
       appendChat(this.state, {
         kind: "user",
         content: text,
         queueStatus: "queued",
+        queueMessageId: message.id,
         turnId: this.state.currentTurnId,
       });
       this.bump();

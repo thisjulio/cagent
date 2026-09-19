@@ -4,7 +4,7 @@ import {
   drainQueue,
   enqueueMessage,
   markQueueProcessing,
-  retainQueueAfterFailure,
+  MAX_QUEUED_MESSAGES,
 } from "../src/controller/message-queue";
 
 describe("message queue", () => {
@@ -65,13 +65,24 @@ describe("message queue", () => {
     expect(queue[0]?.status).toBe("queued");
   });
 
-  test("keeps queued messages available after an active turn failure", () => {
+  test("caps queue growth", () => {
+    let queue = createQueue();
+    for (let index = 0; index < MAX_QUEUED_MESSAGES + 1; index++) {
+      queue = enqueueMessage(queue, {
+        id: String(index),
+        content: String(index),
+        submittedAt: index,
+      });
+    }
+    expect(queue).toHaveLength(MAX_QUEUED_MESSAGES);
+  });
+
+  test("rejects oversized messages", () => {
     const queue = enqueueMessage(createQueue(), {
-      id: "one",
-      content: "recover me",
+      id: "large",
+      content: "x".repeat(64 * 1024 + 1),
       submittedAt: 1,
     });
-
-    expect(retainQueueAfterFailure(queue)).toEqual(queue);
+    expect(queue).toEqual([]);
   });
 });

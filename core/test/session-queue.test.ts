@@ -32,12 +32,27 @@ describe("session queued messages", () => {
         status: "processing",
       },
     });
+    session.append({
+      ts: 3,
+      turnId: "turn-1",
+      type: "meta",
+      payload: { kind: "queued-message-completed", id: "one" },
+    });
+    session.append({
+      ts: 4,
+      turnId: "turn-1",
+      type: "meta",
+      payload: { kind: "queued-message-processing", id: "two" },
+    });
 
     const loaded = session.load();
 
     expect(loaded.queuedMessages).toEqual([
-      { id: "one", content: "first", submittedAt: 1, status: "queued" },
-      { id: "two", content: "second", submittedAt: 2, status: "processing" },
+      { id: "two", content: "second", submittedAt: 2, status: "queued" },
     ]);
+  });
+
+  test("rejects path traversal session ids", () => {
+    expect(() => new Session("../outside")).toThrow("Invalid session id");
   });
 });

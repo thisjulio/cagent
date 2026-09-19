@@ -69,76 +69,104 @@ export async function submitMessage(
       controller.bump();
     }
   }, 500);
-  await executeTurn({
-    state,
-    adapter: controller.adapter,
-    model: splitRoute(state.model)[1],
-    variant: state.variant,
-    messages: controller.messages,
-    messagesForRequest: (messages) => {
-      controller.bus.emit(
-        "prompt.assembled",
-        workflowEvent(
-          {
-            "context.included": messages.length,
-            "context.omitted": 0,
-            "context.recent_turns": 0,
-          },
-          { sessionId: controller.session.id },
-        ),
-      );
-      controller.observability?.recordEvent("prompt.assembled", {
-        "context.included": messages.length,
-        "context.omitted": 0,
-        "context.recent_turns": 0,
-      });
-      return messages;
-    },
-    tools: taskAwareTools(controller),
-    allowlist: controller.config.allowlist,
-    ask: controller.ask,
-    bus: controller.bus,
-    hooks: controller.registry.hooks,
-    session: controller.session,
-    interrupted: () => controller.isInterrupted(),
-    signal: controller.signal,
-    maxTurns: controller.maxTurns,
-    maxToolCalls: controller.maxToolCalls,
-    onText: controller.onText,
-    onReasoning: controller.onReasoning,
-    bump: controller.bump,
-    bumpStream: () => controller.bumpStreamNow(),
-    observability: controller.observability,
-    turnId,
-    onContextLimit: () => {
-      if (controller.config.compact_auto === false) {
-        notify(controller.state, "automatic compaction disabled; use /compact");
-        return Promise.resolve();
-      }
-      controller.observability?.recordEvent("compaction.requested", {
-        ...compactionEventFields(controller.state, controller.state.model),
-        reason: "provider_context_limit",
-        error: controller.state.notice,
-      });
-      return compact(controller, true);
-    },
-    traceAttributes: { "turn.id": turnId },
-    verification: controller.verification,
-  }).finally(async () => {
-    clearInterval(timer);
-    const queued = controller.takeQueuedMessages();
-    if (queued.length > 0) {
-      for (const message of queued) {
-        controller.messages.push({ role: "user", content: message.content });
-        controller.session.append({
-          ts: message.submittedAt,
-          turnId,
-          type: "user",
-          payload: { content: message.content, queueStatus: "processing" },
+  let completed = false;
+  try {
+    await executeTurn({
+      state,
+      adapter: controller.adapter,
+      model: splitRoute(state.model)[1],
+      variant: state.variant,
+      messages: controller.messages,
+      messagesForRequest: (messages) => {
+        controller.bus.emit(
+          "prompt.assembled",
+          workflowEvent(
+            {
+              "context.included": messages.length,
+              "context.omitted": 0,
+              "context.recent_turns": 0,
+            },
+            { sessionId: controller.session.id },
+          ),
+        );
+        controller.observability?.recordEvent("prompt.assembled", {
+          "context.included": messages.length,
+          "context.omitted": 0,
+          "context.recent_turns": 0,
         });
+        return messages;
+      },
+      tools: taskAwareTools(controller),
+      allowlist: controller.config.allowlist,
+      ask: controller.ask,
+      bus: controller.bus,
+      hooks: controller.registry.hooks,
+      session: controller.session,
+      interrupted: () => controller.isInterrupted(),
+      signal: controller.signal,
+      maxTurns: controller.maxTurns,
+      maxToolCalls: controller.maxToolCalls,
+      onText: controller.onText,
+      onReasoning: controller.onReasoning,
+      bump: controller.bump,
+      bumpStream: () => controller.bumpStreamNow(),
+      observability: controller.observability,
+      turnId,
+      onContextLimit: () => {
+        if (controller.config.compact_auto === false) {
+          notify(
+            controller.state,
+            "automatic compaction disabled; use /compact",
+          );
+          return Promise.resolve();
+        }
+        controller.observability?.recordEvent("compaction.requested", {
+          ...compactionEventFields(controller.state, controller.state.model),
+          reason: "provider_context_limit",
+          error: controller.state.notice,
+        });
+        return compact(controller, true);
+      },
+      traceAttributes: { "turn.id": turnId },
+      verification: controller.verification,
+    });
+    completed = true;
+  } finally {
+    clearInterval(timer);
+    if (completed) {
+      const queued = controller.takeQueuedMessages();
+      for (const message of queued) {
+        controller.removeQueuedChatMessage(message.id);
+        controller.session.append({
+          ts: Date.now(),
+          turnId,
+          type: "meta",
+          payload: { kind: "queued-message-processing", id: message.id },
+        });
+        try {
+          await submitMessage(controller, message.content);
+          controller.session.append({
+            ts: Date.now(),
+            turnId,
+            type: "meta",
+            payload: { kind: "queued-message-completed", id: message.id },
+          });
+        } catch (error) {
+          controller.session.append({
+            ts: Date.now(),
+            turnId,
+            type: "meta",
+            payload: {
+              kind: "queued-message-failed",
+              id: message.id,
+              error: error instanceof Error ? error.message : String(error),
+            },
+          });
+          throw error;
+        }
       }
     }
-  });
+  }
 }
 
 async function compactBeforeSubmission(controller: Controller): Promise<void> {

@@ -25,6 +25,7 @@ export type ChatItem = {
   expanded?: boolean;
   timestamp?: number;
   queueStatus?: "queued" | "processing";
+  queueMessageId?: string;
   command?: string;
   startedAt?: number;
   durationMs?: number;

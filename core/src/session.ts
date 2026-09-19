@@ -25,6 +25,7 @@ export class Session {
     const base = dir ?? path.join(os.homedir(), ".cagent", "sessions");
     fs.mkdirSync(base, { recursive: true });
     if (id) {
+      if (!/^[A-Za-z0-9_-]+$/.test(id)) throw new Error("Invalid session id");
       this.id = id;
       this.file = path.join(base, `${id}.jsonl`);
       return;
@@ -92,6 +93,27 @@ export class Session {
         });
         continue;
       }
+      if (r.type === "meta" && p.kind === "queued-message-failed") {
+        const message = queuedMessages.find(
+          (entry) => entry.id === String(p.id ?? ""),
+        );
+        if (message) message.status = "queued";
+        continue;
+      }
+      if (r.type === "meta" && p.kind === "queued-message-processing") {
+        const message = queuedMessages.find(
+          (entry) => entry.id === String(p.id ?? ""),
+        );
+        if (message) message.status = "processing";
+        continue;
+      }
+      if (r.type === "meta" && p.kind === "queued-message-completed") {
+        const index = queuedMessages.findIndex(
+          (message) => message.id === String(p.id ?? ""),
+        );
+        if (index !== -1) queuedMessages.splice(index, 1);
+        continue;
+      }
       if (r.type === "meta" && p.kind === "skill-activated") {
         if (p.format !== "tool-v1")
           messages.push({ role: "system", content: skillMessage(p) });
@@ -118,6 +140,9 @@ export class Session {
           content: String(p.content ?? ""),
         });
       }
+    }
+    for (const message of queuedMessages) {
+      if (message.status === "processing") message.status = "queued";
     }
     return { records: effective, messages, queuedMessages };
   }

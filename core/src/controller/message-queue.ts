@@ -7,6 +7,14 @@ export type DrainResult = {
   remaining: QueueMessage[];
 };
 
+export const MAX_QUEUED_MESSAGES = 100;
+export const MAX_QUEUED_MESSAGE_BYTES = 64 * 1024;
+export const MAX_QUEUE_BYTES = 1024 * 1024;
+
+export function messageBytes(message: QueueInput): number {
+  return Buffer.byteLength(message.content, "utf8");
+}
+
 export function createQueue(): QueueMessage[] {
   return [];
 }
@@ -15,6 +23,14 @@ export function enqueueMessage(
   queue: readonly QueueMessage[],
   message: QueueInput,
 ): QueueMessage[] {
+  if (
+    queue.length >= MAX_QUEUED_MESSAGES ||
+    messageBytes(message) > MAX_QUEUED_MESSAGE_BYTES ||
+    queue.reduce((total, entry) => total + messageBytes(entry), 0) +
+      messageBytes(message) >
+      MAX_QUEUE_BYTES
+  )
+    return [...queue];
   return [...queue, { ...message, status: "queued" }];
 }
 
@@ -29,14 +45,4 @@ export function drainQueue(queue: readonly QueueMessage[]): DrainResult {
     messages: markQueueProcessing(queue),
     remaining: [],
   };
-}
-
-export function retainQueueAfterFailure(
-  queue: readonly QueueMessage[],
-): QueueMessage[] {
-  return queue.map((message) => ({ ...message }));
-}
-
-export function queueContents(queue: readonly QueueMessage[]): string {
-  return queue.map((message) => message.content).join("\n");
 }
