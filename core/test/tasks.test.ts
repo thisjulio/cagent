@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import {
+  applyTaskBatch,
   createTasks,
   removeTask,
   taskProgress,
@@ -56,5 +57,38 @@ describe("task domain", () => {
     expect(() => updateTask(completed, tasks[1].id, "pending")).toThrow(
       "only completed",
     );
+  });
+
+  it("creates a plan and starts its first task in one batch", () => {
+    const tasks = applyTaskBatch(
+      [],
+      [{ op: "create", titles: ["Plan", "Verify"], startFirst: true }],
+    );
+
+    expect(tasks.map((task) => task.status)).toEqual([
+      "in_progress",
+      "pending",
+    ]);
+  });
+
+  it("completes a task and starts the next one in one batch", () => {
+    const initial = applyTaskBatch(
+      [],
+      [{ op: "create", titles: ["Plan", "Verify"], startFirst: true }],
+    );
+    const tasks = applyTaskBatch(initial, [
+      {
+        op: "update",
+        id: initial[0].id,
+        status: "completed",
+        details: "verified",
+      },
+      { op: "update", id: initial[1].id, status: "in_progress" },
+    ]);
+
+    expect(tasks.map((task) => task.status)).toEqual([
+      "completed",
+      "in_progress",
+    ]);
   });
 });

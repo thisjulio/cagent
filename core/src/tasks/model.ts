@@ -7,6 +7,17 @@ export type Task = {
   evidence?: string;
 };
 
+export type TaskOperation =
+  | { op: "create"; titles: string[]; startFirst?: boolean }
+  | {
+      op: "update";
+      id: string;
+      status: TaskStatus;
+      details?: string;
+    }
+  | { op: "remove"; id: string }
+  | { op: "clear" };
+
 export function taskProgress(tasks: Task[]): string {
   return `${tasks.filter((task) => task.status === "completed").length}/${tasks.length}`;
 }
@@ -65,7 +76,7 @@ export function createTasks(tasks: Task[], titles: string[]): Task[] {
   return [
     ...tasks,
     ...titles.filter(Boolean).map((title, index) => ({
-      id: `${Date.now()}-${index}`,
+      id: `${Date.now()}-${tasks.length + index}`,
       title,
       status: "pending" as const,
     })),
@@ -76,4 +87,30 @@ export function removeTask(tasks: Task[], id: string): Task[] {
   if (!tasks.some((task) => task.id === id))
     throw new Error(`task not found: ${id}`);
   return tasks.filter((task) => task.id !== id);
+}
+
+export function applyTaskOperation(
+  tasks: Task[],
+  operation: TaskOperation,
+): Task[] {
+  if (operation.op === "create") {
+    const created = createTasks(tasks, operation.titles);
+    if (!operation.startFirst) return created;
+    const firstCreated = created.slice(tasks.length)[0];
+    if (!firstCreated)
+      throw new Error("startFirst requires at least one title");
+    return updateTask(created, firstCreated.id, "in_progress");
+  }
+  if (operation.op === "update")
+    return updateTask(tasks, operation.id, operation.status, operation.details);
+  if (operation.op === "remove") return removeTask(tasks, operation.id);
+  return [];
+}
+
+export function applyTaskBatch(
+  tasks: Task[],
+  operations: TaskOperation[],
+): Task[] {
+  if (!operations.length) throw new Error("batch requires operations");
+  return operations.reduce(applyTaskOperation, tasks);
 }

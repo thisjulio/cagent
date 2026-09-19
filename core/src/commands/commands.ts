@@ -28,20 +28,48 @@ const commands: Record<string, SlashHandler> = {
     const parts = arg.trim().split(/\s+/);
     let result: string;
     if (!arg.trim() || parts[0] === "list") {
-      result = c.updateTasks("list", {});
+      result = JSON.stringify(c.state.tasks);
     } else if (parts[0] === "add") {
-      result = c.updateTasks("create", { titles: [parts.slice(1).join(" ")] });
+      result = c.updateTasks("batch", {
+        operations: [
+          {
+            op: "create",
+            titles: [parts.slice(1).join(" ")],
+          },
+        ],
+      });
     } else if (parts[0] === "complete" || parts[0] === "reopen") {
-      result = c.updateTasks("update", {
-        id: parts[1],
-        status: parts[0] === "complete" ? "completed" : "pending",
-        details:
-          parts[0] === "reopen" ? "reopen by user" : parts.slice(2).join(" "),
+      const operations = [
+        {
+          op: "update",
+          id: parts[1],
+          status: parts[0] === "complete" ? "completed" : "pending",
+          details:
+            parts[0] === "reopen" ? "reopen by user" : parts.slice(2).join(" "),
+        },
+      ];
+      if (parts[0] === "complete") {
+        const index = c.state.tasks.findIndex((task) => task.id === parts[1]);
+        const next = c.state.tasks
+          .slice(index + 1)
+          .find((task) => task.status === "pending");
+        if (next)
+          operations.push({
+            op: "update",
+            id: next.id,
+            status: "in_progress",
+            details: "",
+          });
+      }
+      result = c.updateTasks("batch", {
+        operations,
       });
     } else if (parts[0] === "remove") {
-      result = c.updateTasks("remove", { id: parts[1] });
+      result = c.updateTasks("batch", {
+        operations: [{ op: "remove", id: parts[1] }],
+      });
     } else if (parts[0] === "clear" && parts[1] === "--confirm") {
-      result = c.updateTasks("clear", {});
+      result = c.updateTasks("batch", { operations: [{ op: "clear" }] });
     } else {
       result =
         "usage: /tasks [list|add <title>|complete <id> <evidence>|reopen <id>|remove <id>|clear --confirm]";

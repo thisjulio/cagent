@@ -1,5 +1,5 @@
 import type { ToolArgs, ToolDefinition } from "@cagent/sdk";
-import { createTasks, removeTask, updateTask, type TaskStatus } from "../tasks";
+import { applyTaskBatch, type TaskOperation } from "../tasks";
 import type { Controller } from "./controller";
 
 export function taskAwareTools(controller: Controller): ToolDefinition[] {
@@ -28,35 +28,11 @@ export function updateTasks(
 ): string {
   try {
     controller.observability?.recordEvent("task.requested", { operation });
-    if (operation === "create")
-      controller.state.tasks = createTasks(
-        controller.state.tasks,
-        (args.titles as string[]) ?? [],
-      );
-    else if (operation === "update") {
-      controller.state.tasks = updateTask(
-        controller.state.tasks,
-        String(args.id),
-        String(args.status) as TaskStatus,
-        args.details as string,
-      );
-    } else if (operation === "remove")
-      controller.state.tasks = removeTask(
-        controller.state.tasks,
-        String(args.id),
-      );
-    else if (operation === "clear") controller.state.tasks = [];
-    else if (operation === "list")
-      return JSON.stringify(controller.state.tasks);
-    else if (operation === "batch") {
-      const ops = args.operations as Array<Record<string, unknown>>;
-      if (!Array.isArray(ops))
-        throw new Error("batch requires operations array");
-      for (const op of ops) {
-        const result = updateTasks(controller, String(op.op), op);
-        if (result.startsWith("ERROR TASK")) throw new Error(result);
-      }
-    } else throw new Error(`unknown task operation: ${operation}`);
+    if (operation !== "batch")
+      throw new Error("only the batch operation is supported");
+    const ops = parseTaskOperations(args.operations);
+    const nextTasks = applyTaskBatch(controller.state.tasks, ops);
+    controller.state.tasks = nextTasks;
     controller.session.appendTasks(controller.state.tasks);
     controller.bump();
     controller.observability?.recordEvent("task.completed", {
@@ -69,4 +45,35 @@ export function updateTasks(
     const message = error instanceof Error ? error.message : String(error);
     return `ERROR TASK — ${message}`;
   }
+}
+
+function parseTaskOperations(value: unknown): TaskOperation[] {
+  if (!Array.isArray(value)) throw new Error("batch requires operations array");
+  return value.map((raw) => {
+    if (!raw || typeof raw !== "object")
+      throw new Error("each batch operation must be an object");
+    const operation = raw as Record<string, unknown>;
+    const op = String(operation.op);
+    if (op === "create")
+      return {
+        op,
+        titles: (operation.titles as string[]) ?? [],
+        startFirst: operation.startFirst === true,
+      };
+    if (op === "update")
+      return {
+        op,
+        id: String(operation.id),
+        status: String(operation.status) as TaskOperation extends {
+          op: "update";
+          status: infer Status;
+        }
+          ? Status
+          : never,
+        details: operation.details as string | undefined,
+      };
+    if (op === "remove") return { op, id: String(operation.id) };
+    if (op === "clear") return { op };
+    throw new Error(`unknown task operation: ${op}`);
+  }) as TaskOperation[];
 }

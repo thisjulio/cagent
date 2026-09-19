@@ -5,13 +5,13 @@ export function createTaskTool(
 ): ToolDefinition {
   return defineTool(
     "tasks",
-    "Manage the checklist. For coding work, create a plan first, then mark exactly one task in_progress before using any other tool. Complete only that task with verification evidence. Use batch operations to transition between tasks in a single call.",
+    "Manage the checklist using one batch call. Combine related changes: create the full plan and set its first task in_progress with startFirst, then complete the current task and start the next task in the same batch. Every completed task requires verification evidence.",
     {
       type: "object",
       properties: {
         operation: {
           type: "string",
-          enum: ["create", "list", "update", "remove", "clear", "batch"],
+          enum: ["batch"],
         },
         operations: {
           type: "array",
@@ -20,9 +20,14 @@ export function createTaskTool(
             properties: {
               op: {
                 type: "string",
-                enum: ["create", "update", "remove"],
+                enum: ["create", "update", "remove", "clear"],
               },
               titles: { type: "array", items: { type: "string" } },
+              startFirst: {
+                type: "boolean",
+                description:
+                  "For create, start the first newly created task in the same batch.",
+              },
               id: { type: "string" },
               status: {
                 type: "string",
@@ -33,19 +38,8 @@ export function createTaskTool(
             required: ["op"],
           },
         },
-        titles: { type: "array", items: { type: "string" } },
-        id: { type: "string" },
-        status: {
-          type: "string",
-          enum: ["pending", "in_progress", "completed", "blocked"],
-        },
-        details: {
-          type: "string",
-          description:
-            "Required evidence for completion or reason for blocking.",
-        },
       },
-      required: ["operation"],
+      required: ["operation", "operations"],
     },
     async (args) => {
       const output = update(String(args.operation), args);
