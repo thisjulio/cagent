@@ -25,6 +25,7 @@ export interface StreamOpts {
   observability?: Observability;
   traceAttributes?: Record<string, string | number | boolean>;
   verification?: VerificationRunner;
+  shouldYield?: () => boolean;
 }
 
 export interface TurnRecord {
@@ -55,6 +56,7 @@ export interface TurnOpts extends StreamOpts {
   observability?: Observability;
   traceAttributes?: Record<string, string | number | boolean>;
   continueTurn?: () => Promise<boolean>;
+  shouldYield?: () => boolean;
 }
 
 export type TurnResult = {

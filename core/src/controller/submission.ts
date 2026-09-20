@@ -154,6 +154,7 @@ export async function submitMessage(
         });
         return true;
       },
+      shouldYield: () => controller.queuedMessages().length > 0,
     });
   } finally {
     clearInterval(timer);

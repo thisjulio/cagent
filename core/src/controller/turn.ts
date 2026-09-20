@@ -45,6 +45,7 @@ export type TurnHost = {
   turnId?: string;
   verification?: VerificationRunner;
   continueTurn?: () => Promise<boolean>;
+  shouldYield?: () => boolean;
 };
 
 export async function executeTurn(host: TurnHost): Promise<void> {
@@ -176,6 +177,7 @@ async function runAgentTurn(
     traceAttributes: host.traceAttributes,
     verification: host.verification,
     continueTurn: host.continueTurn,
+    shouldYield: host.shouldYield,
     onToolOutput: (content) => {
       host.bumpStream();
     },
