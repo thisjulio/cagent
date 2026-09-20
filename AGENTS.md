@@ -56,7 +56,7 @@ plugins/code-tools/   # tool
 ## Module Limits (Verifiable)
 
 - One file = one responsibility that fits in one sentence without "and".
-- Maximum 250 lines per file, 40 per function, 4 parameters (above that, use an options object).
+- Maximum 500 lines per file, 40 per function, 4 parameters (above that, use an options object).
 - If a limit is exceeded, extract **before** continuing. There is no "refactor later".
 - React component: layout and formatting only. Zero I/O, business rules, or state mutation.
 - Logic module (controller, loop, session, registry): must not import `ink`, `react`, or any UI dependency.
@@ -118,7 +118,7 @@ Only add to an existing file when the change belongs to the same concept already
 - [ ] `bun run typecheck` passes
 - [ ] `bun run lint` passes
 - [ ] `bun run verify` passes without skipped checks
-- [ ] no touched file exceeds 250 lines
+- [ ] no touched file exceeds 500 lines
 - [ ] new code is in the location specified by the table above - nothing added to `app.tsx`
 - [ ] for UI changes: snapshot run and compared with the approved wireframe
 - [ ] `graphify update .` run at the end

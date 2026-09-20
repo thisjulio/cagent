@@ -2,7 +2,7 @@ import type { Controller } from "./controller";
 import type { InputKey } from "./state";
 
 // ponytail: input key orchestration (autocomplete, pickers, pendingAsk) lives
-// outside the controller to keep it under 250 lines; this is a state-rules layer.
+// outside the controller to keep it under 500 lines; this is a state-rules layer.
 
 // ponytail: double-ESC within this window forces cancellation of running tools.
 const DOUBLE_ESC_WINDOW_MS = 500;
