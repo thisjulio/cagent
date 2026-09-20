@@ -79,7 +79,8 @@ If the command is not found immediately after installation, run the binary direc
 
 ### Install the latest release
 
-The installer supports Linux and macOS. To install a specific version:
+The installer supports Linux and macOS, including musl-based Linux distributions
+such as Alpine. To install a specific version:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/thisjulio/cagent/main/install.sh | bash -s -- --version 0.1.4

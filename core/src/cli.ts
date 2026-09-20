@@ -8,6 +8,15 @@ export async function runCli(
   args: string[],
   bootstrapOptions: BootstrapOptions = {},
 ): Promise<boolean> {
+  if (args[0] === "auth") {
+    if (args.length !== 3)
+      throw new Error("usage: cagent auth <provider> <login|logout|status>");
+    await bootstrap({
+      ...bootstrapOptions,
+      authCommand: { provider: args[1], action: args[2] },
+    });
+    return true;
+  }
   if (args[0] === "upgrade") {
     if (args.length > 1) throw new Error("usage: cagent upgrade");
     await upgrade();

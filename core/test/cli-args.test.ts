@@ -1,7 +1,15 @@
 import { describe, expect, test } from "bun:test";
+import { cliHelp } from "../src/cli-args";
 import { parseCliArgs } from "../src/cli-args";
 
 describe("CLI arguments", () => {
+  test("help explains OpenAI authentication", () => {
+    expect(cliHelp).toContain("OPENAI_API_KEY");
+    expect(cliHelp).toContain("Codex OAuth");
+    expect(cliHelp).toContain("URL printed in the terminal");
+    expect(cliHelp).toContain("cagent auth openai login|logout|status");
+  });
+
   test("combines stdin and positional prompts", () => {
     const result = parseCliArgs(["--prompt", "second", "first"], "from pipe");
     expect(result.prompt).toBe("from pipe\n\nsecond\n\nfirst");

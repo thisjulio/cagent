@@ -146,6 +146,12 @@ Options:
       --no-telemetry      Disable local telemetry for this run
   -h, --help              Show this help
 
+Authentication:
+  Set OPENAI_API_KEY for API-key authentication.
+  Without it, cagent starts the interactive Codex OAuth login flow.
+  Follow the URL printed in the terminal; copy it to a browser if needed.
+  cagent auth openai login|logout|status  Manage saved OAuth credentials.
+
 Exit codes: 0 success, 1 agent error, 2 invalid arguments, 3 permission denied,
 4 provider/configuration error, 124 timeout, 130 SIGINT, 143 SIGTERM.
 `;

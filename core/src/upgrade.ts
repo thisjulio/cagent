@@ -19,7 +19,20 @@ function assetName(): string {
     throw new Error(
       `unsupported platform: ${process.platform}/${process.arch}`,
     );
-  return `cagent-${osName}-${arch}`;
+  const musl =
+    osName === "linux" &&
+    (() => {
+      try {
+        return /musl/i.test(
+          new TextDecoder().decode(
+            new Uint8Array(Bun.spawnSync(["ldd", "--version"]).stdout),
+          ),
+        );
+      } catch {
+        return false;
+      }
+    })();
+  return `cagent-${osName}-${arch}${musl ? "-musl" : ""}`;
 }
 
 async function responseData(url: string): Promise<Uint8Array> {

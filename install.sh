@@ -40,6 +40,12 @@ case "$(uname -s)" in
   *) echo "Unsupported operating system: $(uname -s)" >&2; exit 1 ;;
 esac
 
+if [[ "$os" == "linux" ]] && ldd --version 2>&1 | grep -qi musl; then
+  libc="-musl"
+else
+  libc=""
+fi
+
 case "$(uname -m)" in
   x86_64|amd64) arch="x64" ;;
   arm64|aarch64) arch="arm64" ;;
@@ -52,7 +58,7 @@ if [[ "$os" == "darwin" && "$arch" == "x64" ]]; then
   fi
 fi
 
-asset="$APP-$os-$arch"
+asset="$APP-$os-$arch$libc"
 if [[ -n "$requested_version" ]]; then
   tag="v${requested_version#v}"
   base_url="https://github.com/$REPO/releases/download/$tag"

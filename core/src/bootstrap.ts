@@ -39,6 +39,7 @@ export interface BootstrapOptions {
   modelChoiceFile?: string;
   cli?: CliOptions;
   headless?: CliOptions;
+  authCommand?: { provider: string; action: string };
 }
 
 export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
@@ -79,6 +80,21 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
     loaders: options.pluginLoaders,
     observability: telemetry,
   });
+  if (options.authCommand) {
+    const command = registry.command(`auth.${options.authCommand.provider}`);
+    if (!command)
+      throw new Error(
+        `provider does not support authentication: ${options.authCommand.provider}`,
+      );
+    const result = await command.execute({
+      name: command.name,
+      arguments: options.authCommand.action,
+      values: {},
+    });
+    if (result) console.log(result);
+    await loadedPlugins.cleanup();
+    return;
+  }
 
   // ponytail: Run plugin cleanup handlers on process exit.
   let cleaningUp = false;

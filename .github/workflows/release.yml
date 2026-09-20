@@ -19,10 +19,18 @@ jobs:
             target: bun-linux-x64
             cpu: x64
             asset: cagent-linux-x64
+          - runner: ubuntu-24.04
+            target: bun-linux-x64-musl
+            cpu: x64
+            asset: cagent-linux-x64-musl
           - runner: ubuntu-24.04-arm
             target: bun-linux-arm64
             cpu: arm64
             asset: cagent-linux-arm64
+          - runner: ubuntu-24.04-arm
+            target: bun-linux-arm64-musl
+            cpu: arm64
+            asset: cagent-linux-arm64-musl
           - runner: macos-14
             target: bun-darwin-x64
             cpu: x64
