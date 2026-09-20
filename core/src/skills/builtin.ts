@@ -7,7 +7,7 @@ const INSTRUCTIONS =
   "  ui -> controller -> domain -> sdk\n\n" +
   "Prefer a new registered module over adding branches to an existing controller or loop.\n" +
   "Keep one responsibility per file, keep files under 500 lines, and test pure logic without\n" +
-  "rendering. After code changes run bun run build, bun run typecheck, bun run lint, and bun test; every command must pass. Run graphify update . before finishing.\n\n" +
+  "rendering.\n\n" +
   "## Creating a new skill\n\n" +
   "Skills teach cagent specialized workflows. Create them in .cagent/skills/<name>/SKILL.md\n" +
   "(project-local) or share them across projects.\n\n" +

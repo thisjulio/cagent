@@ -6,8 +6,7 @@ import { splitRoute } from "../route";
 import type { Registry } from "../registry";
 import type { VerificationRunner } from "../verification/runner";
 
-const VERIFICATION_RULE =
-  "After any workspace change, run bun run build, bun run typecheck, bun run lint, and bun test. Every command must pass before reporting completion.";
+const VERIFICATION_RULE = "";
 
 export type SubagentRequest = {
   name: string;

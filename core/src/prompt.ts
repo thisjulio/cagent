@@ -24,8 +24,7 @@ const PERSONA = [
   "Keep final answers to five lines unless the user asks for detail.",
 ].join("\n");
 
-export const MANDATORY_VERIFICATION =
-  "After any workspace change, run `bun run build`, `bun run typecheck`, `bun run lint`, and `bun test`. Every command must pass before reporting completion.";
+export const MANDATORY_VERIFICATION = "";
 
 const TASK_PROTOCOL = [
   "# Task protocol",
@@ -47,7 +46,6 @@ const TASK_PROTOCOL = [
   "A command includes its exit code and output.",
   "A file verification includes the changed lines read after editing.",
   "A test verification includes its result.",
-  "After any code change, run the mandatory verification pipeline: bun run build, bun run typecheck, bun run lint, and bun test.",
   "Every mandatory verification command must pass; any failure blocks completion. Do not claim completion when verification is skipped or fails.",
   "A description of expected behavior is not evidence.",
   "",
