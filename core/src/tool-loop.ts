@@ -4,6 +4,7 @@ import { runToolPipeline, type ToolAsk } from "./tools";
 import { workflowPayload } from "./loop-utils";
 import type { TurnOpts, TurnRecord } from "./loop";
 import { parseToolCall, type IncomingToolCall } from "./tool-call";
+import { ensureToolTitle } from "./tool-title";
 
 export interface ToolLoopCtx {
   opts: TurnOpts;
@@ -22,6 +23,7 @@ export async function runToolCall(
     (t) => t.name === (ctx.nameToCanonical[tc.name] ?? tc.name),
   );
   const parsed = parseToolCall(tc);
+  const title = ensureToolTitle(parsed.title, tool?.name ?? tc.name);
   let args: ToolArgs = parsed.args;
   if (parsed.error) {
     args = {};
@@ -49,7 +51,7 @@ export async function runToolCall(
           opts.hooks,
           opts.signal,
           opts.observability,
-          parsed.title,
+          title,
         )
     : { output: `tool not found: ${tc.name}`, isError: true };
   const normalizedCall = {
@@ -75,7 +77,7 @@ export async function runToolCall(
     tool_call_id: tc.id,
     content: result.output,
     toolName: tool?.name ?? tc.name,
-    title: parsed.title,
+    title,
     args,
     isError: result.isError,
     changesWorkspace: result.changesWorkspace,

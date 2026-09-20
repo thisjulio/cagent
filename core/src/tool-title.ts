@@ -13,3 +13,7 @@ export function normalizeToolTitle(value: unknown): string | undefined {
     .slice(0, MAX_TOOL_TITLE_LENGTH);
   return title || undefined;
 }
+
+export function ensureToolTitle(value: unknown, tool: string): string {
+  return normalizeToolTitle(value) ?? `Executing ${tool}`;
+}

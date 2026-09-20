@@ -88,7 +88,16 @@ export function wrapToolParameters(
     properties: {
       [TOOL_METADATA_KEY]: {
         type: "object",
-        properties: { title: { type: "string", maxLength: 80 } },
+        properties: {
+          title: {
+            type: "string",
+            description:
+              "Required: briefly describe the action of this tool call in plain text. Write an action-oriented title in the user's language, use at most 80 characters, and do not omit it.",
+            minLength: 1,
+            maxLength: 80,
+          },
+        },
+        required: ["title"],
         additionalProperties: false,
       },
       args: parameters,

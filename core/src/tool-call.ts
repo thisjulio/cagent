@@ -20,7 +20,11 @@ export function parseToolCall(call: IncomingToolCall): ParsedToolCall {
   try {
     const payload = JSON.parse(call.arguments) as unknown;
     if (!payload || typeof payload !== "object" || Array.isArray(payload))
-      return { args: {}, arguments: call.arguments };
+      return {
+        args: {},
+        title: normalizeToolTitle(call.title),
+        arguments: call.arguments,
+      };
     const object = payload as Record<string, unknown>;
     if (TOOL_METADATA_KEY in object) {
       const metadata = object[TOOL_METADATA_KEY];
@@ -28,6 +32,7 @@ export function parseToolCall(call: IncomingToolCall): ParsedToolCall {
       if (!metadata || typeof metadata !== "object" || !isToolArgs(args))
         return {
           args: {},
+          title: normalizeToolTitle(call.title),
           arguments: call.arguments,
           error: "invalid _cagent tool-call envelope",
         };
@@ -42,7 +47,11 @@ export function parseToolCall(call: IncomingToolCall): ParsedToolCall {
       arguments: call.arguments,
     };
   } catch {
-    return { args: {}, arguments: call.arguments };
+    return {
+      args: {},
+      title: normalizeToolTitle(call.title),
+      arguments: call.arguments,
+    };
   }
 }
 

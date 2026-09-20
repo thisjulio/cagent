@@ -8,6 +8,7 @@ import {
 } from "@cagent/sdk";
 import type { EventBus } from "./events";
 import { appendCapped, MAX_TOOL_OUTPUT_CHARS } from "./stream-buffer";
+import { ensureToolTitle } from "./tool-title";
 
 export type ToolAsk = (
   tool: ToolDefinition,
@@ -40,6 +41,7 @@ export async function runToolPipeline(
   observability: Observability = noopObservability,
   title?: string,
 ): Promise<import("@cagent/sdk").ToolResult> {
+  const toolTitle = ensureToolTitle(title, tool.name);
   const before =
     (await hooks?.run({ phase: "before_tool", tool: tool.name, args })) ?? [];
   const blocking = before.find(
@@ -52,7 +54,7 @@ export async function runToolPipeline(
       bus.emit("tools/denied", {
         tool: tool.name,
         args,
-        title,
+        title: toolTitle,
         reason: blocking.reason,
       });
       return {
@@ -62,10 +64,10 @@ export async function runToolPipeline(
     }
   }
   if (permission(tool, args, allowlist) === "ask" && !(await ask(tool, args))) {
-    bus.emit("tools/denied", { tool: tool.name, args, title });
+    bus.emit("tools/denied", { tool: tool.name, args, title: toolTitle });
     return { output: `user denied execution of ${tool.name}`, isError: true };
   }
-  bus.emit("tools/pre", { tool: tool.name, args, title });
+  bus.emit("tools/pre", { tool: tool.name, args, title: toolTitle });
   try {
     const result = await trace(
       observability,

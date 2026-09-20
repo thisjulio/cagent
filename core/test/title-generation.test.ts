@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { sanitizeTitle } from "../src/controller/sessions";
+import { ensureToolTitle } from "../src/tool-title";
 
 describe("sanitizeTitle", () => {
   it("removes conversational prefixes", () => {
@@ -26,5 +27,16 @@ describe("sanitizeTitle", () => {
       "Improve Session Titles",
     );
     expect(sanitizeTitle("Fix broken build")).toBe("Fix broken build");
+  });
+});
+
+describe("ensureToolTitle", () => {
+  it("keeps a supplied title after normalization", () => {
+    expect(ensureToolTitle("  Run checks  ", "bash")).toBe("Run checks");
+  });
+
+  it("generates a title when metadata is absent or blank", () => {
+    expect(ensureToolTitle(undefined, "bash")).toBe("Executing bash");
+    expect(ensureToolTitle("   ", "read_file")).toBe("Executing read_file");
   });
 });

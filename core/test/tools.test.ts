@@ -7,6 +7,24 @@ const tool = defineTool("bash", "exec", {}, async () => ({ output: "ok" }));
 const bus = new EventBus();
 
 describe("tool pipeline", () => {
+  it("emits a title even when the caller omits one", async () => {
+    const events: unknown[] = [];
+    const eventBus = new EventBus();
+    eventBus.on("tools/pre", (event) => {
+      events.push(event);
+    });
+
+    await runToolPipeline(
+      tool,
+      { command: "git status" },
+      ["git"],
+      async () => false,
+      eventBus,
+    );
+
+    expect(events[0]).toMatchObject({ title: "Executing bash" });
+  });
+
   it("allowlist permits without a prompt", async () => {
     const res = await runToolPipeline(
       tool,

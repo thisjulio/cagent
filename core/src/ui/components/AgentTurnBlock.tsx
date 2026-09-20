@@ -164,7 +164,7 @@ function ToolItemComponent({
           <span attributes={TextAttributes.DIM}> {details}</span>
         ) : null}
       </text>
-      {item.title && item.cmd ? (
+      {item.cmd ? (
         <text attributes={TextAttributes.DIM}>
           <span fg="#d97757">│ └─ $ </span>
           <span>{redactCommand(item.cmd)}</span>

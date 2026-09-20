@@ -473,6 +473,21 @@ describe("OpenTUI render", () => {
     act(() => setup.renderer.destroy());
   });
 
+  it("renders an untitled tool command on the second line", async () => {
+    const c = new Controller(deps());
+    c.onToolPre({ tool: "bash", args: { command: "pwd" } });
+    const setup = await testRender(React.createElement(App, { c }), {
+      width: 80,
+      height: 24,
+    });
+    await act(async () => {
+      await setup.flush();
+    });
+    const out = setup.captureCharFrame();
+    expect(out).toContain("│ └─ $ pwd");
+    act(() => setup.renderer.destroy());
+  });
+
   it("tab completes and enter confirms the complete /... command (without incomplete submission)", async () => {
     const c = new Controller(deps());
     const setup = await testRender(React.createElement(App, { c }), {
