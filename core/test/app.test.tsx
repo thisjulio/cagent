@@ -160,7 +160,7 @@ describe("OpenTUI render", () => {
       await setup.flush();
     });
     const collapsed = setup.captureCharFrame();
-    expect(collapsed).toContain("write_file · cagent-opentui-test.ts");
+    expect(collapsed).toContain("Executing write_file");
     expect(collapsed).not.toContain("\\nline two");
     act(() => setup.renderer.destroy());
   });
@@ -258,7 +258,7 @@ describe("OpenTUI render", () => {
       await setup.flush();
     });
     const out = setup.captureCharFrame();
-    expect(out).toContain("edit_file · cagent-opentui-test.ts");
+    expect(out).toContain("Executing edit_file");
     expect(out).not.toContain("1 - old");
     expect(out).not.toContain("1 + new");
     act(() => setup.renderer.destroy());

@@ -2,6 +2,7 @@ import type { ChatItem, UIState } from "./state";
 import { appendChat, appendToolLog } from "./chat-buffer";
 import { appendCapped, MAX_VISIBLE_STREAM_CHARS } from "../stream-buffer";
 import { classifyTool } from "../tool-category";
+import { ensureToolTitle } from "../tool-title";
 import { toolCommandLabel } from "./tool-label";
 
 function lastRunningChat(chat: ChatItem[], tool: string): ChatItem | undefined {
@@ -19,10 +20,11 @@ export function toolPre(state: UIState, p: unknown): void {
     title?: string;
   };
   const cmd = toolCommandLabel(tool, args);
+  const toolTitle = ensureToolTitle(title, tool);
   appendChat(state, {
     kind: "tool",
     toolName: tool,
-    title,
+    title: toolTitle,
     toolCategory: classifyTool(tool),
     cmd,
     running: true,
@@ -70,10 +72,11 @@ export function toolDenied(state: UIState, p: unknown): void {
     title?: string;
   };
   const cmd = toolCommandLabel(tool, args);
+  const toolTitle = ensureToolTitle(title, tool);
   appendChat(state, {
     kind: "tool",
     toolName: tool,
-    title,
+    title: toolTitle,
     toolCategory: classifyTool(tool),
     cmd,
     denied: true,

@@ -57,6 +57,16 @@ describe("controller", () => {
     });
   });
 
+  it("provides a stable fallback title when the pre event omits one", () => {
+    const c = new Controller(deps());
+    c.onToolPre({ tool: "bash", args: { command: "pwd" } });
+
+    expect(c.state.chat.at(-1)).toMatchObject({
+      toolName: "bash",
+      title: "Executing bash",
+    });
+  });
+
   it("uses the configured compaction percentage", () => {
     const c = new Controller({
       ...deps(false, { compact_threshold_percent: 75 }),
