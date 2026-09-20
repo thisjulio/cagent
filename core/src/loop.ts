@@ -68,6 +68,9 @@ export async function streamOnce(opts: StreamOpts): Promise<{
           });
         }
         if (opts.interrupted?.()) break;
+        // Never cut a stream after a tool call has started: the provider
+        // requires a matching tool output before accepting the next prompt.
+        if (opts.shouldYield?.() && toolCalls.length === 0) break;
         if (chunk.type === "text") {
           text += chunk.text;
           outputChars += chunk.text.length;
@@ -160,7 +163,11 @@ export async function runTurn(opts: TurnOpts): Promise<TurnResult> {
           content: text,
           tool_calls: streamedToolCalls.length ? streamedToolCalls : undefined,
         });
-        if (!streamedToolCalls.length || opts.interrupted?.()) {
+        if (
+          !streamedToolCalls.length ||
+          opts.interrupted?.() ||
+          opts.shouldYield?.()
+        ) {
           if (opts.verification && ctx.changesWorkspace && !verifiedChanges) {
             const result = await opts.verification.run();
             verification = result;
