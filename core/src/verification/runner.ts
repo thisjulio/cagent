@@ -11,6 +11,11 @@ export type VerificationRunner = {
 
 const MAX_OUTPUT = 12_000;
 
+function appendOutput(current: string, chunk: Buffer): string {
+  const next = current + chunk.toString("utf8");
+  return next.length <= MAX_OUTPUT ? next : next.slice(0, MAX_OUTPUT);
+}
+
 function formatOutput(stdout: string, stderr: string): string {
   const text = [stdout.trim(), stderr.trim()]
     .filter(Boolean)
@@ -30,10 +35,10 @@ function runVerify(cwd: string): Promise<VerificationResult> {
     let stdout = "";
     let stderr = "";
     child.stdout.on("data", (chunk: Buffer) => {
-      stdout += chunk.toString("utf8");
+      stdout = appendOutput(stdout, chunk);
     });
     child.stderr.on("data", (chunk: Buffer) => {
-      stderr += chunk.toString("utf8");
+      stderr = appendOutput(stderr, chunk);
     });
     child.on("error", (error) => {
       resolve({

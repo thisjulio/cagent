@@ -10,7 +10,7 @@ import { buildSystemPrompt } from "./prompt";
 import { splitRoute } from "./route";
 import { resolveRoute } from "./route-resolver";
 import { Controller } from "./controller/controller";
-import { notify } from "./controller/chat-buffer";
+import { appendChat, notify } from "./controller/chat-buffer";
 import { App } from "./ui/components/App";
 import { discoverSkills } from "./skills/discovery";
 import { createReadSkillTool, readSkill } from "./skills/read-tool";
@@ -238,7 +238,7 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
   bus.on("plugin/activity", (p) => {
     const event = p as { content?: string };
     if (event.content) {
-      c.state.chat.push({
+      appendChat(c.state, {
         kind: "meta",
         content: event.content,
         timestamp: Date.now(),

@@ -8,6 +8,11 @@ export class StdioTransport implements Transport {
   private messageHandler: ((message: JsonRpcMessage) => void) | null = null;
   private buffer = "";
   private closed = false;
+  private stdoutReader: ReadableStreamDefaultReader<Uint8Array> | null = null;
+  private stderrReader: ReadableStreamDefaultReader<Uint8Array> | null = null;
+  private readonly stdoutDecoder = new TextDecoder();
+  private readonly stderrDecoder = new TextDecoder();
+  private static readonly MAX_BUFFER_CHARS = 1024 * 1024;
 
   constructor(
     private command: string,
@@ -31,33 +36,41 @@ export class StdioTransport implements Transport {
     const stderr = this.proc.stderr as ReadableStream<Uint8Array> | null;
     if (!stderr) return;
     const reader = stderr.getReader();
-    const decoder = new TextDecoder();
+    this.stderrReader = reader;
     try {
       while (!this.closed) {
         const { done, value } = await reader.read();
         if (done) break;
         if (this.logLevel === "debug" || this.logLevel === "info") {
-          process.stderr.write(decoder.decode(value));
+          process.stderr.write(this.stderrDecoder.decode(value));
         }
       }
     } catch {
       // Stream closed
+    } finally {
+      this.stderrReader = null;
     }
   }
 
   private async startReading(): Promise<void> {
     const stdout = this.proc.stdout as ReadableStream<Uint8Array>;
     const reader = stdout.getReader();
+    this.stdoutReader = reader;
     try {
       while (!this.closed) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        this.buffer += new TextDecoder().decode(value);
+        this.buffer += this.stdoutDecoder.decode(value);
+        if (this.buffer.length > StdioTransport.MAX_BUFFER_CHARS) {
+          this.buffer = this.buffer.slice(-StdioTransport.MAX_BUFFER_CHARS);
+        }
         this.processBuffer();
       }
     } catch {
       // Stream closed
+    } finally {
+      this.stdoutReader = null;
     }
   }
 
@@ -97,7 +110,15 @@ export class StdioTransport implements Transport {
   }
 
   async close(): Promise<void> {
+    if (this.closed) return;
     this.closed = true;
+    await Promise.allSettled([
+      this.stdoutReader?.cancel(),
+      this.stderrReader?.cancel(),
+    ]);
+    this.stdoutReader = null;
+    this.stderrReader = null;
+    this.buffer = "";
     this.proc.kill();
   }
 }

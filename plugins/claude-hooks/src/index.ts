@@ -9,6 +9,7 @@ import type {
   Plugin,
 } from "@cagent/sdk";
 import { expandCommand } from "./expand-command";
+import { readHookOutput } from "./hook-output";
 
 type ClaudeHook = { type: "command"; command: string };
 type ClaudeRule = { matcher?: string; hooks?: ClaudeHook[] };
@@ -94,8 +95,13 @@ async function execute(
   });
   child.stdin.write(JSON.stringify(buildInput(event, cwd)));
   child.stdin.end();
-  const output = (await new Response(child.stdout).text()).trim();
+  const outputPromise = readHookOutput(child.stdout);
+  const errorPromise = readHookOutput(child.stderr);
+  const timeout = setTimeout(() => child.kill(), 5_000);
   await child.exited;
+  clearTimeout(timeout);
+  const [stdout] = await Promise.all([outputPromise, errorPromise]);
+  const output = stdout.trim();
   if (!output) return undefined;
   try {
     const parsed = JSON.parse(output) as {

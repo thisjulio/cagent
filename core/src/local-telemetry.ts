@@ -25,6 +25,8 @@ type TelemetryRecord = {
   [key: string]: unknown;
 };
 
+const MAX_BUFFER_CHARS = 1024 * 1024;
+
 // run.id is stable for the lifetime of the process
 const RUN_ID = crypto.randomUUID();
 
@@ -184,7 +186,16 @@ export class LocalFileObservability implements Observability {
   }
 
   enqueue(record: TelemetryRecord): void {
-    this.buffer += `${JSON.stringify(record)}\n`;
+    const serialized = `${JSON.stringify(record)}\n`;
+    if (this.buffer.length + serialized.length > MAX_BUFFER_CHARS) {
+      this.scheduleFlush();
+      return;
+    }
+    this.buffer += serialized;
+    this.scheduleFlush();
+  }
+
+  private scheduleFlush(): void {
     if (!this.flushTimer) {
       this.flushTimer = setTimeout(() => {
         this.flushTimer = null;

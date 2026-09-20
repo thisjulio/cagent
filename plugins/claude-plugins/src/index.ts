@@ -9,6 +9,7 @@ import type {
   Plugin,
   CommandSource,
 } from "@cagent/sdk";
+import { readHookOutput } from "./hook-output";
 
 // Claude Code plugin manifest
 type ClaudePluginManifest = {
@@ -204,21 +205,25 @@ const register: Plugin = (ctx) => {
                     timedOut: false,
                     code,
                   }));
+                  const outputPromise = readHookOutput(child.stdout);
+                  void readHookOutput(child.stderr);
                   const result = await Promise.race([
                     exitPromise,
                     timeoutPromise,
                   ]);
                   if (timer) clearTimeout(timer);
-                  if (result.timedOut) return undefined;
-
-                  // Check exit code
-                  if ((result as { code: number }).code !== 0) {
+                  if (result.timedOut) {
+                    await Promise.allSettled([exitPromise, outputPromise]);
                     return undefined;
                   }
 
-                  const output = (
-                    await new Response(child.stdout).text()
-                  ).trim();
+                  // Check exit code
+                  if ((result as { code: number }).code !== 0) {
+                    await outputPromise;
+                    return undefined;
+                  }
+
+                  const output = (await outputPromise).trim();
 
                   if (!output) return undefined;
                   try {

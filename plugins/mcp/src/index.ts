@@ -40,8 +40,11 @@ function connectServer(
   logLevel: "silent" | "error" | "warn" | "info" | "debug",
 ): Promise<ResolvedServer> {
   return new Promise(async (resolve, reject) => {
+    let transport:
+      | StdioClientTransport
+      | StreamableHTTPClientTransport
+      | undefined;
     try {
-      let transport;
       if (server.transport === "stdio") {
         if (!server.command)
           throw new Error(`Server ${server.name}: missing command`);
@@ -86,32 +89,42 @@ function connectServer(
         name: "cagent",
         version: "0.1.0",
       });
-      const initTimeout = new Promise((_, reject) =>
-        setTimeout(
-          () => reject(new Error(`Server ${server.name}: init timeout`)),
-          timeout,
-        ),
-      );
-      await Promise.race([initPromise, initTimeout]);
+      await withTimeout(initPromise, timeout, `Server ${server.name}: init`);
 
       // List tools with timeout
       const toolsPromise = client.listTools();
-      const toolsTimeout = new Promise((_, reject) =>
-        setTimeout(
-          () => reject(new Error(`Server ${server.name}: listTools timeout`)),
-          timeout,
-        ),
-      );
-      const tools = (await Promise.race([
+      const tools = await withTimeout(
         toolsPromise,
-        toolsTimeout,
-      ])) as McpTool[];
+        timeout,
+        `Server ${server.name}: listTools`,
+      );
 
       resolve({ name: server.name, client, tools });
     } catch (e) {
+      try {
+        await transport?.close();
+      } catch {
+        // Ignore cleanup errors after a failed connection.
+      }
       reject(e);
     }
   });
+}
+
+async function withTimeout<T>(
+  promise: Promise<T>,
+  timeout: number,
+  label: string,
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${label} timeout`)), timeout);
+  });
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 
 function mergeServers(
