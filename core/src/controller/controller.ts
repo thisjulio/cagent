@@ -65,6 +65,10 @@ export class Controller {
     return messages;
   }
 
+  restoreQueuedMessages(messages: readonly QueueMessage[]): void {
+    this.queue = [...messages, ...this.queue];
+  }
+
   removeQueuedChatMessage(id: string): void {
     const index = this.state.chat.findIndex(
       (item) => item.kind === "user" && item.queueMessageId === id,

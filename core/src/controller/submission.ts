@@ -69,7 +69,6 @@ export async function submitMessage(
       controller.bump();
     }
   }, 500);
-  let completed = false;
   try {
     await executeTurn({
       state,
@@ -129,13 +128,11 @@ export async function submitMessage(
       },
       traceAttributes: { "turn.id": turnId },
       verification: controller.verification,
-    });
-    completed = true;
-  } finally {
-    clearInterval(timer);
-    if (completed) {
-      const queued = controller.takeQueuedMessages();
-      for (const message of queued) {
+      continueTurn: async () => {
+        const queued = controller.takeQueuedMessages();
+        const message = queued[0];
+        if (!message) return false;
+        controller.restoreQueuedMessages(queued.slice(1));
         controller.removeQueuedChatMessage(message.id);
         controller.session.append({
           ts: Date.now(),
@@ -143,29 +140,23 @@ export async function submitMessage(
           type: "meta",
           payload: { kind: "queued-message-processing", id: message.id },
         });
-        try {
-          await submitMessage(controller, message.content);
-          controller.session.append({
-            ts: Date.now(),
-            turnId,
-            type: "meta",
-            payload: { kind: "queued-message-completed", id: message.id },
-          });
-        } catch (error) {
-          controller.session.append({
-            ts: Date.now(),
-            turnId,
-            type: "meta",
-            payload: {
-              kind: "queued-message-failed",
-              id: message.id,
-              error: error instanceof Error ? error.message : String(error),
-            },
-          });
-          throw error;
-        }
-      }
-    }
+        controller.messages.push({ role: "user", content: message.content });
+        controller.session.append({
+          ts: Date.now(),
+          turnId,
+          type: "user",
+          payload: { content: message.content },
+        });
+        appendChat(state, {
+          kind: "user",
+          content: message.content,
+          turnId,
+        });
+        return true;
+      },
+    });
+  } finally {
+    clearInterval(timer);
   }
 }
 

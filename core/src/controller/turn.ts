@@ -44,6 +44,7 @@ export type TurnHost = {
   onContextLimit?: () => Promise<void>;
   turnId?: string;
   verification?: VerificationRunner;
+  continueTurn?: () => Promise<boolean>;
 };
 
 export async function executeTurn(host: TurnHost): Promise<void> {
@@ -174,6 +175,7 @@ async function runAgentTurn(
     observability: host.observability ?? noopObservability,
     traceAttributes: host.traceAttributes,
     verification: host.verification,
+    continueTurn: host.continueTurn,
     onToolOutput: (content) => {
       host.bumpStream();
     },

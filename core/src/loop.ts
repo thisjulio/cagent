@@ -182,7 +182,8 @@ export async function runTurn(opts: TurnOpts): Promise<TurnResult> {
             records.push({ role: "assistant", content: message });
             continue;
           }
-          break;
+          if (opts.interrupted?.() || !(await opts.continueTurn?.())) break;
+          continue;
         }
         for (const tc of streamedToolCalls) {
           if (++toolCalls > (opts.maxToolCalls ?? Infinity))

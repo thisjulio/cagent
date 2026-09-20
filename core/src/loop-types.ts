@@ -54,6 +54,7 @@ export interface TurnOpts extends StreamOpts {
   maxToolCalls?: number;
   observability?: Observability;
   traceAttributes?: Record<string, string | number | boolean>;
+  continueTurn?: () => Promise<boolean>;
 }
 
 export type TurnResult = {
