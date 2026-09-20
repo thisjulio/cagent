@@ -8,6 +8,7 @@ import { mergeSystemMessages } from "../message-context";
 import { classifyTool } from "../tool-category";
 import { restoreTasks } from "../tasks";
 import { filterExistingImagePaths } from "./image-processor";
+import { restoreModelSelection } from "./models";
 export { compact } from "./compaction";
 
 type LoadedRecord = {
@@ -128,6 +129,7 @@ export function startNewSession(c: Controller): void {
   c.messages = [{ role: "system" as const, content: c.systemPrompt ?? "" }];
   c.interrupted = false;
   const s = c.state;
+  s.sessionId = c.session.id;
   s.chat = [];
   s.tasks = [];
   s.chatVersion += 1;
@@ -148,12 +150,15 @@ export function startNewSession(c: Controller): void {
   c.bump();
 }
 
-export function restoreSession(c: Controller, id: string): void {
+export async function restoreSession(c: Controller, id: string): Promise<void> {
   const entry = c.state.sessionList?.find((x) => x.id === id);
   if (!entry) return;
   const session = new Session(id, c.sessionDir);
   const loaded = session.load();
   c.session = session;
+  c.state.sessionId = session.id;
+  if (loaded.modelSelection)
+    await restoreModelSelection(c, loaded.modelSelection);
   c.messages = mergeSystemMessages(c.systemPrompt ?? "", loaded.messages);
   c.state.chat = toChatItems(loaded.records).slice(-MAX_CHAT_ITEMS);
   c.state.tasks = restoreTasks(loaded.records);

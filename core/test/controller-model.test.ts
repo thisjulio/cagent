@@ -59,6 +59,29 @@ describe("controller model and commands", () => {
     expect(c.state.modelPicker).toBeNull();
   });
 
+  it("restores each session's model variant when switching sessions", async () => {
+    const d = deps();
+    d.registry.registerProvider("openai", d.adapter);
+    const c = new Controller(d);
+
+    await c.submit("/variant high");
+    const first = c.session.id;
+    await c.submit("oi");
+    await c.submit("/new");
+    await c.submit("/variant medium");
+    await c.submit("hello");
+    const second = c.session.id;
+
+    c.state.sessionList = Session.list(d.sessionDir);
+    await c.resumeSession(first);
+    expect(c.state.variant).toBe("high");
+    expect(c.state.model).toBe("openai/m1");
+
+    c.state.sessionList = Session.list(d.sessionDir);
+    await c.resumeSession(second);
+    expect(c.state.variant).toBe("medium");
+  });
+
   it("clears the variant when selecting a model via UI", async () => {
     const d = deps();
     d.registry.registerProvider("openai", d.adapter);
@@ -213,16 +236,20 @@ describe("controller model and commands", () => {
 
   it("/new creates a new session and clears state", async () => {
     const c = new Controller(deps());
+    const previousSessionId = c.state.sessionId;
     await c.submit("hi");
     await c.submit("/new");
     expect(c.state.chat).toEqual([]);
     expect(c.state.title).toBe("");
     expect(c.messages).toHaveLength(1);
+    expect(c.state.sessionId).toBe(c.session.id);
+    expect(c.state.sessionId).not.toBe(previousSessionId);
   });
 
   it("/rename sets the session title", async () => {
     const d = deps();
     const c = new Controller(d);
+    await c.submit("initial message");
     await c.submit("/rename fix the build");
     expect(c.state.title).toBe("fix the build");
     const list = Session.list(d.sessionDir);

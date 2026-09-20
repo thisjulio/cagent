@@ -17,6 +17,11 @@ export type SessionRecord = {
   payload: Record<string, unknown>;
 };
 
+export type SessionModelSelection = {
+  model: string;
+  variant?: string;
+};
+
 export class Session {
   readonly id: string;
   readonly file: string;
@@ -32,6 +37,14 @@ export class Session {
     }
     this.id = crypto.randomUUID();
     this.file = path.join(base, `${this.id}.jsonl`);
+  }
+
+  appendModelSelection(selection: SessionModelSelection): void {
+    this.append({
+      ts: Date.now(),
+      type: "meta",
+      payload: { kind: "model-selection", ...selection },
+    });
   }
 
   appendTasks(tasks: unknown[]): void {
@@ -50,6 +63,7 @@ export class Session {
     records: SessionRecord[];
     messages: Message[];
     queuedMessages: QueueMessage[];
+    modelSelection?: SessionModelSelection;
   } {
     if (!fs.existsSync(this.file))
       return { records: [], messages: [], queuedMessages: [] };
@@ -82,8 +96,21 @@ export class Session {
           ];
     const messages: Message[] = [];
     const queuedMessages: QueueMessage[] = [];
+    let modelSelection: SessionModelSelection | undefined;
     for (const r of effective) {
       const p = r.payload;
+      if (
+        r.type === "meta" &&
+        p.kind === "model-selection" &&
+        typeof p.model === "string" &&
+        p.model
+      ) {
+        modelSelection = {
+          model: p.model,
+          ...(typeof p.variant === "string" ? { variant: p.variant } : {}),
+        };
+        continue;
+      }
       if (r.type === "meta" && p.kind === "queued-message") {
         queuedMessages.push({
           id: String(p.id ?? ""),
@@ -144,7 +171,7 @@ export class Session {
     for (const message of queuedMessages) {
       if (message.status === "processing") message.status = "queued";
     }
-    return { records: effective, messages, queuedMessages };
+    return { records: effective, messages, queuedMessages, modelSelection };
   }
 
   static list(dir?: string): { id: string; updated: string; title: string }[] {
@@ -166,7 +193,7 @@ export class Session {
         for (const l of lines) {
           try {
             const r = JSON.parse(l) as SessionRecord;
-            if (r.type === "meta" && r.payload.kind === "title" && !title)
+            if (r.type === "meta" && r.payload.kind === "title")
               title = String(r.payload.title ?? "");
             else if (r.type === "user" && !firstUser)
               firstUser = String(r.payload.content ?? "");
@@ -174,12 +201,16 @@ export class Session {
             // Ignore invalid lines.
           }
         }
+        if (!firstUser) return null;
         return {
           id: f.slice(0, -6),
           updated: stats.mtime.toISOString(),
-          title: (title || firstUser || "(empty)").slice(0, 60),
+          title: (title || firstUser).slice(0, 60),
         };
       })
+      .filter(
+        (session): session is NonNullable<typeof session> => session !== null,
+      )
       .sort((a, b) => b.updated.localeCompare(a.updated));
   }
 

@@ -11,6 +11,16 @@ describe("JSONL sessions", () => {
     dir = mkdtempSync(path.join(tmpdir(), "cagent-sess-"));
   });
 
+  it("persists the latest model selection", () => {
+    const s = new Session(undefined, dir);
+    s.appendModelSelection({ model: "openai/gpt-4", variant: "fast" });
+    s.appendModelSelection({ model: "openai/gpt-4o" });
+
+    expect(new Session(s.id, dir).load().modelSelection).toEqual({
+      model: "openai/gpt-4o",
+    });
+  });
+
   it("removes leaked tool-call markup from generated titles", () => {
     expect(
       toTitle([
@@ -69,6 +79,15 @@ describe("JSONL sessions", () => {
     const xyz = list.find((x) => x.id === "xyz")!;
     expect(abc.title).toBe("My title");
     expect(xyz.title).toBe("hello hello");
+  });
+
+  it("does not list sessions without a user message", () => {
+    const empty = new Session("empty", dir);
+    empty.appendModelSelection({ model: "openai/gpt-4o" });
+
+    const list = Session.list(dir);
+
+    expect(list).toEqual([]);
   });
 
   it("finds the latest user message across all sessions", () => {

@@ -3,6 +3,7 @@ import type { Controller } from "./controller";
 import { saveLastChoice, loadLastChoice } from "./model-persistence";
 import { compactionThreshold } from "./compaction-threshold";
 import { notify } from "./chat-buffer";
+import type { SessionModelSelection } from "../session";
 
 // ponytail: providers that fail list_models are ignored; duplicate model names across providers use the first registration.
 export async function openModelPicker(c: Controller): Promise<void> {
@@ -31,9 +32,11 @@ export async function initializeModel(
   // because providers may be slow to respond (e.g. llama.cpp loading). If the
   // model is gone, the error surfaces when the user sends a message.
   const last = loadLastChoice(c.modelChoiceFile);
+  const sessionChoice = c.session.load().modelSelection;
   if (last?.model) {
     route = last.model;
   }
+  if (sessionChoice?.model) route = sessionChoice.model;
 
   if (!route && configured) {
     route = configured;
@@ -63,7 +66,8 @@ export async function initializeModel(
     c,
     route,
     adapter,
-    last?.variant ?? c.state.variant,
+    sessionChoice?.variant ??
+      (sessionChoice ? undefined : (last?.variant ?? c.state.variant)),
   );
   c.bump();
 }
@@ -112,6 +116,24 @@ export async function pickModel(c: Controller, route: string): Promise<void> {
     "model.route": route,
   });
   saveLastChoice(route, undefined, c.modelChoiceFile);
+  c.session.appendModelSelection({ model: route });
+  c.bump();
+}
+
+export async function restoreModelSelection(
+  c: Controller,
+  selection: SessionModelSelection,
+): Promise<void> {
+  const [provider, model] = splitRoute(selection.model);
+  const adapter = c.registry.provider(provider);
+  if (!adapter) return;
+  await applyModelSelection(
+    c,
+    selection.model,
+    adapter,
+    selection.variant,
+    false,
+  );
   c.bump();
 }
 
@@ -120,6 +142,7 @@ async function applyModelSelection(
   route: string,
   adapter: Controller["adapter"],
   variant?: string,
+  persist = true,
 ): Promise<void> {
   const [, model] = splitRoute(route);
   c.adapter = adapter;
@@ -131,4 +154,9 @@ async function applyModelSelection(
   c.state.tokens = undefined;
   c.state.inputTokens = undefined;
   c.state.outputTokens = undefined;
+  if (persist)
+    c.session.appendModelSelection({
+      model: route,
+      ...(variant ? { variant } : {}),
+    });
 }

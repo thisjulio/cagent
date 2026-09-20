@@ -96,6 +96,7 @@ const commands: Record<string, SlashHandler> = {
     notify(c.state, `variant set to: ${val}`);
     if (c.state.model) {
       saveLastChoice(c.state.model, val, c.modelChoiceFile);
+      c.session.appendModelSelection({ model: c.state.model, variant: val });
     }
     c.bump();
   },

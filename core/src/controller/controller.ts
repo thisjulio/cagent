@@ -153,8 +153,10 @@ export class Controller {
       toolLog: [],
       sessionId: this.session.id,
       title: toTitle(loaded.records),
-      model: deps.model,
-      variant: deps.variant,
+      model: loaded.modelSelection?.model ?? deps.model,
+      variant: loaded.modelSelection
+        ? loaded.modelSelection.variant
+        : deps.variant,
       tokens: undefined,
       inputTokens: undefined,
       outputTokens: undefined,
@@ -330,8 +332,8 @@ export class Controller {
     newSession(this);
   }
 
-  resumeSession(id: string): void {
-    resumeSession(this, id);
+  resumeSession(id: string): Promise<void> {
+    return resumeSession(this, id);
   }
 
   renameSession(name: string): void {

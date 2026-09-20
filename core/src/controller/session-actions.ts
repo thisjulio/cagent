@@ -10,8 +10,8 @@ import {
 export function newSession(c: Controller): void {
   startNewSession(c);
 }
-export function resumeSession(c: Controller, id: string): void {
-  restoreSession(c, id);
+export function resumeSession(c: Controller, id: string): Promise<void> {
+  return restoreSession(c, id);
 }
 export function rename(c: Controller, name: string): void {
   renameSession(c, name);
