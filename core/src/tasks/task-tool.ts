@@ -32,8 +32,14 @@ export function createTaskTool(
               status: {
                 type: "string",
                 enum: ["pending", "in_progress", "completed", "blocked"],
+                description:
+                  "Complete only the currently in_progress task. In the same batch, update it to completed before starting the next task.",
               },
-              details: { type: "string" },
+              details: {
+                type: "string",
+                description:
+                  "Required evidence when status is completed, or the reason when status is blocked.",
+              },
             },
             required: ["op"],
           },

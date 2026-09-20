@@ -229,6 +229,38 @@ a7.ts
     expect(r.output).toContain("a9.ts:1:");
   });
 
+  it("search reports a missing target instead of a parser error", async () => {
+    const { tools } = freshTools();
+    const r = await tools.get("search")!.execute({
+      pattern: "alpha",
+      target: "core sdk plugins",
+    });
+    expect(r.isError).toBe(true);
+    expect(r.output).toBe("ERROR E_NOT_FOUND - core sdk plugins");
+  });
+
+  it("search combines multiple targets with a global match limit", async () => {
+    const { tools } = freshTools();
+    fs.mkdirSync(path.join(ws, "dir-a"));
+    fs.mkdirSync(path.join(ws, "dir-b"));
+    await tools.get("write_file")!.execute({
+      path: "dir-a/a.ts",
+      content: "needle\n",
+    });
+    await tools.get("write_file")!.execute({
+      path: "dir-b/b.ts",
+      content: "needle\n",
+    });
+    const r = await tools.get("search")!.execute({
+      pattern: "needle",
+      targets: ["dir-a", "dir-b"],
+      max_matches: 1,
+    });
+    expect(r.isError).toBeFalsy();
+    expect(r.output).toContain("dir-a/a.ts:1:");
+    expect(r.output).not.toContain("dir-b/b.ts:1:");
+  });
+
   it("search_ast encontra via @ast-grep/napi", async () => {
     const { tools } = freshTools();
     await tools

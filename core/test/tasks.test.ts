@@ -19,7 +19,7 @@ describe("task domain", () => {
     const active = updateTask(tasks, tasks[0].id, "in_progress");
     expect(() =>
       updateTask(tasks, tasks[0].id, "completed", "skipped"),
-    ).toThrow("in_progress");
+    ).toThrow("in_progress update before completion");
     expect(() => updateTask(active, tasks[0].id, "completed")).toThrow(
       "evidence",
     );

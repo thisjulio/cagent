@@ -26,6 +26,27 @@ async function rgSearch(
   return lines.slice(0, max).join("\n") || "no results";
 }
 
+async function searchTarget(
+  pattern: string,
+  target: string,
+  max: number,
+): Promise<string> {
+  let abs: string;
+  try {
+    abs = guardPath(target);
+  } catch (e) {
+    throw new Error(
+      `E_PATH:${target}: ${e instanceof Error ? e.message : String(e)}`,
+    );
+  }
+  if (!fs.existsSync(abs)) throw new Error(`E_NOT_FOUND:${target}`);
+  if (fs.existsSync(RG_BIN)) {
+    const output = await rgSearch(pattern, abs, max);
+    if (output) return output;
+  }
+  return jsSearch(pattern, abs, max);
+}
+
 function evidenceFromOutput(output: string) {
   return output
     .split("\n")
@@ -94,6 +115,11 @@ export function searchTool(ctx: PluginContext) {
           type: "string",
           description: "File or directory (default: workspace)",
         },
+        targets: {
+          type: "array",
+          items: { type: "string" },
+          description: "Multiple files or directories to search",
+        },
         max_matches: {
           type: "number",
           description: `Max matches (default ${MAX_MATCHES})`,
@@ -105,36 +131,36 @@ export function searchTool(ctx: PluginContext) {
       const pattern = String(args.pattern ?? "");
       if (!pattern)
         return { output: errorText("E_PARSE", "empty pattern"), isError: true };
-      const target = String(args.target ?? ".");
+      const rawTargets = args.targets;
+      const targets = Array.isArray(rawTargets)
+        ? rawTargets.map(String)
+        : [String(args.target ?? ".")];
       const max = Math.min(
         MAX_MATCHES,
         Math.max(1, Math.trunc(Number(args.max_matches ?? MAX_MATCHES))),
       );
-      let abs: string;
       try {
-        abs = guardPath(target);
-      } catch (e) {
-        return {
-          output: errorText(
-            "E_PATH",
-            `${target}: ${e instanceof Error ? e.message : String(e)}`,
-          ),
-          isError: true,
-        };
-      }
-      if (fs.existsSync(RG_BIN)) {
-        const out = await rgSearch(pattern, abs, max);
-        if (out) return { output: out, evidence: evidenceFromOutput(out) };
-      }
-      try {
-        const output = await jsSearch(pattern, abs, max);
+        const chunks: string[] = [];
+        let remaining = max;
+        for (const target of targets) {
+          if (remaining <= 0) break;
+          const output = await searchTarget(pattern, target, remaining);
+          if (output !== "no results") {
+            const lines = output.split("\n").slice(0, remaining);
+            chunks.push(...lines);
+            remaining -= lines.length;
+          }
+        }
+        const output = chunks.join("\n") || "no results";
         return { output, evidence: evidenceFromOutput(output) };
       } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        const separator = message.indexOf(":");
+        const code = separator === -1 ? "E_PARSE" : message.slice(0, separator);
+        const detail =
+          separator === -1 ? message : message.slice(separator + 1);
         return {
-          output: errorText(
-            "E_PARSE",
-            `${target}: ${e instanceof Error ? e.message : String(e)}`,
-          ),
+          output: errorText(code as Parameters<typeof errorText>[0], detail),
           isError: true,
         };
       }

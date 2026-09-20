@@ -46,7 +46,9 @@ export function updateTask(
   if (status === "completed" && !details?.trim())
     throw new Error("task completion requires evidence");
   if (status === "completed" && task.status !== "in_progress") {
-    throw new Error(`task must be in_progress before completion: ${id}`);
+    throw new Error(
+      `task must be in_progress before completion: ${id}; use one batch with an in_progress update before completion`,
+    );
   }
   if (
     status === "pending" &&
