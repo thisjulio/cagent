@@ -65,6 +65,7 @@ export type UIState = {
   questionTextAnswer: string;
   questionOtherMode: boolean;
   questionAnswers: string[];
+  questionSelectedOptions: number[];
   modelPicker: {
     entries: { route: string; models: string[] }[];
     query: string;

@@ -41,6 +41,7 @@ export function onKey(c: Controller, key: InputKey, input: string): void {
     const q = s.questionRequest.questions[s.questionIndex];
     const options = q.options ?? [];
     const hasOther = options.length > 0;
+    const isMultiple = q.multiple === true;
     const otherIndex = options.length;
     if (key.escape) {
       if (s.questionOtherMode) {
@@ -49,14 +50,39 @@ export function onKey(c: Controller, key: InputKey, input: string): void {
       } else {
         c.questionService.reject(s.questionRequest.id);
       }
+    } else if (key.leftArrow && !s.questionOtherMode) {
+      if (s.questionIndex > 0) {
+        s.questionIndex -= 1;
+        s.questionSelectedOption = 0;
+        s.questionTextAnswer = s.questionAnswers[s.questionIndex] ?? "";
+        s.questionOtherMode = false;
+        s.questionSelectedOptions = parseSelectedOptions(
+          s.questionAnswers[s.questionIndex] ?? "",
+          s.questionRequest.questions[s.questionIndex].options ?? [],
+        );
+      }
     } else if (key.upArrow) {
       s.questionSelectedOption = Math.max(0, s.questionSelectedOption - 1);
     } else if (key.downArrow) {
-      const max = hasOther ? otherIndex : 0;
+      const max = isMultiple
+        ? Math.max(0, options.length - 1)
+        : hasOther
+          ? otherIndex
+          : 0;
       s.questionSelectedOption = Math.min(max, s.questionSelectedOption + 1);
+    } else if (input === " " && isMultiple && options.length > 0) {
+      const selected = s.questionSelectedOptions;
+      const index = selected.indexOf(s.questionSelectedOption);
+      if (index >= 0) selected.splice(index, 1);
+      else selected.push(s.questionSelectedOption);
     } else if (key.return) {
       let answer: string;
-      if (s.questionOtherMode) {
+      if (isMultiple) {
+        answer = s.questionSelectedOptions
+          .sort((a, b) => a - b)
+          .map((index) => options[index])
+          .join(", ");
+      } else if (s.questionOtherMode) {
         answer = s.questionTextAnswer;
       } else if (hasOther && s.questionSelectedOption === otherIndex) {
         s.questionOtherMode = true;
@@ -73,6 +99,10 @@ export function onKey(c: Controller, key: InputKey, input: string): void {
         s.questionSelectedOption = 0;
         s.questionTextAnswer = s.questionAnswers[s.questionIndex] ?? "";
         s.questionOtherMode = false;
+        s.questionSelectedOptions = parseSelectedOptions(
+          s.questionAnswers[s.questionIndex] ?? "",
+          s.questionRequest.questions[s.questionIndex].options ?? [],
+        );
       } else {
         c.questionService.answerCurrent(
           s.questionRequest.id,
@@ -81,7 +111,7 @@ export function onKey(c: Controller, key: InputKey, input: string): void {
           s.questionAnswers,
         );
       }
-    } else if (key.backspace && s.questionOtherMode) {
+    } else if (key.backspace && (!hasOther || s.questionOtherMode)) {
       s.questionTextAnswer = s.questionTextAnswer.slice(0, -1);
     } else if (input && (!hasOther || s.questionOtherMode)) {
       s.questionTextAnswer += input;
@@ -143,4 +173,11 @@ export function onKey(c: Controller, key: InputKey, input: string): void {
     }
     s.lastEscTime = now;
   }
+}
+
+function parseSelectedOptions(answer: string, options: string[]): number[] {
+  const selected = new Set(answer.split(", ").filter(Boolean));
+  return options.flatMap((option, index) =>
+    selected.has(option) ? [index] : [],
+  );
 }

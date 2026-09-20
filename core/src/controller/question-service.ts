@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 export interface QuestionInfo {
   question: string;
   options?: string[];
+  multiple?: boolean;
 }
 
 export interface QuestionRequest {

@@ -177,6 +177,7 @@ export class Controller {
       questionTextAnswer: "",
       questionOtherMode: false,
       questionAnswers: [],
+      questionSelectedOptions: [],
       modelPicker: null,
       sessionList: null,
       helpOpen: false,
@@ -210,6 +211,7 @@ export class Controller {
         this.state.questionTextAnswer = "";
         this.state.questionOtherMode = false;
         this.state.questionAnswers = [];
+        this.state.questionSelectedOptions = [];
       }
       this.bump();
     });

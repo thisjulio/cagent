@@ -4,7 +4,7 @@ import type { QuestionService } from "./question-service";
 export function createQuestionTool(questionService: QuestionService) {
   return defineTool(
     "question",
-    "Ask the user questions and wait for their answers before continuing. Use when you need clarification, decisions, or input from the user. Supports multiple-choice options or free-text answers.",
+    "Ask the user questions and wait for their answers before continuing. Use when you need clarification, decisions, or input from the user. Supports free-text, single-choice, and multiple-choice questions.",
     {
       type: "object",
       properties: {
@@ -24,6 +24,11 @@ export function createQuestionTool(questionService: QuestionService) {
                   "Optional list of choices. If omitted, user types free text.",
                 items: { type: "string" },
               },
+              multiple: {
+                type: "boolean",
+                description:
+                  "When true, the user can select multiple options. Requires options.",
+              },
             },
             required: ["question"],
           },
@@ -35,6 +40,7 @@ export function createQuestionTool(questionService: QuestionService) {
       const questions = args.questions as Array<{
         question: string;
         options?: string[];
+        multiple?: boolean;
       }>;
 
       try {

@@ -84,6 +84,7 @@ export function App({ c }: { c: Controller }) {
           escape: key.name === "escape",
           upArrow: key.name === "up",
           downArrow: key.name === "down",
+          leftArrow: key.name === "left",
           return: key.name === "return",
           backspace: key.name === "backspace",
         },
@@ -177,6 +178,7 @@ export function App({ c }: { c: Controller }) {
           textAnswer={s.questionTextAnswer}
           otherMode={s.questionOtherMode}
           questionIndex={s.questionIndex}
+          selectedOptions={s.questionSelectedOptions}
         />
       ) : s.pendingAsk ? (
         <PendingAsk ask={s.pendingAsk} />
