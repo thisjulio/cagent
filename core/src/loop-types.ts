@@ -33,6 +33,7 @@ export interface TurnRecord {
   tool_calls?: Message["tool_calls"];
   tool_call_id?: string;
   toolName?: string;
+  title?: string;
   args?: ToolArgs;
   isError?: boolean;
   changesWorkspace?: boolean;

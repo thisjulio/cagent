@@ -1,4 +1,9 @@
 export type ToolArgs = Record<string, unknown>;
+export const TOOL_METADATA_KEY = "_cagent";
+
+export type ToolCallMetadata = {
+  title?: string;
+};
 
 export type ToolEvidence = {
   path: string;
@@ -73,6 +78,24 @@ export function applyToolOverrides(
         }
       : tool;
   });
+}
+
+export function wrapToolParameters(
+  parameters: Record<string, unknown>,
+): Record<string, unknown> {
+  return {
+    type: "object",
+    properties: {
+      [TOOL_METADATA_KEY]: {
+        type: "object",
+        properties: { title: { type: "string", maxLength: 80 } },
+        additionalProperties: false,
+      },
+      args: parameters,
+    },
+    required: ["args"],
+    additionalProperties: false,
+  };
 }
 
 export function overrideNameMap(

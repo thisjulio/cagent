@@ -6,7 +6,12 @@ export type LlmChunk =
   | { type: "reasoning"; text: string }
   | {
       type: "tool-call";
-      tool_call: { id: string; name: string; arguments: string };
+      tool_call: {
+        id: string;
+        name: string;
+        arguments: string;
+        title?: string;
+      };
     }
   | {
       type: "finish";

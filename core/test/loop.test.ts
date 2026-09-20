@@ -73,6 +73,88 @@ describe("agent loop", () => {
     expect(messages[messages.length - 1].role).toBe("assistant");
   });
 
+  it("unwraps and persists a tool title without exposing metadata to the tool", async () => {
+    let received: Record<string, unknown> | undefined;
+    const titled = defineTool(
+      "bash",
+      "exec",
+      { type: "object", properties: { command: { type: "string" } } },
+      async (args) => {
+        received = args;
+        return { output: "result" };
+      },
+    );
+    const messages: Message[] = [{ role: "user", content: "run ls" }];
+    const r = await runTurn({
+      adapter: fakeAdapter([
+        [
+          {
+            type: "tool-call",
+            tool_call: {
+              id: "t1",
+              name: "bash",
+              arguments:
+                '{"_cagent":{"title":"  Executando ls\\n  "},"args":{"command":"ls"}}',
+            },
+          },
+          { type: "finish", finish_reason: "stop" },
+        ],
+        [{ type: "finish", finish_reason: "stop" }],
+      ]),
+      model: "m",
+      messages,
+      tools: [titled],
+      allowlist: ["ls"],
+      ask: async () => false,
+      bus,
+    });
+
+    expect(received).toEqual({ command: "ls" });
+    expect(r.records.find((record) => record.role === "tool")?.title).toBe(
+      "Executando ls",
+    );
+    expect(messages[1]?.tool_calls?.[0]).toEqual({
+      id: "t1",
+      name: "bash",
+      arguments: '{"command":"ls"}',
+    });
+  });
+
+  it("rejects a malformed reserved envelope without executing the tool", async () => {
+    let executed = false;
+    const guarded = defineTool("bash", "exec", {}, async () => {
+      executed = true;
+      return { output: "unexpected" };
+    });
+    const r = await runTurn({
+      adapter: fakeAdapter([
+        [
+          {
+            type: "tool-call",
+            tool_call: {
+              id: "t1",
+              name: "bash",
+              arguments: '{"_cagent":{"title":"bad"}}',
+            },
+          },
+          { type: "finish", finish_reason: "stop" },
+        ],
+        [{ type: "finish", finish_reason: "stop" }],
+      ]),
+      model: "m",
+      messages: [{ role: "user", content: "run" }],
+      tools: [guarded],
+      allowlist: ["ls"],
+      ask: async () => true,
+      bus,
+    });
+
+    expect(executed).toBe(false);
+    expect(r.records.find((record) => record.role === "tool")?.isError).toBe(
+      true,
+    );
+  });
+
   it("streamOnce passes reasoning to the callback", async () => {
     const seen: string[] = [];
     const r = await streamOnce({

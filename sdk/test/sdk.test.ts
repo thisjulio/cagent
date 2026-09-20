@@ -4,6 +4,7 @@ import {
   toChatMessages,
   workflowEvent,
   WORKFLOW_EVENTS,
+  wrapToolParameters,
 } from "../src/index";
 
 describe("toChatMessages", () => {
@@ -30,6 +31,16 @@ describe("toChatMessages", () => {
 });
 
 describe("context extensions", () => {
+  it("wrapToolParameters keeps metadata beside real tool args", () => {
+    const schema = wrapToolParameters({
+      type: "object",
+      properties: { command: { type: "string" } },
+    });
+    expect(schema.properties).toHaveProperty("_cagent");
+    expect(schema.properties).toHaveProperty("args");
+    expect(schema.required).toEqual(["args"]);
+  });
+
   it("orders by phase, priority, and id", () => {
     const extensions = orderContextExtensions([
       {

@@ -3,6 +3,7 @@ import {
   noopObservability,
   overrideNameMap,
   trace,
+  wrapToolParameters,
 } from "@cagent/sdk";
 import { lastUserMessage, workflowPayload } from "./loop-utils";
 import { runToolCall } from "./tool-loop";
@@ -18,7 +19,7 @@ export type {
 
 export async function streamOnce(opts: StreamOpts): Promise<{
   text: string;
-  toolCalls: { id: string; name: string; arguments: string }[];
+  toolCalls: { id: string; name: string; arguments: string; title?: string }[];
   inputTokens?: number;
 }> {
   const attempts = opts.attempts ?? 3;
@@ -46,7 +47,12 @@ export async function streamOnce(opts: StreamOpts): Promise<{
       let outputChars = 0;
       let firstTokenAt: number | undefined;
       const streamStartedAt = performance.now();
-      const toolCalls: { id: string; name: string; arguments: string }[] = [];
+      const toolCalls: {
+        id: string;
+        name: string;
+        arguments: string;
+        title?: string;
+      }[] = [];
       const streamSpan = observability.startSpan("provider.stream", {
         "provider.model": opts.model,
         ...opts.traceAttributes,
@@ -98,7 +104,10 @@ export async function runTurn(opts: TurnOpts): Promise<TurnResult> {
   const nameToCanonical = overrideNameMap(overrides);
   const streamOpts: StreamOpts = {
     ...opts,
-    tools: applyToolOverrides(opts.tools, overrides),
+    tools: applyToolOverrides(opts.tools, overrides).map((tool) => ({
+      ...tool,
+      parameters: wrapToolParameters(tool.parameters),
+    })),
   };
   const records: TurnRecord[] = [];
   let inputTokens: number | undefined;

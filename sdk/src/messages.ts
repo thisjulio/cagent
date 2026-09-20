@@ -10,7 +10,12 @@ export function toContentParts(content: string | ContentPart[]): ContentPart[] {
 export type Message = {
   role: "system" | "user" | "assistant" | "tool";
   content: string | ContentPart[];
-  tool_calls?: { id: string; name: string; arguments: string }[];
+  tool_calls?: {
+    id: string;
+    name: string;
+    arguments: string;
+    title?: string;
+  }[];
   tool_call_id?: string;
 };
 

@@ -38,6 +38,7 @@ export async function runToolPipeline(
   },
   signal?: AbortSignal,
   observability: Observability = noopObservability,
+  title?: string,
 ): Promise<import("@cagent/sdk").ToolResult> {
   const before =
     (await hooks?.run({ phase: "before_tool", tool: tool.name, args })) ?? [];
@@ -51,6 +52,7 @@ export async function runToolPipeline(
       bus.emit("tools/denied", {
         tool: tool.name,
         args,
+        title,
         reason: blocking.reason,
       });
       return {
@@ -60,10 +62,10 @@ export async function runToolPipeline(
     }
   }
   if (permission(tool, args, allowlist) === "ask" && !(await ask(tool, args))) {
-    bus.emit("tools/denied", { tool: tool.name, args });
+    bus.emit("tools/denied", { tool: tool.name, args, title });
     return { output: `user denied execution of ${tool.name}`, isError: true };
   }
-  bus.emit("tools/pre", { tool: tool.name, args });
+  bus.emit("tools/pre", { tool: tool.name, args, title });
   try {
     const result = await trace(
       observability,

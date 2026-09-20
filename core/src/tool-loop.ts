@@ -3,6 +3,7 @@ import type { EventBus } from "./events";
 import { runToolPipeline, type ToolAsk } from "./tools";
 import { workflowPayload } from "./loop-utils";
 import type { TurnOpts, TurnRecord } from "./loop";
+import { parseToolCall, type IncomingToolCall } from "./tool-call";
 
 export interface ToolLoopCtx {
   opts: TurnOpts;
@@ -14,32 +15,56 @@ export interface ToolLoopCtx {
 
 export async function runToolCall(
   ctx: ToolLoopCtx,
-  tc: { id: string; name: string; arguments: string },
+  tc: IncomingToolCall,
 ): Promise<void> {
   const { opts } = ctx;
   const tool = opts.tools.find(
     (t) => t.name === (ctx.nameToCanonical[tc.name] ?? tc.name),
   );
-  let args: ToolArgs = {};
-  try {
-    args = JSON.parse(tc.arguments) as ToolArgs;
-  } catch {
+  const parsed = parseToolCall(tc);
+  let args: ToolArgs = parsed.args;
+  if (parsed.error) {
+    args = {};
+  } else if (
+    tool?.name === "edit_file" &&
+    tc.name === "apply_patch" &&
+    Object.keys(args).length === 0
+  ) {
     // Custom/freeform tools return their payload directly instead of JSON.
-    if (tool?.name === "edit_file" && tc.name === "apply_patch")
+    try {
+      args = JSON.parse(tc.arguments) as ToolArgs;
+    } catch {
       args = { patch: tc.arguments };
+    }
   }
   const result = tool
-    ? await runToolPipeline(
-        tool,
-        args,
-        opts.allowlist,
-        opts.ask,
-        opts.bus,
-        opts.hooks,
-        opts.signal,
-        opts.observability,
-      )
+    ? parsed.error
+      ? { output: parsed.error, isError: true }
+      : await runToolPipeline(
+          tool,
+          args,
+          opts.allowlist,
+          opts.ask,
+          opts.bus,
+          opts.hooks,
+          opts.signal,
+          opts.observability,
+          parsed.title,
+        )
     : { output: `tool not found: ${tc.name}`, isError: true };
+  const normalizedCall = {
+    id: tc.id,
+    name: tc.name,
+    arguments: parsed.arguments,
+  };
+  const assistant = opts.messages.at(-1);
+  if (assistant?.tool_calls) {
+    const current = assistant.tool_calls.find((call) => call.id === tc.id);
+    if (current) {
+      Object.assign(current, normalizedCall);
+      delete current.title;
+    }
+  }
   opts.messages.push({
     role: "tool",
     tool_call_id: tc.id,
@@ -50,6 +75,7 @@ export async function runToolCall(
     tool_call_id: tc.id,
     content: result.output,
     toolName: tool?.name ?? tc.name,
+    title: parsed.title,
     args,
     isError: result.isError,
     changesWorkspace: result.changesWorkspace,
