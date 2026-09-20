@@ -5,6 +5,7 @@ import { categoryLabel } from "../../tool-category";
 import { formatTime } from "../render/time";
 import { ToolDisplayComponent } from "./ToolDisplay";
 import type { ToolDisplay } from "@cagent/sdk";
+import { redactCommand } from "../../tool-preview";
 
 const MAX_THINKING_LINES = 12;
 const MAX_THINKING_CHARS = 2400;
@@ -138,9 +139,14 @@ function ToolItemComponent({
         <span fg="#d97757"> </span>
         <strong>{categoryLabel(item.toolCategory ?? "generic")}</strong>
         {item.toolName ? (
-          <span attributes={TextAttributes.DIM}> · {item.toolName}</span>
+          <span attributes={TextAttributes.DIM}>
+            {" "}
+            · {item.title ?? item.toolName}
+          </span>
+        ) : item.title ? (
+          <span attributes={TextAttributes.DIM}> · {item.title}</span>
         ) : null}
-        {item.cmd ? (
+        {!item.title && item.cmd ? (
           <span attributes={TextAttributes.DIM}>
             {" "}
             ·{" "}
@@ -158,6 +164,12 @@ function ToolItemComponent({
           <span attributes={TextAttributes.DIM}> {details}</span>
         ) : null}
       </text>
+      {item.title && item.cmd ? (
+        <text attributes={TextAttributes.DIM}>
+          <span fg="#d97757">│ └─ $ </span>
+          <span>{redactCommand(item.cmd)}</span>
+        </text>
+      ) : null}
       {item.expanded && item.display ? (
         <box
           flexDirection="row"

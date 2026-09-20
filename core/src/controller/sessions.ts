@@ -6,6 +6,7 @@ import type { Controller } from "./controller";
 import { MAX_CHAT_ITEMS, notify } from "./chat-buffer";
 import { mergeSystemMessages } from "../message-context";
 import { classifyTool } from "../tool-category";
+import { toolCommandLabel } from "./tool-label";
 import { restoreTasks } from "../tasks";
 import { filterExistingImagePaths } from "./image-processor";
 import { restoreModelSelection } from "./models";
@@ -55,10 +56,19 @@ export function toChatItems(records: LoadedRecord[]): ChatItem[] {
         content: String(p.content ?? ""),
         toolName,
         toolCategory: classifyTool(toolName),
-        display:
-          p.display && typeof p.display === "object"
-            ? (p.display as ChatItem["display"])
-            : undefined,
+        ...(typeof p.title === "string" ? { title: p.title } : {}),
+        ...(p.args && typeof p.args === "object"
+          ? {
+              cmd: toolCommandLabel(
+                toolName,
+                p.args as Record<string, unknown>,
+              ),
+            }
+          : {}),
+        ...(p.isError === true ? { isError: true } : {}),
+        ...(p.display && typeof p.display === "object"
+          ? { display: p.display as ChatItem["display"] }
+          : {}),
       });
     } else if (p.kind === "subagent-start") {
       result.push({

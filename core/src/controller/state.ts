@@ -17,6 +17,7 @@ export type ChatItem = {
   subagent?: string;
   subagentHeader?: boolean;
   toolName?: string;
+  title?: string;
   toolCategory?: ToolCategory;
   cmd?: string;
   isError?: boolean;

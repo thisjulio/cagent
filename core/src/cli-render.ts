@@ -1,5 +1,6 @@
 import type { ChatItem } from "./controller/state";
 import { plainLine } from "./ui/render/markdown";
+import { redactCommand } from "./tool-preview";
 
 const GRAY_ITALIC = "\u001b[3;90m";
 const BOLD = "\u001b[1m";
@@ -52,9 +53,11 @@ function renderItem(
   if (item.kind === "tool") {
     const status = item.denied ? "✗" : item.isError ? "✗" : "⏺";
     const name = item.toolName ?? "tool";
-    const command = item.cmd ? ` · ${item.cmd}` : "";
+    const label = item.title ?? (item.cmd ? `${name} · ${item.cmd}` : name);
+    const command =
+      item.title && item.cmd ? `\n│  └─ $ ${redactCommand(item.cmd)}` : "";
     const body = item.content ? `\n${prefixedLines(item.content, "│  ")}` : "";
-    return `├─ ${status} ${name}${command}${body}`;
+    return `├─ ${status} ${item.title ? `${name} · ${label}` : label}${command}${body}`;
   }
   return item.content;
 }

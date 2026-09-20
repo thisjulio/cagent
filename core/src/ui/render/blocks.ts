@@ -28,6 +28,7 @@ export type ThinkingItem = {
 export type ToolItem = {
   type: "TOOL";
   toolName?: string;
+  title?: string;
   toolCategory?: ToolCategory;
   cmd?: string;
   content?: string;
@@ -141,6 +142,7 @@ export function chatToBlocks(chat: ChatItem[]): Block[] {
         block.items.push({
           type: "TOOL",
           toolName: item.toolName,
+          title: item.title,
           toolCategory: item.toolCategory,
           cmd: item.cmd,
           content: item.content,

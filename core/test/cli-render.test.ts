@@ -18,6 +18,25 @@ describe("human CLI history renderer", () => {
     expect(output).toContain("├─ ⏺ bash · git status\n│  clean");
   });
 
+  test("renders titled bash tools with a safe command preview", () => {
+    const output = renderHumanHistory(
+      [
+        {
+          kind: "tool",
+          toolName: "bash",
+          title: "Executando validação",
+          cmd: "bun run test --token=secret",
+          content: "ok",
+        },
+      ],
+      false,
+    );
+
+    expect(output).toContain("├─ ⏺ bash · Executando validação");
+    expect(output).toContain("│  └─ $ bun run test --token=[redacted]");
+    expect(output).not.toContain("secret");
+  });
+
   test("renders thinking with a bold heading and tree connector", () => {
     const output = renderHumanHistory(
       [{ kind: "thinking", content: "private reasoning" }],

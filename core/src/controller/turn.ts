@@ -248,6 +248,8 @@ function persistTurn(
           content: record.content,
           isError: record.isError,
           toolName: record.toolName,
+          title: record.title,
+          args: record.args,
           display: record.display,
         },
       });

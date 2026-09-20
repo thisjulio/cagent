@@ -42,6 +42,21 @@ describe("controller", () => {
     expect(c.state.threshold).toBe(80_000);
   });
 
+  it("renders a tool title and bash preview from the pre event", () => {
+    const c = new Controller(deps());
+    c.onToolPre({
+      tool: "bash",
+      args: { command: "bun run openjev-lab.ts" },
+      title: "Executando openjev-lab.ts para validar funcionamento",
+    });
+
+    expect(c.state.chat.at(-1)).toMatchObject({
+      toolName: "bash",
+      title: "Executando openjev-lab.ts para validar funcionamento",
+      cmd: "bun run openjev-lab.ts",
+    });
+  });
+
   it("uses the configured compaction percentage", () => {
     const c = new Controller({
       ...deps(false, { compact_threshold_percent: 75 }),
@@ -279,7 +294,7 @@ describe("controller", () => {
     expect(d.config.allowlist).toContain("rm -rf node_modules");
   });
 
-  it("live tool items appear in chat through bus events", () => {
+  it("live tool items appear in chat through bus events", async () => {
     const c = new Controller(deps());
     c.onToolPre({ tool: "bash", args: { command: "ls -la" } });
     const last = c.state.chat[c.state.chat.length - 1];

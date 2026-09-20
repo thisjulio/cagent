@@ -13,11 +13,16 @@ function lastRunningChat(chat: ChatItem[], tool: string): ChatItem | undefined {
 }
 
 export function toolPre(state: UIState, p: unknown): void {
-  const { tool, args } = p as { tool: string; args: Record<string, unknown> };
+  const { tool, args, title } = p as {
+    tool: string;
+    args: Record<string, unknown>;
+    title?: string;
+  };
   const cmd = toolCommandLabel(tool, args);
   appendChat(state, {
     kind: "tool",
     toolName: tool,
+    title,
     toolCategory: classifyTool(tool),
     cmd,
     running: true,
@@ -41,25 +46,34 @@ export function toolStream(state: UIState, p: unknown, prefix = ""): void {
 export function toolPost(state: UIState, p: unknown): void {
   const { tool, result, error } = p as {
     tool: string;
-    result?: { output: string; display?: import("@cagent/sdk").ToolDisplay };
+    result?: {
+      output: string;
+      isError?: boolean;
+      display?: import("@cagent/sdk").ToolDisplay;
+    };
     error?: string;
   };
   const e = lastRunningChat(state.chat, tool);
   if (e) {
     e.running = false;
     if (e.startedAt) e.durationMs = Date.now() - e.startedAt;
-    e.isError = !!error;
+    e.isError = !!error || result?.isError === true;
     e.display = result?.display;
     if (!e.content) e.content = error ?? result?.output ?? "";
   }
 }
 
 export function toolDenied(state: UIState, p: unknown): void {
-  const { tool, args } = p as { tool: string; args: Record<string, unknown> };
+  const { tool, args, title } = p as {
+    tool: string;
+    args: Record<string, unknown>;
+    title?: string;
+  };
   const cmd = toolCommandLabel(tool, args);
   appendChat(state, {
     kind: "tool",
     toolName: tool,
+    title,
     toolCategory: classifyTool(tool),
     cmd,
     denied: true,
