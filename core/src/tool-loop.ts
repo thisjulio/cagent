@@ -57,14 +57,18 @@ export async function runToolCall(
   const normalizedCall = {
     id: tc.id,
     name: tc.name,
-    arguments: parsed.arguments,
+    arguments: parsed.error
+      ? tc.arguments
+      : JSON.stringify({
+          _cagent: { title },
+          args,
+        }),
   };
   const assistant = opts.messages.at(-1);
   if (assistant?.tool_calls) {
     const current = assistant.tool_calls.find((call) => call.id === tc.id);
     if (current) {
       Object.assign(current, normalizedCall);
-      delete current.title;
     }
   }
   opts.messages.push({

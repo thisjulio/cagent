@@ -66,7 +66,12 @@ describe("agent loop", () => {
     expect(r.records).toHaveLength(3);
     expect(messages[messages.length - 3].role).toBe("assistant");
     expect(messages[messages.length - 3].tool_calls).toEqual([
-      { id: "t1", name: "bash", arguments: '{"command":"ls"}' },
+      {
+        id: "t1",
+        name: "bash",
+        arguments:
+          '{"_cagent":{"title":"Executing bash"},"args":{"command":"ls"}}',
+      },
     ]);
     expect(messages[messages.length - 2].role).toBe("tool");
     expect(messages[messages.length - 2].content).toBe("result");
@@ -116,7 +121,8 @@ describe("agent loop", () => {
     expect(messages[1]?.tool_calls?.[0]).toEqual({
       id: "t1",
       name: "bash",
-      arguments: '{"command":"ls"}',
+      arguments:
+        '{"_cagent":{"title":"Executando ls"},"args":{"command":"ls"}}',
     });
   });
 
