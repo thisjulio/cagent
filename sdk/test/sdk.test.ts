@@ -38,7 +38,7 @@ describe("context extensions", () => {
     });
     expect(schema.properties).toHaveProperty("_cagent");
     expect(schema.properties).toHaveProperty("args");
-    expect(schema.required).toEqual(["args"]);
+    expect(schema.required).toEqual(["_cagent", "args"]);
     expect(schema.properties._cagent.required).toEqual(["title"]);
     expect(schema.properties._cagent.properties.title).toMatchObject({
       minLength: 1,

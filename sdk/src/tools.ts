@@ -102,7 +102,7 @@ export function wrapToolParameters(
       },
       args: parameters,
     },
-    required: ["args"],
+    required: [TOOL_METADATA_KEY, "args"],
     additionalProperties: false,
   };
 }

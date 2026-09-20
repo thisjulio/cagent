@@ -165,9 +165,12 @@ function ToolItemComponent({
         ) : null}
       </text>
       {item.cmd ? (
-        <text attributes={TextAttributes.DIM}>
-          <span fg="#d97757">│ └─ $ </span>
-          <span>{redactCommand(item.cmd)}</span>
+        <text>
+          <span fg="#d97757">│ └─ </span>
+          {item.toolCategory === "shell" ? <span fg="#d97757">$ </span> : null}
+          <span attributes={TextAttributes.ITALIC} fg="#888888">
+            {redactCommand(item.cmd)}
+          </span>
         </text>
       ) : null}
       {item.expanded && item.display ? (
