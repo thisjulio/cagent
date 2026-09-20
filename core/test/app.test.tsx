@@ -484,7 +484,7 @@ describe("OpenTUI render", () => {
       await setup.flush();
     });
     const out = setup.captureCharFrame();
-    expect(out).toContain("│ └─ $ pwd");
+    expect(out).toContain("│  └─ $ pwd");
     act(() => setup.renderer.destroy());
   });
 

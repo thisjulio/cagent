@@ -166,7 +166,8 @@ function ToolItemComponent({
       </text>
       {item.cmd ? (
         <text>
-          <span fg="#d97757">│ └─ </span>
+          <span fg="#d97757">│</span>
+          <span fg="#d97757">{"  └─ "}</span>
           {item.toolCategory === "shell" ? <span fg="#d97757">$ </span> : null}
           <span attributes={TextAttributes.ITALIC} fg="#888888">
             {redactCommand(item.cmd)}
