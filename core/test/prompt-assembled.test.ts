@@ -6,7 +6,7 @@ import { InMemoryObservability } from "@cagent/sdk";
 import { EventBus } from "../src/events";
 import { Registry } from "../src/registry";
 import { Controller, type ControllerDeps } from "../src/controller/controller";
-import { Session } from "../src/session";
+import { Session } from "../src/session/index";
 
 function dependencies(observability: InMemoryObservability): ControllerDeps {
   return {

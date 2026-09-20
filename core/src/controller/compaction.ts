@@ -1,5 +1,5 @@
 import { streamOnce } from "../loop";
-import { serializeMessages } from "../session";
+import { serializeMessages } from "../session/index";
 import { splitRoute } from "../route";
 import type { Controller } from "./controller";
 import { appendChat } from "./chat-buffer";

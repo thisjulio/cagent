@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { Session } from "../src/session";
+import { Session } from "../src/session/index";
 
 describe("session queued messages", () => {
   test("restores queued message records and preserves FIFO status", () => {

@@ -8,7 +8,7 @@ import crypto from "node:crypto";
 import { QuestionService } from "./question-service";
 import { runSlash } from "../commands/commands";
 import { inputSuggestions } from "../commands/suggest";
-import { Session, type QueueMessage } from "../session";
+import { Session, type QueueMessage } from "../session/index";
 import type { ToolAsk } from "../tools";
 import { generateTitle, toChatItems, toTitle } from "./sessions";
 import {

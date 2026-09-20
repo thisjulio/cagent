@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "bun:test";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { Session } from "../src/session";
+import { Session } from "../src/session/index";
 import { toChatItems, toTitle } from "../src/controller/sessions";
 
 describe("JSONL sessions", () => {

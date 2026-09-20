@@ -1,5 +1,8 @@
 # Model route: `$provider/$model`
 
+## Status
+
+Accepted
 Model selection was ambiguous: the config declared only the model and the provider fell back to the first provider registered in the registry, combining provider and model in surprising ways (for example, `llama.cpp` + `gpt-5.6-luna`). Decision: a model is always represented by the `$provider/$model` string; splitting on the first `/` returns `[$provider, $model]`.
 
 ## Considered Options

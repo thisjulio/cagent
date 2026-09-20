@@ -4,65 +4,94 @@ import { describe, expect, it } from "bun:test";
 
 const srcDir = decodeURIComponent(new URL("../src/", import.meta.url).pathname);
 
-function files(dir: string): string[] {
-  const out: string[] = [];
+type SourceFile = { file: string; source: string };
+
+function sourceFiles(dir: string): SourceFile[] {
+  const result: SourceFile[] = [];
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (entry.isDirectory()) out.push(...files(path.join(dir, entry.name)));
-    else if (entry.name.endsWith(".ts") || entry.name.endsWith(".tsx"))
-      out.push(path.join(dir, entry.name));
+    const file = path.join(dir, entry.name);
+    if (entry.isDirectory()) result.push(...sourceFiles(file));
+    else if (/\.(ts|tsx)$/.test(entry.name))
+      result.push({ file, source: fs.readFileSync(file, "utf8") });
   }
-  return out;
+  return result;
 }
 
-function localImports(file: string): string[] {
-  const src = fs.readFileSync(file, "utf8");
-  return [...src.matchAll(/from\s+["'](\.[^"']+)["']/g)].map((m) => m[1]);
+function imports(source: string): string[] {
+  return [...source.matchAll(/(?:from\s+|import\s*\()(["'])([^"']+)\1/g)].map(
+    (match) => match[2],
+  );
+}
+
+function relativeImports(source: string): string[] {
+  return imports(source).filter((dependency) => dependency.startsWith("."));
+}
+
+function under(file: string, directory: string): boolean {
+  return file.startsWith(path.join(srcDir, directory) + path.sep);
 }
 
 describe("dependency direction: ui → controller → domain → sdk", () => {
+  const sources = sourceFiles(srcDir);
+
   it("core does not import plugins", () => {
-    for (const file of files(srcDir)) {
-      for (const dep of localImports(file)) {
-        expect(dep.includes("plugins/")).toBe(false);
-      }
+    for (const source of sources) {
+      expect(
+        imports(source.source).some((dependency) =>
+          dependency.includes("plugins/"),
+        ),
+      ).toBe(false);
     }
   });
 
-  it("ui does not import the domain directly", () => {
-    for (const file of files(path.join(srcDir, "ui"))) {
-      for (const dep of localImports(file)) {
+  it("UI does not import domain implementation modules", () => {
+    for (const source of sources.filter((entry) => under(entry.file, "ui"))) {
+      for (const dependency of relativeImports(source.source)) {
         expect(
-          /\/(loop|session|registry|events|tools|loader|config|prompt)\.tsx?$/.test(
-            dep,
+          /\/(loop|session|registry|events|tools|loader|config|prompt)(\/|\.tsx?$)/.test(
+            dependency,
           ),
         ).toBe(false);
       }
     }
   });
 
-  it("controller does not import ui", () => {
-    for (const file of files(path.join(srcDir, "controller"))) {
-      for (const dep of localImports(file)) {
-        expect(dep.includes("/ui/")).toBe(false);
-      }
+  it("controller and domain modules do not import UI", () => {
+    for (const source of sources.filter(
+      (entry) => under(entry.file, "controller") || isDomain(entry.file),
+    )) {
+      expect(
+        imports(source.source).some(
+          (dependency) =>
+            dependency === "react" ||
+            dependency.includes("@opentui/") ||
+            dependency.includes("/ui/"),
+        ),
+      ).toBe(false);
     }
   });
 
-  it("domain does not import ui or controller", () => {
-    const domain = [
+  it("domain modules do not import controller", () => {
+    for (const source of sources.filter((entry) => isDomain(entry.file))) {
+      expect(
+        relativeImports(source.source).some((dependency) =>
+          dependency.includes("/controller/"),
+        ),
+      ).toBe(false);
+    }
+  });
+});
+
+function isDomain(file: string): boolean {
+  return (
+    [
       "loop.ts",
-      "session.ts",
       "registry.ts",
       "events.ts",
       "tools.ts",
       "loader.ts",
       "config.ts",
       "prompt.ts",
-    ];
-    for (const name of domain) {
-      for (const dep of localImports(path.join(srcDir, name))) {
-        expect(/\/(ui|controller)\//.test(dep)).toBe(false);
-      }
-    }
-  });
-});
+    ].includes(path.basename(file)) || under(file, "session")
+  );
+}

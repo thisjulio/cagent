@@ -19,6 +19,7 @@
     "knip": "knip --exclude files,exports,types",
     "format": "biome format --write .",
     "graph:update": "graphify update .",
+    "check:plugins": "bun plugins/metadata.ts",
     "build:release": "bun scripts/build-release.ts && bun build release.ts --compile --outfile dist/cagent",
     "prepare": "husky"
   },

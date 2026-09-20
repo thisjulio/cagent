@@ -30,6 +30,7 @@ import { createLocalObservability } from "./local-telemetry";
 import { initializeModel } from "./controller/models";
 import { loadLastChoice } from "./controller/model-persistence";
 import { runHeadless } from "./headless";
+import { installPluginCleanup } from "./bootstrap/cleanup";
 export { resolveRoute } from "./route-resolver";
 
 export interface BootstrapOptions {
@@ -96,21 +97,7 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
     return;
   }
 
-  // ponytail: Run plugin cleanup handlers on process exit.
-  let cleaningUp = false;
-  const runCleanup = async () => {
-    if (cleaningUp) return;
-    cleaningUp = true;
-    await loadedPlugins.cleanup();
-  };
-  process.once("SIGINT", async () => {
-    await runCleanup();
-    process.exit(0);
-  });
-  process.once("SIGTERM", async () => {
-    await runCleanup();
-    process.exit(0);
-  });
+  const runCleanup = installPluginCleanup(loadedPlugins);
   if (options.headless) telemetry.recordEvent("headless.submit.ready");
   const subagents = addBuiltinSubagents(discoverSubagents(process.cwd()));
   for (const agent of subagents.agents) registry.registerSubagent(agent);
@@ -247,13 +234,17 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
       c.bump();
     }
   });
-  if (options.headless) {
-    await runHeadless(c, options.headless, telemetry);
-    return;
+  try {
+    if (options.headless) {
+      await runHeadless(c, options.headless, telemetry);
+      return;
+    }
+    const renderer = await createCliRenderer({ exitOnCtrlC: false });
+    createRoot(renderer).render(React.createElement(App, { c }));
+    void initializeModel(c, config.model).catch((error) => {
+      notify(c.state, error instanceof Error ? error.message : String(error));
+    });
+  } finally {
+    await runCleanup();
   }
-  const renderer = await createCliRenderer({ exitOnCtrlC: false });
-  createRoot(renderer).render(React.createElement(App, { c }));
-  void initializeModel(c, config.model).catch((error) => {
-    notify(c.state, error instanceof Error ? error.message : String(error));
-  });
 }

@@ -4,7 +4,7 @@ import path from "node:path";
 import { describe, expect, it } from "bun:test";
 import { EventBus } from "../src/events";
 import { Registry } from "../src/registry";
-import { Session } from "../src/session";
+import { Session } from "../src/session/index";
 import { Controller, type ControllerDeps } from "../src/controller/controller";
 
 function deps(

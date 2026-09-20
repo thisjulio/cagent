@@ -7,7 +7,7 @@ import {
 } from "@cagent/sdk";
 import { runTurn, type TurnRecord } from "../loop";
 import type { EventBus } from "../events";
-import { type Session } from "../session";
+import { type Session } from "../session/index";
 import type { ToolAsk } from "../tools";
 import { appendChat, notify } from "./chat-buffer";
 import type { UIState } from "./state";

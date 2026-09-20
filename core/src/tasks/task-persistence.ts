@@ -1,4 +1,4 @@
-import type { SessionRecord } from "../session";
+import type { SessionRecord } from "../session/index";
 import type { Task } from "./model";
 
 export function restoreTasks(records: SessionRecord[]): Task[] {

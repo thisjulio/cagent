@@ -1,4 +1,4 @@
-import type { QueueMessage } from "../session";
+import type { QueueMessage } from "../session/index";
 
 export type QueueInput = Omit<QueueMessage, "status">;
 

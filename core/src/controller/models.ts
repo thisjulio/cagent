@@ -3,7 +3,7 @@ import type { Controller } from "./controller";
 import { saveLastChoice, loadLastChoice } from "./model-persistence";
 import { compactionThreshold } from "./compaction-threshold";
 import { notify } from "./chat-buffer";
-import type { SessionModelSelection } from "../session";
+import type { SessionModelSelection } from "../session/index";
 
 // ponytail: providers that fail list_models are ignored; duplicate model names across providers use the first registration.
 export async function openModelPicker(c: Controller): Promise<void> {

@@ -1,5 +1,5 @@
 import { streamOnce } from "../loop";
-import { Session } from "../session";
+import { Session } from "../session/index";
 import { splitRoute } from "../route";
 import type { ChatItem } from "./state";
 import type { Controller } from "./controller";
