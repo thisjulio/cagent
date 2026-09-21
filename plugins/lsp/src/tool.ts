@@ -12,7 +12,10 @@ export function lspTool(ctx: PluginContext) {
     const key = `${root}:${config.command.join("\0")}`;
     let client = clients.get(key);
     if (!client) {
-      client = LspClient.start(root, config);
+      client = LspClient.start(root, config).catch((error) => {
+        clients.delete(key);
+        throw error;
+      });
       clients.set(key, client);
     }
     return client;

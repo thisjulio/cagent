@@ -1,4 +1,8 @@
-import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import {
+  spawn,
+  spawnSync,
+  type ChildProcessWithoutNullStreams,
+} from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -23,12 +27,29 @@ export class LspClient {
   ) {
     const [command, ...args] = config.command;
     if (!command) throw new Error("LSP command is empty");
+    const available = spawnSync(
+      "sh",
+      ["-c", `command -v "$1"`, "sh", command],
+      {
+        env: process.env,
+        stdio: "ignore",
+      },
+    );
+    if (available.status !== 0) {
+      throw new Error(`LSP executable not found in $PATH: "${command}"`);
+    }
     this.process = spawn(command, args, {
       cwd: root,
       stdio: ["pipe", "pipe", "pipe"],
       env: process.env,
     });
     this.process.stdout.on("data", (chunk) => this.read(chunk));
+    this.process.on("error", (error) => {
+      for (const pending of this.pending.values()) {
+        pending.reject(error);
+      }
+      this.pending.clear();
+    });
     this.process.on("exit", () => {
       for (const pending of this.pending.values()) {
         pending.reject(new Error("LSP server exited"));
