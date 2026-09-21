@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { Registry } from "../src/registry";
 import type { ControllerDeps } from "../src/controller/controller";
-import { resolveRoute } from "../src/route-resolver";
+import { isRouteAvailable, resolveRoute } from "../src/route-resolver";
 
 describe("resolveRoute", () => {
   const adapter = {
@@ -38,6 +38,14 @@ describe("resolveRoute", () => {
         registry,
       ),
     ).rejects.toThrow("model m9 does not exist in provider openai");
+  });
+
+  it("marks a stale persisted route unavailable", async () => {
+    const registry = new Registry();
+    registry.registerProvider("openai", adapter);
+
+    await expect(isRouteAvailable("openai/m9", registry)).resolves.toBe(false);
+    await expect(isRouteAvailable("openai/m1", registry)).resolves.toBe(true);
   });
 
   it("without config: fallback = first provider + first catalog model", async () => {

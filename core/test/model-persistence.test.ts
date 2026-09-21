@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import {
+  clearLastChoice,
   saveLastChoice,
   loadLastChoice,
 } from "../src/controller/model-persistence";
@@ -40,6 +41,14 @@ describe("model-persistence", () => {
     const choice = loadLastChoice(testFile);
     expect(choice?.model).toBe("llama/llama-1");
     expect(choice?.variant).toBeUndefined();
+  });
+
+  it("clears a stale model choice", () => {
+    saveLastChoice("llama/old-model", undefined, testFile);
+
+    clearLastChoice(testFile);
+
+    expect(loadLastChoice(testFile)).toBeNull();
   });
 
   it("returns null when no file exists", () => {

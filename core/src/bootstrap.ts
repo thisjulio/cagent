@@ -8,7 +8,7 @@ import { EventBus } from "./events";
 import { Registry } from "./registry";
 import { buildSystemPrompt } from "./prompt";
 import { splitRoute } from "./route";
-import { resolveRoute } from "./route-resolver";
+import { isRouteAvailable, resolveRoute } from "./route-resolver";
 import { Controller } from "./controller/controller";
 import { appendChat, notify } from "./controller/chat-buffer";
 import { App } from "./ui/components/App";
@@ -28,7 +28,10 @@ import type { ToolAsk } from "./tools";
 import type { CliOptions } from "./cli-args";
 import { createLocalObservability } from "./local-telemetry";
 import { initializeModel } from "./controller/models";
-import { loadLastChoice } from "./controller/model-persistence";
+import {
+  clearLastChoice,
+  loadLastChoice,
+} from "./controller/model-persistence";
 import { runHeadless } from "./headless";
 import { installPluginCleanup } from "./bootstrap/cleanup";
 export { resolveRoute } from "./route-resolver";
@@ -63,9 +66,6 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
   if (options.headless?.variant) config.variant = options.headless.variant;
   if (options.headless?.logLevel) config.log_level = options.headless.logLevel;
   const lastChoice = loadLastChoice(options.modelChoiceFile);
-  if (!options.headless?.variant && lastChoice?.variant) {
-    config.variant = lastChoice.variant;
-  }
   const telemetryOverride =
     options.headless?.telemetry ?? options.cli?.telemetry;
   if (telemetryOverride !== undefined) {
@@ -124,14 +124,21 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
       }
     : undefined;
   if (skills) registry.registerTool(createReadSkillTool(skills));
-  // ponytail: apply last choice before resolveRoute to avoid validating
-  // a config model that will be overridden anyway
+  let lastChoiceAvailable = false;
+  if (lastChoice?.model) {
+    lastChoiceAvailable = await isRouteAvailable(lastChoice.model, registry);
+    if (!lastChoiceAvailable) {
+      clearLastChoice(options.modelChoiceFile);
+    } else if (!options.headless?.model) {
+      config.model = lastChoice.model;
+    }
+  }
   if (
-    !options.headless?.model &&
-    lastChoice?.model &&
-    registry.provider(splitRoute(lastChoice.model)[0])
+    !options.headless?.variant &&
+    lastChoiceAvailable &&
+    lastChoice?.variant
   ) {
-    config.model = lastChoice.model;
+    config.variant = lastChoice.variant;
   }
   let route = await resolveRoute(config, registry);
   let adapter = registry.provider(splitRoute(route)[0]);

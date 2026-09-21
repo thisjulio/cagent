@@ -42,6 +42,14 @@ export function saveLastChoice(
   }
 }
 
+export function clearLastChoice(destination?: string): void {
+  try {
+    fs.rmSync(lastChoiceFile(destination), { force: true });
+  } catch {
+    // ponytail: stale-choice cleanup must not prevent startup
+  }
+}
+
 export function loadLastChoice(source?: string): LastChoice | null {
   const file = lastChoiceFile(source);
   try {

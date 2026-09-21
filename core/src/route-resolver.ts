@@ -31,6 +31,21 @@ export async function resolveRoute(
   return `${first}/${models[0]}`;
 }
 
+export async function isRouteAvailable(
+  route: string,
+  registry: Registry,
+): Promise<boolean> {
+  const [provider, model] = splitRoute(route);
+  const adapter = registry.provider(provider);
+  if (!adapter) return false;
+  try {
+    return (await adapter.list_models()).includes(model);
+  } catch (error) {
+    if (!isNetworkError(error)) throw error;
+    return true;
+  }
+}
+
 function isNetworkError(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
   return /unable to connect|network|fetch failed|timed out|timeout/i.test(
