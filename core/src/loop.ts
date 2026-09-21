@@ -135,6 +135,7 @@ export async function runTurn(opts: TurnOpts): Promise<TurnResult> {
       for (;;) {
         if (++turns > (opts.maxTurns ?? Infinity))
           throw new Error("maximum turns exceeded");
+        await opts.compactIfNeeded?.();
         opts.bus.emit(
           "prompt.assembling",
           workflowPayload(opts, { query: lastUserMessage(opts.messages) }),

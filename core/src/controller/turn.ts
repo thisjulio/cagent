@@ -42,6 +42,7 @@ export type TurnHost = {
   observability?: Observability;
   traceAttributes?: Record<string, string | number | boolean>;
   onContextLimit?: () => Promise<void>;
+  compactIfNeeded?: () => Promise<void>;
   turnId?: string;
   verification?: VerificationRunner;
   continueTurn?: () => Promise<boolean>;
@@ -178,6 +179,7 @@ async function runAgentTurn(
     verification: host.verification,
     continueTurn: host.continueTurn,
     shouldYield: host.shouldYield,
+    compactIfNeeded: host.compactIfNeeded,
     onToolOutput: (content) => {
       host.bumpStream();
     },

@@ -126,6 +126,18 @@ export async function submitMessage(
         });
         return compact(controller, true);
       },
+      compactIfNeeded: async () => {
+        if (
+          controller.config.compact_auto !== false &&
+          (controller.state.tokens ?? 0) >= controller.state.threshold
+        ) {
+          controller.observability?.recordEvent("compaction.requested", {
+            ...compactionEventFields(controller.state, controller.state.model),
+            reason: "threshold_during_turn",
+          });
+          await compact(controller);
+        }
+      },
       traceAttributes: { "turn.id": turnId },
       verification: controller.verification,
       continueTurn: async () => {

@@ -57,6 +57,7 @@ export interface TurnOpts extends StreamOpts {
   traceAttributes?: Record<string, string | number | boolean>;
   continueTurn?: () => Promise<boolean>;
   shouldYield?: () => boolean;
+  compactIfNeeded?: () => Promise<void>;
 }
 
 export type TurnResult = {
