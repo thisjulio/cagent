@@ -234,17 +234,17 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
       c.bump();
     }
   });
-  try {
-    if (options.headless) {
+  if (options.headless) {
+    try {
       await runHeadless(c, options.headless, telemetry);
-      return;
+    } finally {
+      await runCleanup();
     }
-    const renderer = await createCliRenderer({ exitOnCtrlC: false });
-    createRoot(renderer).render(React.createElement(App, { c }));
-    void initializeModel(c, config.model).catch((error) => {
-      notify(c.state, error instanceof Error ? error.message : String(error));
-    });
-  } finally {
-    await runCleanup();
+    return;
   }
+  const renderer = await createCliRenderer({ exitOnCtrlC: false });
+  createRoot(renderer).render(React.createElement(App, { c }));
+  void initializeModel(c, config.model).catch((error) => {
+    notify(c.state, error instanceof Error ? error.message : String(error));
+  });
 }
