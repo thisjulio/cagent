@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { createTasks } from "../src/tasks";
+import { advanceTask, createTasks } from "../src/tasks";
 import {
   shouldContinueTaskWorkflow,
   taskSignature,
@@ -34,7 +34,7 @@ describe("task continuation", () => {
       }),
     ).toBe(false);
 
-    const active = [{ ...tasks[0], status: "in_progress" as const }, tasks[1]];
+    const active = advanceTask(tasks, "completed");
     expect(
       shouldContinueTaskWorkflow({
         tasks: active,

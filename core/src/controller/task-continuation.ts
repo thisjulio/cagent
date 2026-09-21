@@ -26,6 +26,6 @@ export function shouldContinueTaskWorkflow(
     input.tasks.some((task) => task.status === "blocked")
   )
     return false;
-  if (!input.tasks.some((task) => task.status === "pending")) return false;
+  if (!input.tasks.some((task) => task.status === "in_progress")) return false;
   return !input.assistantText.trimEnd().endsWith("?");
 }

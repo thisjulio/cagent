@@ -218,7 +218,12 @@ export async function applyTargets(
     await ensureShadow();
     await shadowCommit(`${label} ${ok} file(s)`);
   }
-  ctx.emit("code-tools/edit", { ok, failed: targets.length - ok, newErrors });
+  ctx.emit("code-tools/edit", {
+    ok,
+    failed: targets.length - ok,
+    newErrors,
+    paths: targets.map((target) => target.path),
+  });
   return {
     output: out.join("\n"),
     isError: ok === 0,

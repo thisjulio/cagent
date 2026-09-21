@@ -29,50 +29,28 @@ const commands: Record<string, SlashHandler> = {
     let result: string;
     if (!arg.trim() || parts[0] === "list") {
       result = JSON.stringify(c.state.tasks);
+    } else if (parts[0] === "create") {
+      result = c.updateTasks("batch", {
+        operations: [{ op: "create", titles: [parts.slice(1).join(" ")] }],
+      });
     } else if (parts[0] === "add") {
       result = c.updateTasks("batch", {
         operations: [
           {
-            op: "create",
-            titles: [parts.slice(1).join(" ")],
+            op: "add",
+            title: parts.slice(1).join(" "),
           },
         ],
       });
-    } else if (parts[0] === "complete" || parts[0] === "reopen") {
-      const operations = [
-        {
-          op: "update",
-          id: parts[1],
-          status: parts[0] === "complete" ? "completed" : "pending",
-          details:
-            parts[0] === "reopen" ? "reopen by user" : parts.slice(2).join(" "),
-        },
-      ];
-      if (parts[0] === "complete") {
-        const index = c.state.tasks.findIndex((task) => task.id === parts[1]);
-        const next = c.state.tasks
-          .slice(index + 1)
-          .find((task) => task.status === "pending");
-        if (next)
-          operations.push({
-            op: "update",
-            id: next.id,
-            status: "in_progress",
-            details: "",
-          });
-      }
+    } else if (["next", "cancel", "block"].includes(parts[0])) {
       result = c.updateTasks("batch", {
-        operations,
+        operations: [{ op: parts[0], details: parts.slice(1).join(" ") }],
       });
-    } else if (parts[0] === "remove") {
-      result = c.updateTasks("batch", {
-        operations: [{ op: "remove", id: parts[1] }],
-      });
-    } else if (parts[0] === "clear" && parts[1] === "--confirm") {
+    } else if (parts[0] === "clear") {
       result = c.updateTasks("batch", { operations: [{ op: "clear" }] });
     } else {
       result =
-        "usage: /tasks [list|add <title>|complete <id> <evidence>|reopen <id>|remove <id>|clear --confirm]";
+        "usage: /tasks [create <title>|add <title>|list|next|cancel|block <request>|clear]";
     }
     appendChat(c.state, {
       kind: "assistant",

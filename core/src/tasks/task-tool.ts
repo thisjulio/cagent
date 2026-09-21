@@ -5,7 +5,7 @@ export function createTaskTool(
 ): ToolDefinition {
   return defineTool(
     "tasks",
-    "Manage the checklist using one batch call. Combine related changes: create the full plan and set its first task in_progress with startFirst, then complete the current task and start the next task in the same batch. Every completed task requires verification evidence.",
+    "Manage an ordered task list with create, add, list, next, cancel, block, and clear operations.",
     {
       type: "object",
       properties: {
@@ -20,25 +20,22 @@ export function createTaskTool(
             properties: {
               op: {
                 type: "string",
-                enum: ["create", "update", "remove", "clear"],
+                enum: [
+                  "create",
+                  "add",
+                  "list",
+                  "next",
+                  "cancel",
+                  "block",
+                  "clear",
+                ],
               },
               titles: { type: "array", items: { type: "string" } },
-              startFirst: {
-                type: "boolean",
-                description:
-                  "For create, start the first newly created task in the same batch.",
-              },
-              id: { type: "string" },
-              status: {
-                type: "string",
-                enum: ["pending", "in_progress", "completed", "blocked"],
-                description:
-                  "Complete only the currently in_progress task. In the same batch, update it to completed before starting the next task.",
-              },
+              title: { type: "string" },
               details: {
                 type: "string",
                 description:
-                  "Required evidence when status is completed, or the reason when status is blocked.",
+                  "User-facing request required for block; optional note for next or cancel.",
               },
             },
             required: ["op"],

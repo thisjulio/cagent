@@ -95,6 +95,13 @@
         "@cagent/sdk": "workspace:*",
       },
     },
+    "plugins/lsp": {
+      "name": "@cagent/plugin-lsp",
+      "version": "0.1.0",
+      "dependencies": {
+        "@cagent/sdk": "workspace:*",
+      },
+    },
     "plugins/mcp": {
       "name": "@cagent/plugin-mcp",
       "version": "0.1.0",
@@ -185,6 +192,8 @@
     "@cagent/plugin-codex-agents": ["@cagent/plugin-codex-agents@workspace:plugins/codex-agents"],
 
     "@cagent/plugin-llama.cpp": ["@cagent/plugin-llama.cpp@workspace:plugins/llama.cpp"],
+
+    "@cagent/plugin-lsp": ["@cagent/plugin-lsp@workspace:plugins/lsp"],
 
     "@cagent/plugin-mcp": ["@cagent/plugin-mcp@workspace:plugins/mcp"],
 

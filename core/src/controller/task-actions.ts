@@ -58,21 +58,12 @@ function parseTaskOperations(value: unknown): TaskOperation[] {
       return {
         op,
         titles: (operation.titles as string[]) ?? [],
-        startFirst: operation.startFirst === true,
       };
-    if (op === "update")
-      return {
-        op,
-        id: String(operation.id),
-        status: String(operation.status) as TaskOperation extends {
-          op: "update";
-          status: infer Status;
-        }
-          ? Status
-          : never,
-        details: operation.details as string | undefined,
-      };
-    if (op === "remove") return { op, id: String(operation.id) };
+    if (op === "add") return { op, title: String(operation.title ?? "") };
+    if (op === "list") return { op };
+    if (op === "next" || op === "cancel")
+      return { op, details: operation.details as string | undefined };
+    if (op === "block") return { op, details: String(operation.details ?? "") };
     if (op === "clear") return { op };
     throw new Error(`unknown task operation: ${op}`);
   }) as TaskOperation[];
