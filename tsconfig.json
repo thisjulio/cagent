@@ -9,7 +9,7 @@
     "noEmit": true,
     "skipLibCheck": true,
     "allowJs": false,
-    "types": ["bun-types"]
+    "types": ["bun-types", "node"]
   },
   "include": [
     "core/src/**/*.ts",

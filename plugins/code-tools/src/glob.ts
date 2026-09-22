@@ -1,10 +1,13 @@
-import fg from "fast-glob";
 import { defineTool, type PluginContext, type ToolArgs } from "@cagent/sdk";
 import { errorText } from "./errors";
 import { gitignorePatterns } from "./gitignore";
 import { root } from "./state";
 
 const MAX_FILES = 500;
+
+function notIgnored(file: string, ignored: string[]): boolean {
+  return !ignored.some((pattern) => new Bun.Glob(pattern).match(file));
+}
 
 export function globTool(ctx: PluginContext) {
   return defineTool(
@@ -28,12 +31,14 @@ export function globTool(ctx: PluginContext) {
       );
       const ROOT = root();
       try {
-        const files = fg
-          .sync(pattern, {
+        const files = [
+          ...new Bun.Glob(pattern).scanSync({
             cwd: ROOT,
-            ignore: gitignorePatterns(ROOT),
             onlyFiles: true,
-          })
+            dot: true,
+          }),
+        ]
+          .filter((file) => notIgnored(file, gitignorePatterns(ROOT)))
           .slice(0, max);
         return { output: files.length ? files.join("\n") : "no results" };
       } catch (e) {

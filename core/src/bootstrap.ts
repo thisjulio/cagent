@@ -34,8 +34,6 @@ import {
 } from "./controller/model-persistence";
 import { runHeadless } from "./headless";
 import { installPluginCleanup } from "./bootstrap/cleanup";
-export { resolveRoute } from "./route-resolver";
-
 export interface BootstrapOptions {
   defaultPlugins?: AppConfig["plugins"];
   pluginLoaders?: Record<string, Plugin>;

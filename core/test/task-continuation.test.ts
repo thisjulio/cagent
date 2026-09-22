@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { advanceTask, createTasks } from "../src/tasks";
+import { createTasks, nextTask } from "../src/tasks";
 import {
   shouldContinueTaskWorkflow,
   taskSignature,
@@ -8,7 +8,6 @@ import {
 describe("task continuation", () => {
   it("does not continue after an assistant question", () => {
     const tasks = createTasks([], ["Implement the feature"]);
-
     expect(
       shouldContinueTaskWorkflow({
         tasks,
@@ -24,7 +23,6 @@ describe("task continuation", () => {
       [],
       ["Implement the feature", "Verify the feature"],
     );
-
     expect(
       shouldContinueTaskWorkflow({
         tasks,
@@ -34,7 +32,7 @@ describe("task continuation", () => {
       }),
     ).toBe(false);
 
-    const active = advanceTask(tasks, "completed");
+    const active = nextTask(tasks);
     expect(
       shouldContinueTaskWorkflow({
         tasks: active,

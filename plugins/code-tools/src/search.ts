@@ -1,6 +1,5 @@
 import fs from "node:fs";
 import path from "node:path";
-import fg from "fast-glob";
 import { defineTool, type PluginContext, type ToolArgs } from "@cagent/sdk";
 import { errorText } from "./errors";
 import { runCmd } from "./exec";
@@ -10,6 +9,10 @@ import { root } from "./state";
 
 const MAX_MATCHES = 200;
 const RG_BIN = "/usr/bin/rg";
+
+function notIgnored(file: string, ignored: string[]): boolean {
+  return !ignored.some((pattern) => new Bun.Glob(pattern).match(file));
+}
 
 async function rgSearch(
   pattern: string,
@@ -77,11 +80,13 @@ async function jsSearch(
       : `${relative}/**/*`
     : relative;
   const files = stat.isDirectory()
-    ? fg.sync(glob, {
-        cwd: ROOT,
-        ignore: gitignorePatterns(ROOT),
-        onlyFiles: true,
-      })
+    ? [
+        ...new Bun.Glob(glob).scanSync({
+          cwd: ROOT,
+          onlyFiles: true,
+          dot: true,
+        }),
+      ].filter((file) => notIgnored(file, gitignorePatterns(ROOT)))
     : [relative];
   const matches: string[] = [];
   for (const file of files) {

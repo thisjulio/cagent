@@ -5,44 +5,23 @@ export function createTaskTool(
 ): ToolDefinition {
   return defineTool(
     "tasks",
-    "Manage an ordered task list with create, add, list, next, cancel, block, and clear operations.",
+    "Manage an ordered task list with direct create, add, list, next, skip, block, and clear operations.",
     {
       type: "object",
       properties: {
         operation: {
           type: "string",
-          enum: ["batch"],
+          enum: ["create", "add", "list", "next", "skip", "block", "clear"],
         },
-        operations: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              op: {
-                type: "string",
-                enum: [
-                  "create",
-                  "add",
-                  "list",
-                  "next",
-                  "cancel",
-                  "block",
-                  "clear",
-                ],
-              },
-              titles: { type: "array", items: { type: "string" } },
-              title: { type: "string" },
-              details: {
-                type: "string",
-                description:
-                  "User-facing request required for block; optional note for next or cancel.",
-              },
-            },
-            required: ["op"],
-          },
+        titles: { type: "array", items: { type: "string" } },
+        title: { type: "string" },
+        details: {
+          type: "string",
+          description:
+            "Evidence for next, reason for skip, or user-facing request required for block.",
         },
       },
-      required: ["operation", "operations"],
+      required: ["operation"],
     },
     async (args) => {
       const output = update(String(args.operation), args);

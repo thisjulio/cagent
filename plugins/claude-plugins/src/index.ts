@@ -10,6 +10,8 @@ import type {
   CommandSource,
 } from "@cagent/sdk";
 import { readHookOutput } from "./hook-output";
+import { discoverCommandFiles } from "./command-files";
+import { discoverAgentFiles } from "./agent-files";
 
 // Claude Code plugin manifest
 type ClaudePluginManifest = {
@@ -19,6 +21,7 @@ type ClaudePluginManifest = {
   hooks?: string; // path to hooks config file
   commands?: string | string[]; // path(s) to commands directories
   skills?: string; // path to skills directory
+  agents?: string; // path to agents directory
 };
 
 type ClaudeHookEntry = {
@@ -247,54 +250,37 @@ const register: Plugin = (ctx) => {
         }
       }
 
-      // Discover and register commands
-      if (manifest.commands) {
-        const commandDirs = (
-          Array.isArray(manifest.commands)
+      const configuredCommands = manifest.commands
+        ? (Array.isArray(manifest.commands)
             ? manifest.commands
             : [manifest.commands]
-        ).map((commandsPath) => path.join(fullPluginDir, commandsPath));
-        for (const commandsDir of commandDirs) {
-          if (fs.existsSync(commandsDir)) {
-            const source: CommandSource = {
-              discover: (_cwd: string) => {
-                const commands: {
-                  name: string;
-                  file: string;
-                  content: string;
-                }[] = [];
-                const cmdEntries = fs.readdirSync(commandsDir, {
-                  withFileTypes: true,
-                });
-                for (const cmdEntry of cmdEntries) {
-                  if (!cmdEntry.isFile() || !cmdEntry.name.endsWith(".md"))
-                    continue;
-                  const cmdFile = path.join(commandsDir, cmdEntry.name);
-                  const name = cmdEntry.name.slice(0, -3);
-                  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(name)) continue;
-                  commands.push({
-                    name,
-                    file: cmdFile,
-                    content: fs.readFileSync(cmdFile, "utf8").trim(),
-                  });
-                }
-                return commands;
-              },
-            };
-            ctx.registerCommandSource(source);
-          }
+          ).map((commandsPath) => path.join(fullPluginDir, commandsPath))
+        : [];
+      const commandDirs = [
+        ...configuredCommands,
+        path.join(fullPluginDir, "commands"),
+      ].filter((directory, index, all) => all.indexOf(directory) === index);
+      ctx.registerCommandSource({
+        discover: () =>
+          commandDirs.flatMap((commandsDir) =>
+            discoverCommandFiles(commandsDir),
+          ),
+      });
+
+      const agentsDir = path.join(fullPluginDir, manifest.agents ?? "agents");
+      if (fs.existsSync(agentsDir)) {
+        for (const agent of discoverAgentFiles(agentsDir)) {
+          ctx.registerSubagent(agent);
         }
       }
 
       // Discover and register skills
-      if (manifest.skills) {
-        const skillsDir = path.join(fullPluginDir, manifest.skills);
-        if (fs.existsSync(skillsDir)) {
-          const skillSource: import("@cagent/sdk").SkillSource = {
-            discover: () => [skillsDir],
-          };
-          ctx.registerSkillSource(skillSource);
-        }
+      const skillsDir = path.join(fullPluginDir, manifest.skills ?? "skills");
+      if (fs.existsSync(skillsDir)) {
+        const skillSource: import("@cagent/sdk").SkillSource = {
+          discover: () => [skillsDir],
+        };
+        ctx.registerSkillSource(skillSource);
       }
     }
   }

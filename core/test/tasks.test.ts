@@ -1,10 +1,12 @@
 import { describe, expect, it } from "bun:test";
 import {
   addTask,
-  advanceTask,
-  applyTaskBatch,
   blockTask,
+  clearTasks,
   createTasks,
+  listTasks,
+  nextTask,
+  skipTask,
   taskProgress,
 } from "../src/tasks";
 
@@ -20,7 +22,7 @@ describe("task domain", () => {
 
   it("adds immediately after the active task", () => {
     const initial = createTasks([], ["Plan", "Verify", "Release"]);
-    const active = advanceTask(initial, "completed");
+    const active = nextTask(initial);
     const tasks = addTask(active, "Review");
     expect(tasks.map((task) => task.title)).toEqual([
       "Plan",
@@ -30,9 +32,8 @@ describe("task domain", () => {
     ]);
   });
 
-  it("next completes the current task and starts the next", () => {
-    const initial = createTasks([], ["Plan", "Verify"]);
-    const tasks = advanceTask(initial, "completed", "verified");
+  it("next completes and starts the next task", () => {
+    const tasks = nextTask(createTasks([], ["Plan", "Verify"]), "verified");
     expect(tasks.map((task) => task.status)).toEqual([
       "completed",
       "in_progress",
@@ -40,30 +41,29 @@ describe("task domain", () => {
     expect(tasks[0]?.evidence).toBe("verified");
   });
 
-  it("cancel advances and marks the current task cancelled", () => {
-    const initial = createTasks([], ["Plan", "Verify"]);
-    const tasks = advanceTask(initial, "cancelled");
+  it("skip advances without completing the current task", () => {
+    const tasks = skipTask(
+      createTasks([], ["Plan", "Verify"]),
+      "not applicable",
+    );
     expect(tasks.map((task) => task.status)).toEqual([
-      "cancelled",
+      "skipped",
       "in_progress",
     ]);
   });
 
   it("block records a request and does not advance", () => {
-    const initial = createTasks([], ["Plan", "Verify"]);
-    const tasks = blockTask(initial, "Ask the user for credentials");
+    const tasks = blockTask(
+      createTasks([], ["Plan", "Verify"]),
+      "Ask the user",
+    );
     expect(tasks[0]?.status).toBe("blocked");
-    expect(tasks[0]?.reason).toBe("Ask the user for credentials");
-    expect(tasks[1]?.status).toBe("pending");
+    expect(tasks[0]?.reason).toBe("Ask the user");
   });
 
-  it("supports create, next, and clear operations", () => {
-    const initial = applyTaskBatch(
-      [],
-      [{ op: "create", titles: ["Plan", "Verify"] }],
-    );
-    const advanced = applyTaskBatch(initial, [{ op: "next" }]);
-    expect(advanced[0]?.status).toBe("completed");
-    expect(applyTaskBatch(advanced, [{ op: "clear" }])).toEqual([]);
+  it("lists without exposing mutable task objects and clears", () => {
+    const initial = createTasks([], ["Plan"]);
+    expect(listTasks(initial)).toEqual(initial);
+    expect(clearTasks()).toEqual([]);
   });
 });

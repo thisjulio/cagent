@@ -26,31 +26,19 @@ const commands: Record<string, SlashHandler> = {
       content: `/tasks${arg ? ` ${arg}` : ""}`,
     });
     const parts = arg.trim().split(/\s+/);
+    const operation = parts[0] || "list";
     let result: string;
-    if (!arg.trim() || parts[0] === "list") {
-      result = JSON.stringify(c.state.tasks);
-    } else if (parts[0] === "create") {
-      result = c.updateTasks("batch", {
-        operations: [{ op: "create", titles: [parts.slice(1).join(" ")] }],
-      });
-    } else if (parts[0] === "add") {
-      result = c.updateTasks("batch", {
-        operations: [
-          {
-            op: "add",
-            title: parts.slice(1).join(" "),
-          },
-        ],
-      });
-    } else if (["next", "cancel", "block"].includes(parts[0])) {
-      result = c.updateTasks("batch", {
-        operations: [{ op: parts[0], details: parts.slice(1).join(" ") }],
-      });
-    } else if (parts[0] === "clear") {
-      result = c.updateTasks("batch", { operations: [{ op: "clear" }] });
+    if (operation === "create") {
+      result = c.updateTasks(operation, { titles: [parts.slice(1).join(" ")] });
+    } else if (operation === "add") {
+      result = c.updateTasks(operation, { title: parts.slice(1).join(" ") });
+    } else if (["next", "skip", "block"].includes(operation)) {
+      result = c.updateTasks(operation, { details: parts.slice(1).join(" ") });
+    } else if (["list", "clear"].includes(operation)) {
+      result = c.updateTasks(operation, {});
     } else {
       result =
-        "usage: /tasks [create <title>|add <title>|list|next|cancel|block <request>|clear]";
+        "usage: /tasks [create <title>|add <title>|list|next|skip|block <request>|clear]";
     }
     appendChat(c.state, {
       kind: "assistant",

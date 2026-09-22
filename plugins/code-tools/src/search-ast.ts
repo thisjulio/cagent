@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { Lang, parse } from "@ast-grep/napi";
-import fg from "fast-glob";
+import { Glob } from "bun";
 import { defineTool, type PluginContext, type ToolArgs } from "@cagent/sdk";
 import { errorText } from "./errors";
 import { gitignorePatterns } from "./gitignore";
@@ -44,13 +44,12 @@ function evidenceFromOutput(output: string) {
 
 function filesFor(target: string): string[] {
   if (fs.statSync(target).isFile()) return [target];
-  return fg.sync("**/*", {
-    cwd: target,
-    absolute: true,
-    dot: true,
-    ignore: gitignorePatterns(root()),
-    onlyFiles: true,
-  });
+  const ignored = gitignorePatterns(root()).map((pattern) => new Glob(pattern));
+  return [
+    ...new Glob("**/*").scanSync({ cwd: target, absolute: true, dot: true }),
+  ]
+    .filter((file) => !ignored.some((glob) => glob.match(file)))
+    .filter((file) => fs.statSync(file).isFile());
 }
 
 function searchFiles(
