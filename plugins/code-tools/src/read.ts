@@ -40,7 +40,7 @@ async function readLines(
 export function readTool(ctx: PluginContext) {
   return defineTool(
     "read_file",
-    `Reads a bounded file segment with a line offset and limit (1-based, default ${DEFAULT_LIMIT}, max ${MAX_LIMIT}). Returns pagination metadata. Records the file hash to detect stale and reverted files.`,
+    `Reads a bounded file segment with a line offset and limit (1-based, default ${DEFAULT_LIMIT}, max ${MAX_LIMIT}). Returns pagination metadata. Records the file hash to detect stale and reverted files. Read the complete target immediately before editing; any write, formatter, or other edit can invalidate line numbers, and after every successful edit you must read again before another line-based edit.`,
     {
       type: "object",
       properties: {

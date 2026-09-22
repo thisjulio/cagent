@@ -63,11 +63,11 @@ export function replaceLinesTool(ctx: PluginContext) {
     "replace_lines",
     [
       "Replaces ranges of lines in a file you have just read with read_file.",
-      "The line numbers come from the read_file output. Call read_file first.",
+      "Call read_file immediately before this tool, even if the file was read earlier in the same turn.",
       "Every edit must include old_content copied exactly from the lines being replaced; line numbers alone are not safe.",
       "Send one entry per region you are changing, all numbered from that same read_file output.",
-      "content is the new text for those lines; an empty string deletes them.",
-      "After this tool succeeds the line numbers are out of date: call read_file again before editing this file.",
+      "content is the new text for those lines; an empty string deletes those lines.",
+      "After any successful edit, formatter, or write, all previous line numbers are out of date: call read_file again before editing this file.",
     ].join(" "),
     {
       type: "object",
@@ -96,7 +96,7 @@ export function replaceLinesTool(ctx: PluginContext) {
               old_content: {
                 type: "string",
                 description:
-                  "Exact current content of the numbered lines, copied from read_file",
+                  "Exact current content of the numbered lines, copied from the most recent read_file output",
               },
               content: {
                 type: "string",

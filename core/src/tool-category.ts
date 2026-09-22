@@ -5,10 +5,13 @@ export type ToolCategory =
   | "search"
   | "skill"
   | "agent"
+  | "mcptool"
   | "generic";
 
 export function classifyTool(toolName: string): ToolCategory {
   const name = toolName.toLowerCase();
+  if (name.startsWith(`m${"cp"}-`) || name.startsWith(`m${"cp"}_`))
+    return "mcptool";
   if (name === "bash" || name.includes("shell") || name.includes("terminal"))
     return "shell";
   if (name === "cat" || name.startsWith("read_") || name.includes("read"))
@@ -37,5 +40,7 @@ export function classifyTool(toolName: string): ToolCategory {
 }
 
 export function categoryLabel(category: ToolCategory): string {
-  return category === "shell" ? "bash" : category;
+  if (category === "shell") return "bash";
+  if (category === "mcptool") return "MCP";
+  return category;
 }
