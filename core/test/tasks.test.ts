@@ -6,6 +6,7 @@ import {
   createTasks,
   listTasks,
   nextTask,
+  resumeTask,
   skipTask,
   taskProgress,
 } from "../src/tasks";
@@ -18,6 +19,16 @@ describe("task domain", () => {
       "pending",
     ]);
     expect(taskProgress(tasks)).toBe("0/2");
+  });
+
+  it("resumes a blocked task after user input", () => {
+    const blocked = blockTask(
+      createTasks([], ["Plan", "Verify"]),
+      "Ask the user",
+    );
+    const tasks = resumeTask(blocked);
+    expect(tasks[0]?.status).toBe("in_progress");
+    expect(tasks[0]?.reason).toBeUndefined();
   });
 
   it("adds immediately after the active task", () => {

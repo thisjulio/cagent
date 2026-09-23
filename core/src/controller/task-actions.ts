@@ -6,6 +6,7 @@ import {
   createTasks,
   listTasks,
   nextTask,
+  resumeTask,
   skipTask,
 } from "../tasks";
 import type { Controller } from "./controller";
@@ -69,6 +70,7 @@ function applyTaskOperation(
     return nextTask(tasks, optionalString(args.details));
   if (operation === "skip")
     return skipTask(tasks, optionalString(args.details));
+  if (operation === "resume") return resumeTask(tasks);
   if (operation === "block")
     return blockTask(tasks, String(args.details ?? ""));
   if (operation === "clear") return clearTasks();

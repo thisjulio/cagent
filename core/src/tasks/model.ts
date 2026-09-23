@@ -85,6 +85,16 @@ export function blockTask(tasks: Task[], request: string): Task[] {
   );
 }
 
+export function resumeTask(tasks: Task[]): Task[] {
+  const blockedIndex = tasks.findIndex((task) => task.status === "blocked");
+  if (blockedIndex < 0) throw new Error("no task is blocked");
+  return tasks.map((task, index) =>
+    index === blockedIndex
+      ? { ...task, status: "in_progress", reason: undefined }
+      : task,
+  );
+}
+
 export function clearTasks(): Task[] {
   return [];
 }

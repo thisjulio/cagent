@@ -34,11 +34,11 @@ const commands: Record<string, SlashHandler> = {
       result = c.updateTasks(operation, { title: parts.slice(1).join(" ") });
     } else if (["next", "skip", "block"].includes(operation)) {
       result = c.updateTasks(operation, { details: parts.slice(1).join(" ") });
-    } else if (["list", "clear"].includes(operation)) {
+    } else if (["list", "clear", "resume"].includes(operation)) {
       result = c.updateTasks(operation, {});
     } else {
       result =
-        "usage: /tasks [create <title>|add <title>|list|next|skip|block <request>|clear]";
+        "usage: /tasks [create <title>|add <title>|list|next|skip|block <request>|resume|clear]";
     }
     appendChat(c.state, {
       kind: "assistant",

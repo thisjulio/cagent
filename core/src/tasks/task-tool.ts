@@ -5,13 +5,22 @@ export function createTaskTool(
 ): ToolDefinition {
   return defineTool(
     "tasks",
-    "Manage an ordered task list with direct create, add, list, next, skip, block, and clear operations.",
+    "Manage an ordered task list with direct create, add, list, next, skip, block, resume, and clear operations.",
     {
       type: "object",
       properties: {
         operation: {
           type: "string",
-          enum: ["create", "add", "list", "next", "skip", "block", "clear"],
+          enum: [
+            "create",
+            "add",
+            "list",
+            "next",
+            "skip",
+            "block",
+            "resume",
+            "clear",
+          ],
         },
         titles: { type: "array", items: { type: "string" } },
         title: { type: "string" },
