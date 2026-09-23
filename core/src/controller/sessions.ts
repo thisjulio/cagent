@@ -1,6 +1,7 @@
 import { streamOnce } from "../loop";
 import { Session } from "../session/index";
 import { splitRoute } from "../route";
+import type { Message } from "@cagent/sdk";
 import type { ChatItem } from "./state";
 import type { Controller } from "./controller";
 import { MAX_CHAT_ITEMS, notify } from "./chat-buffer";
@@ -10,6 +11,7 @@ import { toolCommandLabel } from "./tool-label";
 import { restoreTasks } from "../tasks";
 import { filterExistingImagePaths } from "./image-processor";
 import { restoreModelSelection } from "./models";
+import { loadPreferences } from "../preferences";
 export { compact } from "./compaction";
 
 type LoadedRecord = {
@@ -244,20 +246,31 @@ export async function generateTitle(
     "input.length": msg.length,
   });
   try {
+    const messages: Message[] = [
+      {
+        role: "system",
+        content:
+          "You are a title generator. Your ONLY job is to generate a short title for the conversation opener below. Do NOT answer the question or respond to the content. Do NOT provide any information, facts, or responses to what is asked. Just generate a 3-6 word Title Case title that describes the topic. Examples: 'Commit Git Changes', 'Debug Login Timeout', 'Improve Session Titles', 'Check Current Date'. Output ONLY the title text, nothing else.",
+      },
+      {
+        role: "user",
+        content: `Conversation opener to title (do NOT answer it):\n"${msg}"\n\nTitle:`,
+      },
+    ];
+    const preferences = loadPreferences().filter((item) => item.enabled);
+    if (preferences.length) {
+      messages.unshift({
+        role: "system",
+        content: [
+          "Persistent user preferences. Follow these instructions in every response. The language of the current message does not override a language preference. Change a preference only when the user explicitly asks to do so. System policies and explicit conflicting requests take precedence:",
+          ...preferences.map((item) => `- ${item.text}`),
+        ].join("\n"),
+      });
+    }
     const { text } = await streamOnce({
       adapter: c.adapter,
       model: splitRoute(c.state.model)[1],
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are a title generator. Your ONLY job is to generate a short title for the conversation opener below. Do NOT answer the question or respond to the content. Do NOT provide any information, facts, or responses to what is asked. Just generate a 3-6 word Title Case title that describes the topic. Examples: 'Commit Git Changes', 'Debug Login Timeout', 'Improve Session Titles', 'Check Current Date'. Output ONLY the title text, nothing else.",
-        },
-        {
-          role: "user",
-          content: `Conversation opener to title (do NOT answer it):\n"${msg}"\n\nTitle:`,
-        },
-      ],
+      messages,
       tools: [],
       attempts: 1,
       interrupted: () => c.interrupted,

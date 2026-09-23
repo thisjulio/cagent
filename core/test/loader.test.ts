@@ -9,9 +9,21 @@ test("loads a plugin and discovers its tool in the registry", async () => {
   const bus = new EventBus();
   const config = loadConfig(import.meta.dirname);
   const { contexts } = await loadPlugins(
-    { plugins: [{ name: "stub", path: "./plugins/stub" }], allowlist: [] },
+    { plugins: [{ name: "stub" }], allowlist: [] },
     registry,
     bus,
+    {
+      loaders: {
+        stub: async (ctx) => {
+          ctx.registerTool({
+            name: "echo",
+            description: "Echo text",
+            parameters: { type: "object" },
+            execute: async (args) => ({ output: String(args.text ?? "") }),
+          });
+        },
+      },
+    },
   );
   expect(contexts.length).toBe(1);
   expect(registry.tools().map((t) => t.name)).toEqual(["echo"]);
@@ -21,9 +33,21 @@ test("loads a plugin and discovers its tool in the registry", async () => {
 test("a registered tool executes and returns a result", async () => {
   const registry = new Registry();
   await loadPlugins(
-    { plugins: [{ name: "stub", path: "./plugins/stub" }], allowlist: [] },
+    { plugins: [{ name: "stub" }], allowlist: [] },
     registry,
     new EventBus(),
+    {
+      loaders: {
+        stub: async (ctx) => {
+          ctx.registerTool({
+            name: "echo",
+            description: "Echo text",
+            parameters: { type: "object" },
+            execute: async (args) => ({ output: String(args.text ?? "") }),
+          });
+        },
+      },
+    },
   );
   const result = await registry.tool("echo")!.execute({ text: "hello" });
   expect(result.output).toBe("hello");

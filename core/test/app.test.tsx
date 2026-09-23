@@ -50,6 +50,7 @@ describe("OpenTUI render", () => {
       height: 24,
     });
     await act(async () => {
+      c.bump();
       await setup.flush();
       await new Promise((resolve) => setTimeout(resolve, 100));
       await setup.flush();
@@ -85,8 +86,9 @@ describe("OpenTUI render", () => {
       height: 24,
     });
     await act(async () => {
+      c.bump();
       await setup.flush();
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 500));
       await setup.flush();
     });
     const lines = setup
@@ -117,6 +119,7 @@ describe("OpenTUI render", () => {
       height: 24,
     });
     await act(async () => {
+      c.bump();
       await setup.flush();
       await new Promise((resolve) => setTimeout(resolve, 100));
       await setup.flush();
@@ -155,6 +158,7 @@ describe("OpenTUI render", () => {
       height: 40,
     });
     await act(async () => {
+      c.bump();
       await setup.flush();
       await new Promise((resolve) => setTimeout(resolve, 100));
       await setup.flush();
@@ -253,6 +257,7 @@ describe("OpenTUI render", () => {
       height: 30,
     });
     await act(async () => {
+      c.bump();
       await setup.flush();
       await new Promise((resolve) => setTimeout(resolve, 100));
       await setup.flush();
@@ -286,6 +291,7 @@ describe("OpenTUI render", () => {
       height: 30,
     });
     await act(async () => {
+      c.bump();
       await setup.flush();
       await new Promise((resolve) => setTimeout(resolve, 100));
       await setup.flush();
@@ -304,6 +310,7 @@ describe("OpenTUI render", () => {
       height: 24,
     });
     await act(async () => {
+      c.bump();
       await setup.flush();
       await new Promise((resolve) => setTimeout(resolve, 100));
       await setup.flush();
@@ -415,10 +422,12 @@ describe("OpenTUI render", () => {
 
   it("renders markdown in a completed assistant message", async () => {
     const c = new Controller(deps());
-    c.state.chat.push({
-      kind: "assistant",
-      content: "# title\n\n- item 1\n- item 2\n",
-    });
+    c.state.chat = [
+      {
+        kind: "assistant",
+        content: "# title\n\n- item 1\n- item 2\n",
+      },
+    ];
     const setup = await testRender(React.createElement(App, { c }), {
       width: 80,
       height: 24,

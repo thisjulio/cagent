@@ -26,9 +26,24 @@ export async function resolveRoute(
   }
   const first = registry.llmRoute();
   if (!first) throw new Error("(no provider - nothing to do)");
-  const models = await registry.provider(first)!.list_models();
-  if (!models.length) throw new Error("(no provider - nothing to do)");
-  return `${first}/${models[0]}`;
+  const failures: string[] = [];
+  for (const [provider, adapter] of registry.providers()) {
+    try {
+      const models = await adapter.list_models();
+      if (models.length) return `${provider}/${models[0]}`;
+      failures.push(`${provider}: no models returned`);
+    } catch (error) {
+      if (!isNetworkError(error)) throw error;
+      const reason = error instanceof Error ? error.message : String(error);
+      failures.push(`${provider}: ${reason}`);
+      console.error(`Unable to list ${provider} models; trying next provider.`);
+    }
+  }
+  throw new Error(
+    failures.length
+      ? `(no provider - nothing to do; ${failures.join("; ")})`
+      : "(no provider - nothing to do)",
+  );
 }
 
 export async function isRouteAvailable(

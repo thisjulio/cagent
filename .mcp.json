@@ -17,10 +17,6 @@
       "env": {
         "GODOT_PATH": "/usr/bin/godot"
       }
-    },
-    "use-terminal": {
-      "command": "npx",
-      "args": ["-y", "use-terminal@latest", "use-terminal-mcp"]
     }
   }
 }

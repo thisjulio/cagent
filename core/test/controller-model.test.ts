@@ -10,6 +10,8 @@ import { Controller, type ControllerDeps } from "../src/controller/controller";
 import { sanitizeTitle } from "../src/controller/sessions";
 import { loadLastChoice } from "../src/controller/model-persistence";
 import { initializeModel } from "../src/controller/models";
+import { savePreferences } from "../src/preferences";
+import type { Message } from "@cagent/sdk";
 
 function deps(
   permissions = false,
@@ -278,6 +280,47 @@ describe("controller model and commands", () => {
     await p;
     expect(c.state.busy).toBe(false);
     expect(c.state.notice).toContain("interrupted");
+  });
+
+  it("includes user preferences in the title generation prompt", async () => {
+    const prefFile = path.join(os.homedir(), ".cagent", "config.yml");
+    const original = fs.existsSync(prefFile)
+      ? fs.readFileSync(prefFile, "utf8")
+      : null;
+    fs.mkdirSync(path.dirname(prefFile), { recursive: true });
+    savePreferences(
+      [{ id: 999, text: "Responda sempre em português", enabled: true }],
+      prefFile,
+    );
+
+    try {
+      const d = deps();
+      let capturedMessages: Message[] = [];
+      d.adapter = {
+        list_models: async () => ["model-a"],
+        prepare_call: async (o) => {
+          capturedMessages = o.messages;
+          return o;
+        },
+        stream: async function* () {
+          yield { type: "text", text: "Título da Sessão" };
+          yield { type: "finish", finish_reason: "stop" };
+        },
+      } as ControllerDeps["adapter"];
+      d.registry.registerProvider("openai", d.adapter);
+
+      const c = new Controller(d);
+      await c.submit("olá, como vai?");
+
+      expect(capturedMessages).toHaveLength(3);
+      expect(capturedMessages[0].role).toBe("system");
+      expect(String(capturedMessages[0].content)).toContain(
+        "Responda sempre em português",
+      );
+    } finally {
+      if (original !== null) fs.writeFileSync(prefFile, original);
+      else if (fs.existsSync(prefFile)) fs.unlinkSync(prefFile);
+    }
   });
 });
 

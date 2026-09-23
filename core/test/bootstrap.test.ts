@@ -67,4 +67,22 @@ describe("resolveRoute", () => {
       resolveRoute({} as ControllerDeps["config"], registry),
     ).resolves.toBe("openai/m1");
   });
+
+  it("without config: skips providers that cannot list models", async () => {
+    const registry = new Registry();
+    registry.registerProvider("unavailable", {
+      ...adapter,
+      list_models: async () => {
+        throw new TypeError("Unable to connect");
+      },
+    });
+    registry.registerProvider("llama.cpp", {
+      ...adapter,
+      list_models: async () => ["local-model"],
+    });
+
+    await expect(
+      resolveRoute({} as ControllerDeps["config"], registry),
+    ).resolves.toBe("llama.cpp/local-model");
+  });
 });
