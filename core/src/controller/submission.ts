@@ -9,6 +9,7 @@ import type { Controller } from "./controller";
 import { workflowEvent } from "@cagent/sdk";
 import { buildImageContent } from "./submit-image";
 import { compactionEventFields } from "./compaction-events";
+import { loadPreferences } from "../preferences";
 export async function submitMessage(
   controller: Controller,
   text: string,
@@ -77,6 +78,19 @@ export async function submitMessage(
       variant: state.variant,
       messages: controller.messages,
       messagesForRequest: (messages) => {
+        const preferences = loadPreferences().filter((item) => item.enabled);
+        const requestMessages = preferences.length
+          ? [
+              {
+                role: "system" as const,
+                content: [
+                  "Persistent user preferences. Follow these instructions in every response. The language of the current message does not override a language preference. Change a preference only when the user explicitly asks to do so. System policies and explicit conflicting requests take precedence:",
+                  ...preferences.map((item) => `- ${item.text}`),
+                ].join("\n"),
+              },
+              ...messages,
+            ]
+          : messages;
         controller.bus.emit(
           "prompt.assembled",
           workflowEvent(
@@ -93,7 +107,7 @@ export async function submitMessage(
           "context.omitted": 0,
           "context.recent_turns": 0,
         });
-        return messages;
+        return requestMessages;
       },
       tools: taskAwareTools(controller),
       allowlist: controller.config.allowlist,

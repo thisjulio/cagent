@@ -36,6 +36,12 @@ import { submitSubagent as submitSubagentAction } from "./subagent-submission";
 import { createStreamThrottle } from "./stream-throttle";
 import { compactionThreshold } from "./compaction-threshold";
 import { createQueue, enqueueMessage } from "./message-queue";
+import {
+  loadPreferences,
+  savePreferences,
+  MAX_PREFERENCE_LENGTH,
+  type UserPreference,
+} from "../preferences";
 
 export class Controller {
   state: UIState;
@@ -51,6 +57,18 @@ export class Controller {
   get registry(): ControllerDeps["registry"] {
     return this.deps.registry;
   }
+  preferences(): UserPreference[] {
+    return loadPreferences();
+  }
+  updatePreferences(
+    mutator: (preferences: UserPreference[]) => string,
+  ): string {
+    const preferences = loadPreferences();
+    const result = mutator(preferences);
+    if (!result.startsWith("error:")) savePreferences(preferences);
+    return result;
+  }
+  static readonly maxPreferenceLength = MAX_PREFERENCE_LENGTH;
 
   queuedMessages(): readonly QueueMessage[] {
     return this.queue;

@@ -17,6 +17,7 @@ describe("slashSuggestions", () => {
         "/help",
         "/model",
         "/new",
+        "/preference",
         "/reload-skills",
         "/rename",
         "/session",
@@ -42,6 +43,8 @@ describe("slashSuggestions", () => {
     expect(
       slashSuggestions("/memory a", [], [], { memory: ["add", "archive"] }),
     ).toEqual(["/memory add", "/memory archive"]));
+  it("suggests built-in preference subcommands", () =>
+    expect(slashSuggestions("/preference e")).toEqual(["/preference edit"]));
 });
 
 describe("subagent suggestions", () => {

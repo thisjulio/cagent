@@ -3,11 +3,25 @@ import { expandCommand } from "./discovery";
 import { appendChat, notify } from "../controller/chat-buffer";
 import { saveLastChoice } from "../controller/model-persistence";
 import type { Task } from "../tasks";
+import { MAX_PREFERENCE_LENGTH, type UserPreference } from "../preferences";
 
 type SlashHandler = (c: Controller, arg: string) => void | Promise<void>;
 
 // ponytail: the dispatch map replaces the if chain in submit; a new command is a new entry, without touching the controller.
 const commands: Record<string, SlashHandler> = {
+  "/preference": (c, arg) => {
+    const [operation = "list", ...rest] = arg.trim().split(/\s+/);
+    const text = rest.join(" ").trim();
+    const result = c.updatePreferences((preferences) =>
+      preferenceOperation(operation, rest, text, preferences),
+    );
+    appendChat(c.state, {
+      kind: "assistant",
+      content: result,
+      command: `/preference${arg ? ` ${arg}` : ""}`,
+    });
+    c.bump();
+  },
   "/compact": (c, arg) => {
     appendChat(c.state, {
       kind: "user",
@@ -91,6 +105,52 @@ const commands: Record<string, SlashHandler> = {
     await c.submit(prompt || `Apply the ${name} skill now.`);
   },
 };
+
+function preferenceOperation(
+  operation: string,
+  args: string[],
+  text: string,
+  preferences: UserPreference[],
+): string {
+  if (operation === "list") {
+    return preferences.length === 0
+      ? "Preferences\n└─ no preferences"
+      : [
+          "Preferences",
+          ...preferences.map(
+            (item) =>
+              `├─ [${item.id}] ${item.enabled ? "active" : "disabled"} ${item.text}`,
+          ),
+        ].join("\n");
+  }
+  if (operation === "add") {
+    if (!text) return "error: usage: /preference add <text>";
+    if (text.length > MAX_PREFERENCE_LENGTH)
+      return `error: preference must be at most ${MAX_PREFERENCE_LENGTH} characters`;
+    const id = Math.max(0, ...preferences.map((item) => item.id)) + 1;
+    preferences.push({ id, text, enabled: true });
+    return `Preference added [${id}]`;
+  }
+  const id = Number(args[0]);
+  const item = preferences.find((candidate) => candidate.id === id);
+  if (!item) return "error: preference ID not found";
+  if (operation === "toggle") {
+    item.enabled = !item.enabled;
+    return `Preference [${id}] ${item.enabled ? "enabled" : "disabled"}`;
+  }
+  if (operation === "remove") {
+    preferences.splice(preferences.indexOf(item), 1);
+    return `Preference removed [${id}]`;
+  }
+  if (operation === "edit") {
+    if (!text) return "error: usage: /preference edit <id> <text>";
+    if (text.length > MAX_PREFERENCE_LENGTH)
+      return `error: preference must be at most ${MAX_PREFERENCE_LENGTH} characters`;
+    item.text = text;
+    return `Preference edited [${id}]`;
+  }
+  return "error: usage: /preference [add <text>|list|edit <id> <text>|toggle <id>|remove <id>]";
+}
 
 function formatTaskResult(result: string): string {
   try {
