@@ -29,6 +29,7 @@ export type SubagentExecutionDeps = {
   ask: ToolAsk;
   bus: EventBus;
   verification?: VerificationRunner;
+  readOnly?: boolean;
 };
 
 export function createSubagentExecutor(
@@ -66,6 +67,7 @@ export function createSubagentExecutor(
       allowlist: deps.allowlist,
       ask: deps.ask,
       bus: deps.bus,
+      readOnly: deps.readOnly,
       hooks: deps.registry.hooks,
       verification: deps.verification,
     });

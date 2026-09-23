@@ -32,10 +32,6 @@ function deps(): ControllerDeps {
     model: "openai/m1",
     systemPrompt: "sys",
     sessionDir: fs.mkdtempSync(path.join(os.tmpdir(), "cagent-ui-")),
-    modelChoiceFile: path.join(
-      fs.mkdtempSync(path.join(os.tmpdir(), "cagent-app-model-")),
-      "last-model.json",
-    ),
   };
 }
 

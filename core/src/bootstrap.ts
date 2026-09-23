@@ -8,7 +8,7 @@ import { EventBus } from "./events";
 import { Registry } from "./registry";
 import { buildSystemPrompt } from "./prompt";
 import { splitRoute } from "./route";
-import { isRouteAvailable, resolveRoute } from "./route-resolver";
+import { resolveRoute } from "./route-resolver";
 import { Controller } from "./controller/controller";
 import { appendChat, notify } from "./controller/chat-buffer";
 import { App } from "./ui/components/App";
@@ -28,17 +28,12 @@ import type { ToolAsk } from "./tools";
 import type { CliOptions } from "./cli-args";
 import { createLocalObservability } from "./local-telemetry";
 import { initializeModel } from "./controller/models";
-import {
-  clearLastChoice,
-  loadLastChoice,
-} from "./controller/model-persistence";
 import { runHeadless } from "./headless";
 import { installPluginCleanup } from "./bootstrap/cleanup";
 export interface BootstrapOptions {
   defaultPlugins?: AppConfig["plugins"];
   pluginLoaders?: Record<string, Plugin>;
   observability?: Observability;
-  modelChoiceFile?: string;
   cli?: CliOptions;
   headless?: CliOptions;
   authCommand?: { provider: string; action: string };
@@ -63,7 +58,6 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
   if (options.headless?.model) config.model = options.headless.model;
   if (options.headless?.variant) config.variant = options.headless.variant;
   if (options.headless?.logLevel) config.log_level = options.headless.logLevel;
-  const lastChoice = loadLastChoice(options.modelChoiceFile);
   const telemetryOverride =
     options.headless?.telemetry ?? options.cli?.telemetry;
   if (telemetryOverride !== undefined) {
@@ -122,22 +116,6 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
       }
     : undefined;
   if (skills) registry.registerTool(createReadSkillTool(skills));
-  let lastChoiceAvailable = false;
-  if (lastChoice?.model) {
-    lastChoiceAvailable = await isRouteAvailable(lastChoice.model, registry);
-    if (!lastChoiceAvailable) {
-      clearLastChoice(options.modelChoiceFile);
-    } else if (!options.headless?.model) {
-      config.model = lastChoice.model;
-    }
-  }
-  if (
-    !options.headless?.variant &&
-    lastChoiceAvailable &&
-    lastChoice?.variant
-  ) {
-    config.variant = lastChoice.variant;
-  }
   let route = await resolveRoute(config, registry);
   let adapter = registry.provider(splitRoute(route)[0]);
   if (!adapter) throw new Error("(no provider - nothing to do)");
@@ -159,6 +137,7 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
     ask: (...args) => ask(...args),
     bus,
     verification,
+    readOnly: options.headless?.permissionMode === "read-only",
   });
   const c = new Controller({
     config,
@@ -167,11 +146,11 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
     adapter,
     model: route,
     variant: config.variant,
-    modelChoiceFile: options.modelChoiceFile,
     contextWindow,
     sessionId: options.headless?.session,
     maxTurns: options.headless?.maxTurns,
     maxToolCalls: options.headless?.maxToolCalls,
+    readOnly: options.headless?.permissionMode === "read-only",
     systemPrompt: buildSystemPrompt(
       process.cwd(),
       loadedPlugins.promptSections,

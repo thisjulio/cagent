@@ -17,7 +17,7 @@ describe("tool pipeline", () => {
     await runToolPipeline(
       tool,
       { command: "git status" },
-      ["git"],
+      ["git status"],
       async () => false,
       eventBus,
     );
@@ -25,11 +25,11 @@ describe("tool pipeline", () => {
     expect(events[0]).toMatchObject({ title: "Executing bash" });
   });
 
-  it("allowlist permits without a prompt", async () => {
+  it("allowlist permits an exact command without a prompt", async () => {
     const res = await runToolPipeline(
       tool,
       { command: "git status" },
-      ["git"],
+      ["git status"],
       async () => false,
       bus,
     );
@@ -58,10 +58,28 @@ describe("tool pipeline", () => {
     expect(res.output).toContain("boom");
   });
 
-  it("permission matches by prefix", () => {
-    expect(permission(tool, { command: "ls" }, ["ls"])).toBe("allow");
-    expect(permission(tool, { command: "ls -la" }, ["ls"])).toBe("allow");
-    expect(permission(tool, { command: "ls" }, ["lso"])).toBe("ask");
-    expect(permission(tool, { command: "ls" }, [])).toBe("ask");
+  it("allowlist matches exact command text only", () => {
+    expect(permission(tool, { command: "git status" }, ["git status"])).toBe(
+      "allow",
+    );
+    expect(
+      permission(tool, { command: "git status --short" }, ["git status"]),
+    ).toBe("ask");
+    expect(permission(tool, { command: "git-evil status" }, ["git"])).toBe(
+      "ask",
+    );
+    expect(
+      permission(tool, { command: "git status && rm -rf /" }, ["git status"]),
+    ).toBe("ask");
+    expect(permission(tool, { command: "git status" }, [])).toBe("ask");
+  });
+
+  it("read-only mode denies writes even when allowlisted", () => {
+    expect(
+      permission(tool, { command: "git status" }, ["git status"], true),
+    ).toBe("deny");
+    expect(
+      permission({ ...tool, name: "read_file" }, { path: "a.ts" }, [], true),
+    ).toBe("ask");
   });
 });

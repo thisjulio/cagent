@@ -52,6 +52,7 @@ export async function runToolCall(
           opts.signal,
           opts.observability,
           title,
+          opts.readOnly,
         )
     : { output: `tool not found: ${tc.name}`, isError: true };
   const normalizedCall = {

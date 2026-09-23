@@ -103,13 +103,13 @@ export interface ControllerDeps {
   adapter: ProviderAdapter;
   model: string;
   variant?: string;
-  modelChoiceFile?: string;
   contextWindow?: number;
   systemPrompt: string;
   sessionDir?: string;
   sessionId?: string;
   maxTurns?: number;
   maxToolCalls?: number;
+  readOnly?: boolean;
   onText?: (text: string) => void;
   onReasoning?: (text: string) => void;
   onToolEvent?: (event: {

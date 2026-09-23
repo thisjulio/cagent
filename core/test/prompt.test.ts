@@ -14,6 +14,10 @@ describe("buildSystemPrompt", () => {
   expect(p).toContain("## Environment");
   expect(p).toContain("parent rule");
   expect(p).toContain("## Tools");
+  expect(p).toContain(
+    "Follow active persistent user preferences when writing task titles",
+  );
+  expect(p).toContain("Do not assume a product-wide default language.");
 });
 
 describe("scoped rules", () => {

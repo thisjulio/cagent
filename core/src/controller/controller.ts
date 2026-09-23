@@ -49,6 +49,7 @@ export class Controller {
   session: Session;
   maxTurns?: number;
   maxToolCalls?: number;
+  readonly readOnly: boolean;
   onText?: (text: string) => void;
   onReasoning?: (text: string) => void;
   onToolEvent?: ControllerDeps["onToolEvent"];
@@ -120,9 +121,6 @@ export class Controller {
   get systemPrompt(): string | undefined {
     return this.deps.systemPrompt;
   }
-  get modelChoiceFile(): string | undefined {
-    return this.deps.modelChoiceFile;
-  }
   get observability(): ControllerDeps["observability"] {
     return this.deps.observability;
   }
@@ -159,6 +157,7 @@ export class Controller {
     this.session = new Session(deps.sessionId, deps.sessionDir);
     this.maxTurns = deps.maxTurns;
     this.maxToolCalls = deps.maxToolCalls;
+    this.readOnly = deps.readOnly ?? false;
     this.onText = deps.onText;
     this.onReasoning = deps.onReasoning;
     this.onToolEvent = deps.onToolEvent;

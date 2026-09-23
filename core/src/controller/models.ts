@@ -1,9 +1,9 @@
 import { splitRoute } from "../route";
 import type { Controller } from "./controller";
-import { saveLastChoice, loadLastChoice } from "./model-persistence";
 import { compactionThreshold } from "./compaction-threshold";
 import { notify } from "./chat-buffer";
 import type { SessionModelSelection } from "../session/index";
+import { findLatestModelSelection } from "./sessions";
 
 // ponytail: providers that fail list_models are ignored; duplicate model names across providers use the first registration.
 export async function openModelPicker(c: Controller): Promise<void> {
@@ -28,15 +28,13 @@ export async function initializeModel(
 ): Promise<void> {
   let route = "";
 
-  // ponytail: trust the saved choice; do not validate against list_models()
-  // because providers may be slow to respond (e.g. llama.cpp loading). If the
-  // model is gone, the error surfaces when the user sends a message.
-  const last = loadLastChoice(c.modelChoiceFile);
   const sessionChoice = c.session.load().modelSelection;
-  if (last?.model) {
-    route = last.model;
-  }
   if (sessionChoice?.model) route = sessionChoice.model;
+  if (!route) {
+    const latest = findLatestModelSelection(c.sessionDir);
+    if (latest?.model) route = latest.model;
+  }
+  const hasAuthoritativeSource = !!route;
 
   if (!route && configured) {
     route = configured;
@@ -55,7 +53,7 @@ export async function initializeModel(
 
   // ponytail: if the user picked a model via the picker before initialization
   // completed, don't override their choice
-  if (!last?.model && c.state.model && c.state.model !== route) {
+  if (!hasAuthoritativeSource && c.state.model && c.state.model !== route) {
     return;
   }
 
@@ -66,8 +64,7 @@ export async function initializeModel(
     c,
     route,
     adapter,
-    sessionChoice?.variant ??
-      (sessionChoice ? undefined : (last?.variant ?? c.state.variant)),
+    sessionChoice?.variant ?? (sessionChoice ? undefined : c.state.variant),
   );
   c.bump();
 }
@@ -115,7 +112,6 @@ export async function pickModel(c: Controller, route: string): Promise<void> {
   c.observability?.recordEvent("model_picker.selected", {
     "model.route": route,
   });
-  saveLastChoice(route, undefined, c.modelChoiceFile);
   c.session.appendModelSelection({ model: route });
   c.bump();
 }

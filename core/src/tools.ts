@@ -19,13 +19,28 @@ export function permission(
   tool: ToolDefinition,
   args: ToolArgs,
   allowlist: string[],
-): "allow" | "ask" {
+  readOnly = false,
+): "allow" | "ask" | "deny" {
+  if (readOnly && !isReadOnlyTool(tool.name)) return "deny";
   const target =
     typeof args.command === "string"
       ? (args.command as string).trim()
       : JSON.stringify(args);
-  // ponytail: prefixes only for now; denylist and allowlist UX belong in Phase 7.
-  return allowlist.some((p) => target.startsWith(p)) ? "allow" : "ask";
+  return allowlist.includes(target) ? "allow" : "ask";
+}
+
+function isReadOnlyTool(name: string): boolean {
+  const normalized = name.toLowerCase();
+  return (
+    normalized.startsWith("read_") ||
+    normalized === "read" ||
+    normalized === "glob" ||
+    normalized === "list_files" ||
+    normalized === "search" ||
+    normalized === "search_ast" ||
+    normalized === "grep" ||
+    normalized === "lsp"
+  );
 }
 
 export async function runToolPipeline(
@@ -40,6 +55,7 @@ export async function runToolPipeline(
   signal?: AbortSignal,
   observability: Observability = noopObservability,
   title?: string,
+  readOnly = false,
 ): Promise<import("@cagent/sdk").ToolResult> {
   const toolTitle = ensureToolTitle(title, tool.name);
   const before =
@@ -63,9 +79,22 @@ export async function runToolPipeline(
       };
     }
   }
-  if (permission(tool, args, allowlist) === "ask" && !(await ask(tool, args))) {
-    bus.emit("tools/denied", { tool: tool.name, args, title: toolTitle });
-    return { output: `user denied execution of ${tool.name}`, isError: true };
+  const decision = permission(tool, args, allowlist, readOnly);
+  if (
+    decision !== "allow" &&
+    (decision === "deny" || !(await ask(tool, args)))
+  ) {
+    const reason =
+      decision === "deny"
+        ? `${tool.name} is disabled in read-only mode`
+        : `user denied execution of ${tool.name}`;
+    bus.emit("tools/denied", {
+      tool: tool.name,
+      args,
+      title: toolTitle,
+      reason,
+    });
+    return { output: reason, isError: true };
   }
   bus.emit("tools/pre", { tool: tool.name, args, title: toolTitle });
   try {

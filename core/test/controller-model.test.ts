@@ -8,7 +8,6 @@ import { Registry } from "../src/registry";
 import { Session } from "../src/session/index";
 import { Controller, type ControllerDeps } from "../src/controller/controller";
 import { sanitizeTitle } from "../src/controller/sessions";
-import { loadLastChoice } from "../src/controller/model-persistence";
 import { initializeModel } from "../src/controller/models";
 import { savePreferences } from "../src/preferences";
 import type { Message } from "@cagent/sdk";
@@ -37,10 +36,6 @@ function deps(
     model: "openai/m1",
     systemPrompt: "sys",
     sessionDir: fs.mkdtempSync(path.join(os.tmpdir(), "cagent-ui-")),
-    modelChoiceFile: path.join(
-      fs.mkdtempSync(path.join(os.tmpdir(), "cagent-model-choice-")),
-      "last-model.json",
-    ),
   };
 }
 
@@ -97,16 +92,16 @@ describe("controller model and commands", () => {
     await c.pickModel("openai/model-a");
 
     expect(c.state.variant).toBeUndefined();
-    expect(loadLastChoice(d.modelChoiceFile)).toMatchObject({
-      model: "openai/model-a",
-    });
   });
 
   it("restores the persisted choice instead of the configured model", async () => {
     const d = deps();
     d.registry.registerProvider("openai", d.adapter);
     const c = new Controller(d);
-    saveChoice(d.modelChoiceFile, "openai/model-b", "balanced");
+    c.session.appendModelSelection({
+      model: "openai/model-b",
+      variant: "balanced",
+    });
 
     await initializeModel(c, "openai/model-a");
 
@@ -299,7 +294,13 @@ describe("controller model and commands", () => {
       d.adapter = {
         list_models: async () => ["model-a"],
         prepare_call: async (o) => {
-          capturedMessages = o.messages;
+          if (
+            o.messages.some((message) =>
+              String(message.content).includes("You are a title generator"),
+            )
+          ) {
+            capturedMessages = o.messages;
+          }
           return o;
         },
         stream: async function* () {
@@ -312,10 +313,13 @@ describe("controller model and commands", () => {
       const c = new Controller(d);
       await c.submit("olá, como vai?");
 
-      expect(capturedMessages).toHaveLength(3);
+      expect(capturedMessages.length).toBeGreaterThanOrEqual(3);
       expect(capturedMessages[0].role).toBe("system");
       expect(String(capturedMessages[0].content)).toContain(
         "Responda sempre em português",
+      );
+      expect(String(capturedMessages[1].content)).toContain(
+        "Follow all active persistent user preferences",
       );
     } finally {
       if (original !== null) fs.writeFileSync(prefFile, original);
@@ -323,16 +327,3 @@ describe("controller model and commands", () => {
     }
   });
 });
-
-function saveChoice(
-  file: string | undefined,
-  model: string,
-  variant: string,
-): void {
-  if (!file) throw new Error("test model choice file is missing");
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(
-    file,
-    JSON.stringify({ model, variant, timestamp: Date.now() }),
-  );
-}

@@ -47,6 +47,9 @@ export async function submitShell(
       controller.bus,
       controller.registry.hooks,
       controller.signal,
+      undefined,
+      undefined,
+      controller.readOnly,
     );
     controller.observability?.recordEvent(
       result.isError ? "shell.failed" : "shell.completed",

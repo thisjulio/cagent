@@ -1,7 +1,6 @@
 import type { Controller } from "../controller/controller";
 import { expandCommand } from "./discovery";
 import { appendChat, notify } from "../controller/chat-buffer";
-import { saveLastChoice } from "../controller/model-persistence";
 import type { Task } from "../tasks";
 import { MAX_PREFERENCE_LENGTH, type UserPreference } from "../preferences";
 
@@ -75,7 +74,6 @@ const commands: Record<string, SlashHandler> = {
     c.state.variant = val;
     notify(c.state, `variant set to: ${val}`);
     if (c.state.model) {
-      saveLastChoice(c.state.model, val, c.modelChoiceFile);
       c.session.appendModelSelection({ model: c.state.model, variant: val });
     }
     c.bump();

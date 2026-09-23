@@ -25,6 +25,7 @@ export type TurnHost = {
   allowlist: string[];
   ask: ToolAsk;
   bus: EventBus;
+  readOnly?: boolean;
   hooks: {
     run(
       event: import("@cagent/sdk").HookEvent,
@@ -158,6 +159,7 @@ async function runAgentTurn(
     allowlist: host.allowlist,
     ask: host.ask,
     bus: host.bus,
+    readOnly: host.readOnly ?? false,
     hooks: host.hooks,
     signal: host.signal,
     onText: (text) => {

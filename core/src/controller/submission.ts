@@ -113,6 +113,7 @@ export async function submitMessage(
       allowlist: controller.config.allowlist,
       ask: controller.ask,
       bus: controller.bus,
+      readOnly: controller.readOnly,
       hooks: controller.registry.hooks,
       session: controller.session,
       interrupted: () => controller.isInterrupted(),

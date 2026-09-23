@@ -45,6 +45,7 @@ export interface TurnOpts extends StreamOpts {
   allowlist: string[];
   ask: ToolAsk;
   bus: EventBus;
+  readOnly?: boolean;
   hooks?: {
     run(
       event: import("@cagent/sdk").HookEvent,
