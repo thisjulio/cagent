@@ -18,6 +18,7 @@ export const LLAMA_AGENT_PROMPT = [
   "Use `*** Begin Patch` and `*** End Patch`, with one file header per file.",
   "For updates use `*** Update File: path`, an optional `@@` line, then context lines starting with a space, removals with -, and additions with +.",
   "Use `*** Add File: path` for new files, `*** Delete File: path` for deletion, and optional `*** Move to: path` after an update header.",
+  "If an edit fails because the target is ambiguous (found multiple times), add more surrounding context lines to make it unique. If it fails because the target was not found, call read_file again and copy the exact current lines.",
   "Read the file first. Do not use markdown fences, SEARCH/REPLACE blocks, shell commands, or conversational text.",
   "`write_file` takes `path` and `content`.",
   "Content is normal text with real line breaks. Use it for new files.",
