@@ -117,7 +117,7 @@ const queries: Record<string, string> = {
   go: "(function_declaration name: (identifier) @name) @definition\n(method_declaration name: (field_identifier) @name) @definition\n(type_declaration (type_spec name: (type_identifier) @name)) @definition\n(type_declaration (type_alias name: (type_identifier) @name)) @definition\n(var_spec name: (identifier) @name) @definition\n(const_spec name: (identifier) @name) @definition\n(field_declaration name: (field_identifier) @name) @definition",
   java: "(class_declaration name: (identifier) @name) @definition\n(method_declaration name: (identifier) @name) @definition\n(interface_declaration name: (identifier) @name) @definition\n(enum_declaration name: (identifier) @name) @definition\n(record_declaration name: (identifier) @name) @definition\n(annotation_type_declaration name: (identifier) @name) @definition\n(field_declaration declarator: (variable_declarator name: (identifier) @name)) @definition\n(enum_constant name: (identifier) @name) @definition\n(constant_declaration declarator: (variable_declarator name: (identifier) @name)) @definition",
   c: "(function_definition declarator: (function_declarator declarator: (identifier) @name)) @definition\n(struct_specifier name: (type_identifier) @name) @definition\n(type_definition declarator: (type_identifier) @name) @definition\n(enum_specifier name: (type_identifier) @name) @definition\n(enumerator name: (identifier) @name) @definition\n(preproc_def name: (identifier) @name) @definition\n(preproc_function_def name: (identifier) @name) @definition\n(declaration declarator: (init_declarator declarator: (identifier) @name)) @definition\n(declaration declarator: (identifier) @name) @definition\n(declaration declarator: (function_declarator declarator: (identifier) @name)) @definition",
-  cpp: "(function_definition declarator: (function_declarator declarator: (identifier) @name)) @definition\n(function_definition declarator: (function_declarator declarator: (field_identifier) @name)) @definition\n(class_specifier name: (type_identifier) @name) @definition\n(struct_specifier name: (type_identifier) @name) @definition\n(enum_specifier name: (type_identifier) @name) @definition\n(enumerator name: (identifier) @name) @definition\n(alias_declaration name: (type_identifier) @name) @definition\n(namespace_definition name: (namespace_identifier) @name) @definition\n(field_declaration declarator: (field_identifier) @name) @definition\n(preproc_def name: (identifier) @name) @definition\n(preproc_function_def name: (identifier) @name) @definition\n(declaration declarator: (init_declarator declarator: (identifier) @name)) @definition\n(declaration declarator: (identifier) @name) @definition\n(declaration declarator: (function_declarator declarator: (identifier) @name)) @definition",
+  cpp: "(function_definition declarator: (function_declarator declarator: (identifier) @name)) @definition\n(function_definition declarator: (function_declarator declarator: (field_identifier) @name)) @definition\n(class_specifier name: (type_identifier) @name) @definition\n(struct_specifier name: (type_identifier) @name) @definition\n(enum_specifier name: (type_identifier) @name) @definition\n(enumerator name: (identifier) @name) @definition\n(alias_declaration name: (type_identifier) @name) @definition\n(namespace_definition name: (namespace_identifier) @name) @definition\n(field_declaration declarator: (field_identifier) @name) @definition\n(preproc_def name: (identifier) @name) @definition\n(preproc_function_def name: (identifier) @name) @definition\n(declaration declarator: (init_declarator declarator: (identifier) @name)) @definition\n(declaration declarator: (identifier) @name) @definition\n(declaration declarator: (function_declarator declarator: (identifier) @name)) @definition\n(type_definition declarator: (type_identifier) @name) @definition\n(union_specifier name: (type_identifier) @name) @definition\n(field_declaration declarator: (function_declarator declarator: (_) @name)) @definition\n(declaration declarator: (function_declarator declarator: (_) @name)) @definition\n(function_definition declarator: (function_declarator declarator: (_) @name)) @definition",
   css: "(rule_set (selectors) @name) @definition",
   html: "(element (start_tag (tag_name) @name)) @definition",
   json: "(pair key: (string) @name) @definition",
@@ -205,6 +205,8 @@ const kinds: Record<string, Record<string, string>> = {
     enum_specifier: "g",
     enumerator: "e",
     alias_declaration: "t",
+    type_definition: "t",
+    union_specifier: "u",
     namespace_definition: "n",
     field_declaration: "m",
     preproc_def: "d",
@@ -337,6 +339,12 @@ function isModuleVariable(node: Node): boolean {
 }
 
 function tagKind(grammar: string, node: Node, nameNode: Node): string {
+  if (
+    grammar === "cpp" &&
+    (node.type === "declaration" || node.type === "field_declaration") &&
+    nameNode.parent?.type === "function_declarator"
+  )
+    return "f";
   if (grammar === "java" && node.type === "field_declaration") {
     const modifiers = node.namedChildren.find(
       (child) => child?.type === "modifiers",
@@ -413,6 +421,7 @@ export async function parseFile(
         )
           return [];
         const name = nameNode.text.replace(/^['"]|['"]$/g, "");
+        if (name.length > 240 || name.includes("\n")) return [];
         const semanticNode =
           grammar === "rust" &&
           definition.type === "struct_item" &&
@@ -429,7 +438,7 @@ export async function parseFile(
             name,
             kind,
             scope,
-            file: path.relative(process.cwd(), file),
+            file: path.relative(process.cwd(), file).split(path.sep).join("/"),
             line: nameNode.startPosition.row + 1,
             endLine: semanticNode.endPosition.row + 1,
             signature: semanticNode.text.split("\n", 1)[0].trim().slice(0, 240),

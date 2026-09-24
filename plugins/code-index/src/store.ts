@@ -98,7 +98,12 @@ export function createCodeIndex(ctx: PluginContext) {
         if (entry.isDirectory()) {
           if (!ignored.has(entry.name)) await walk(path.join(dir, entry.name));
         } else if (entry.isFile() && EXTENSIONS[path.extname(entry.name)]) {
-          found.push(path.relative(root, path.join(dir, entry.name)));
+          found.push(
+            path
+              .relative(root, path.join(dir, entry.name))
+              .split(path.sep)
+              .join("/"),
+          );
         }
       }
     }
