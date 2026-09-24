@@ -97,12 +97,6 @@ export async function submitMessage(
             role: "system" as const,
             content: contribution.content,
           });
-        const taskCheckpoint = taskCheckpointMessage(controller.state.tasks);
-        if (taskCheckpoint)
-          requestMessages.push({
-            role: "system" as const,
-            content: taskCheckpoint,
-          });
         const turnContext = contextContributions.filter(
           (entry) => entry.phase !== "stable",
         );
@@ -138,6 +132,12 @@ export async function submitMessage(
           "context.omitted": 0,
           "context.recent_turns": 0,
         });
+        const taskCheckpoint = taskCheckpointMessage(controller.state.tasks);
+        if (taskCheckpoint)
+          requestMessages.push({
+            role: "user" as const,
+            content: taskCheckpoint,
+          });
         return requestMessages;
       },
       tools: taskAwareTools(controller),
