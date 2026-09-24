@@ -1,4 +1,7 @@
+import { orderContextExtensions } from "@cagent/sdk";
 import type {
+  ContextExtension,
+  ContextContribution,
   Message,
   ToolArgs,
   ToolDefinition,
@@ -111,6 +114,8 @@ export class Controller {
   envStamp: number = Date.now();
   private askResolver: ((ok: boolean) => void) | null = null;
   private queue: QueueMessage[] = createQueue();
+  private stableContext = new Map<string, ContextContribution[]>();
+  private stableContextSessionId?: string;
   questionService: QuestionService;
   get config(): ControllerDeps["config"] {
     return this.deps.config;
@@ -126,6 +131,85 @@ export class Controller {
   }
   get verification(): ControllerDeps["verification"] {
     return this.deps.verification;
+  }
+  invalidateStableContext(): void {
+    this.stableContext.clear();
+  }
+  async contextContributions(
+    query: string,
+  ): Promise<Array<ContextContribution & { phase: string }>> {
+    if (this.stableContextSessionId !== this.session.id) {
+      this.stableContext.clear();
+      this.stableContextSessionId = this.session.id;
+    }
+    const extensions = this.deps.contextExtensions ?? [];
+    let remaining = Math.max(0, this.deps.contextTokenBudget ?? 2000);
+    const contributions: Array<ContextContribution & { phase: string }> = [];
+    const ordered = orderContextExtensions(extensions);
+    for (const extension of ordered) {
+      try {
+        let entries: ContextContribution[] = [];
+        if (extension.phase === "stable") {
+          entries = this.stableContext.get(extension.id) ?? [];
+          if (!this.stableContext.has(extension.id)) {
+            const contribution = await this.contributeWithTimeout(
+              extension,
+              query,
+              remaining,
+            );
+            if (contribution) entries = [contribution];
+            this.stableContext.set(extension.id, entries);
+          }
+        } else {
+          const contribution = await this.contributeWithTimeout(
+            extension,
+            query,
+            remaining,
+          );
+          if (contribution) entries = [contribution];
+        }
+        for (const entry of entries) {
+          const tokens = Math.max(
+            0,
+            entry.estimatedTokens ?? Math.ceil(entry.content.length / 4),
+          );
+          if (tokens > remaining) continue;
+          remaining -= tokens;
+          contributions.push({ ...entry, phase: extension.phase });
+        }
+      } catch (error) {
+        this.observability?.recordEvent("context.extension.error", {
+          "extension.id": extension.id,
+          error: String(error),
+        });
+      }
+    }
+    return contributions;
+  }
+  private async contributeWithTimeout(
+    extension: ContextExtension,
+    query: string,
+    tokenBudget: number,
+  ): Promise<ContextContribution | void> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      return await Promise.race([
+        extension.contribute({
+          query,
+          sessionId: this.session.id,
+          tokenBudget,
+          signal: this.signal,
+        }),
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(
+            () => reject(new Error("extension timed out")),
+            250,
+          );
+        }),
+      ]);
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
   }
   get bus(): ControllerDeps["bus"] {
     return this.deps.bus;

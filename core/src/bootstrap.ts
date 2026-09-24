@@ -151,6 +151,8 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
     maxTurns: options.headless?.maxTurns,
     maxToolCalls: options.headless?.maxToolCalls,
     readOnly: options.headless?.permissionMode === "read-only",
+    contextExtensions: loadedPlugins.contextExtensions,
+    contextTokenBudget: config.context_extension_tokens,
     systemPrompt: buildSystemPrompt(
       process.cwd(),
       loadedPlugins.promptSections,

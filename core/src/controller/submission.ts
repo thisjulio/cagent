@@ -48,6 +48,7 @@ export async function submitMessage(
     controller.envStamp,
   );
   await compactBeforeSubmission(controller);
+  const contextContributions = await controller.contextContributions(text);
   controller.bump();
   const titlePromise = state.title
     ? Promise.resolve()
@@ -89,13 +90,38 @@ export async function submitMessage(
               ...preferences.map((item) => `- ${item.text}`),
             ].join("\n"),
           });
+        for (const contribution of contextContributions.filter(
+          (entry) => entry.phase === "stable",
+        ))
+          requestMessages.push({
+            role: "system" as const,
+            content: contribution.content,
+          });
         const taskCheckpoint = taskCheckpointMessage(controller.state.tasks);
         if (taskCheckpoint)
           requestMessages.push({
             role: "system" as const,
             content: taskCheckpoint,
           });
-        requestMessages.push(...messages);
+        const turnContext = contextContributions.filter(
+          (entry) => entry.phase !== "stable",
+        );
+        if (turnContext.length) {
+          const lastUserIndex = messages.findLastIndex(
+            (message) => message.role === "user",
+          );
+          const insertionIndex =
+            lastUserIndex < 0 ? messages.length : lastUserIndex;
+          requestMessages.push(...messages.slice(0, insertionIndex));
+          for (const contribution of turnContext)
+            requestMessages.push({
+              role: "system" as const,
+              content: contribution.content,
+            });
+          requestMessages.push(...messages.slice(insertionIndex));
+        } else {
+          requestMessages.push(...messages);
+        }
         controller.bus.emit(
           "prompt.assembled",
           workflowEvent(

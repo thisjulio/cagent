@@ -164,6 +164,7 @@ export async function compact(
     { role: "user", content: `[context checkpoint handoff]\n${bounded}` },
     ...rest,
   );
+  c.invalidateStableContext();
   c.session.append({
     ts: Date.now(),
     type: "meta",

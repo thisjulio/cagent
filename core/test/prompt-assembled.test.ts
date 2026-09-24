@@ -104,4 +104,90 @@ describe("prompt.assembled workflow event", () => {
       "ok",
     ]);
   });
+
+  it("assembles bounded stable and per-turn extension contributions", async () => {
+    const observability = new InMemoryObservability();
+    const deps = dependencies(observability);
+    const requests: Array<{ role: string; content: string }> = [];
+    deps.adapter.prepare_call = async (options) => {
+      requests.push(...options.messages);
+      return options;
+    };
+    deps.contextTokenBudget = 6;
+    let stableCalls = 0;
+    let turnCalls = 0;
+    deps.contextExtensions = [
+      {
+        id: "stable",
+        phase: "stable",
+        contribute: async () => {
+          stableCalls++;
+          return { content: "STABLE", source: "test", estimatedTokens: 2 };
+        },
+      },
+      {
+        id: "turn",
+        phase: "turn",
+        contribute: async ({ query }) => {
+          turnCalls++;
+          return {
+            content: `TURN:${query}`,
+            source: "test",
+            estimatedTokens: 2,
+          };
+        },
+      },
+      {
+        id: "over-budget",
+        phase: "turn",
+        contribute: async () => ({
+          content: "OMITTED",
+          source: "test",
+          estimatedTokens: 5,
+        }),
+      },
+    ];
+    const controller = new Controller(deps);
+    controller.state.title = "Existing title";
+
+    await controller.submit("first");
+    requests.length = 0;
+    await controller.submit("second");
+
+    expect(stableCalls).toBe(1);
+    expect(turnCalls).toBe(2);
+    expect(requests.map((message) => message.content)).toContain("STABLE");
+    expect(requests.map((message) => message.content)).toContain("TURN:second");
+    expect(requests.map((message) => message.content)).not.toContain("OMITTED");
+    expect(controller.messages.map((message) => message.content)).not.toContain(
+      "STABLE",
+    );
+  });
+
+  it("ignores extension failures and timeouts", async () => {
+    const observability = new InMemoryObservability();
+    const deps = dependencies(observability);
+    deps.contextExtensions = [
+      {
+        id: "throws",
+        phase: "turn",
+        contribute: async () => {
+          throw new Error("unavailable");
+        },
+      },
+      {
+        id: "slow",
+        phase: "turn",
+        contribute: () => new Promise(() => {}),
+      },
+    ];
+    const controller = new Controller(deps);
+    const result = await controller.contextContributions("query");
+    expect(result).toEqual([]);
+    expect(
+      observability.events.filter(
+        (event) => event.name === "context.extension.error",
+      ),
+    ).toHaveLength(2);
+  });
 });

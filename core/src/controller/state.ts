@@ -1,4 +1,9 @@
-import type { Observability, ProviderAdapter, ToolDisplay } from "@cagent/sdk";
+import type {
+  ContextExtension,
+  Observability,
+  ProviderAdapter,
+  ToolDisplay,
+} from "@cagent/sdk";
 import type { AppConfig } from "../config";
 import type { EventBus } from "../events";
 import type { Registry } from "../registry";
@@ -130,4 +135,6 @@ export interface ControllerDeps {
   invokeSubagent?: (request: SubagentRequest) => Promise<string>;
   observability?: Observability;
   verification?: VerificationRunner;
+  contextExtensions?: ContextExtension[];
+  contextTokenBudget?: number;
 }
