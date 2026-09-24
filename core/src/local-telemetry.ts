@@ -26,6 +26,8 @@ type TelemetryRecord = {
 };
 
 const MAX_BUFFER_CHARS = 1024 * 1024;
+const MAX_FILE_BYTES = 50 * 1024 * 1024;
+const ROTATION_COUNT = 5;
 
 // run.id is stable for the lifetime of the process
 const RUN_ID = crypto.randomUUID();
@@ -57,6 +59,7 @@ const resourceSnapshot = (): ResourceSnapshot => {
   } catch {
     // Linux I/O counters are optional.
   }
+
   return snapshot;
 };
 
@@ -137,14 +140,84 @@ class FileSpan implements Span {
 
 export class LocalFileObservability implements Observability {
   private readonly file: string;
+  private readonly maxFileBytes: number;
   private buffer: string = "";
   private flushTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
     file = path.join(os.homedir(), ".cagent", "telemetry", "events.jsonl"),
+    maxFileBytes = MAX_FILE_BYTES,
   ) {
     this.file = resolveTelemetryPath(file);
+    this.maxFileBytes = maxFileBytes;
     fs.mkdirSync(path.dirname(this.file), { recursive: true, mode: 0o700 });
+  }
+
+  summary(sessionId: string): {
+    file: string;
+    bytes: number;
+    spans: number;
+    events: number;
+    metrics: number;
+    providerCalls: number;
+    agentTurns: number;
+  } {
+    this.flush();
+    let spans = 0;
+    let events = 0;
+    let metrics = 0;
+    let providerCalls = 0;
+    let agentTurns = 0;
+    const files = [
+      this.file,
+      ...Array.from(
+        { length: ROTATION_COUNT },
+        (_, index) => `${this.file}.${index + 1}`,
+      ),
+    ];
+    for (const file of files) {
+      if (!fs.existsSync(file)) continue;
+      let content: string;
+      try {
+        content = fs.readFileSync(file, "utf8");
+      } catch {
+        continue;
+      }
+      for (const line of content.split("\n")) {
+        if (!line) continue;
+        try {
+          const record = JSON.parse(line) as {
+            type?: string;
+            name?: string;
+            attributes?: Record<string, unknown>;
+          };
+          if (record.attributes?.session_id !== sessionId) continue;
+          if (record.type === "span") {
+            spans++;
+            if (record.name === "provider.stream") providerCalls++;
+            if (record.name === "agent.turn") agentTurns++;
+          } else if (record.type === "event") events++;
+          else if (record.type === "metric") metrics++;
+        } catch {
+          // Ignore an incomplete or malformed JSONL record.
+        }
+      }
+    }
+    let bytes = 0;
+    try {
+      bytes = fs.statSync(this.file).size;
+    } catch {
+      // The event file is created on its first flush.
+    }
+    return {
+      file: this.file,
+      bytes,
+      spans,
+      events,
+      metrics,
+      providerCalls,
+      agentTurns,
+    };
   }
 
   startSpan(name: string, attributes: Attributes = {}): Span {
@@ -180,6 +253,7 @@ export class LocalFileObservability implements Observability {
       this.flushTimer = null;
     }
     if (this.buffer) {
+      this.rotateIfNeeded(Buffer.byteLength(this.buffer));
       fs.appendFileSync(this.file, this.buffer, { mode: 0o600 });
       this.buffer = "";
     }
@@ -188,8 +262,7 @@ export class LocalFileObservability implements Observability {
   enqueue(record: TelemetryRecord): void {
     const serialized = `${JSON.stringify(record)}\n`;
     if (this.buffer.length + serialized.length > MAX_BUFFER_CHARS) {
-      this.scheduleFlush();
-      return;
+      this.flush();
     }
     this.buffer += serialized;
     this.scheduleFlush();
@@ -201,6 +274,22 @@ export class LocalFileObservability implements Observability {
         this.flushTimer = null;
         this.flush();
       }, 100);
+    }
+  }
+
+  private rotateIfNeeded(incomingBytes: number): void {
+    try {
+      const size = fs.statSync(this.file).size;
+      if (size + incomingBytes <= this.maxFileBytes) return;
+      for (let index = ROTATION_COUNT; index >= 1; index--) {
+        const source = index === 1 ? this.file : `${this.file}.${index - 1}`;
+        const target = `${this.file}.${index}`;
+        if (!fs.existsSync(source)) continue;
+        if (index === ROTATION_COUNT) fs.rmSync(target, { force: true });
+        fs.renameSync(source, target);
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
     }
   }
 

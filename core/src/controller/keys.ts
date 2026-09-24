@@ -24,10 +24,30 @@ export function onKey(c: Controller, key: InputKey, input: string): void {
     c.bump();
     return;
   }
+  if (s.toolViewerIndex != null) {
+    if (key.escape) s.toolViewerIndex = null;
+    c.bump();
+    return;
+  }
+  if (s.lspPanel) {
+    if (key.escape) s.lspPanel = false;
+    c.bump();
+    return;
+  }
+  if (s.infoPanel) {
+    if (key.escape) s.infoPanel = null;
+    c.bump();
+    return;
+  }
   if (s.modelPicker) {
     if (key.escape) {
       c.observability?.recordEvent("model_picker.cancelled");
       s.modelPicker = null;
+    } else if (key.backspace) {
+      s.modelPicker.query = s.modelPicker.query.slice(0, -1);
+      c.observability?.recordEvent("model_picker.query_changed", {
+        "query.length": s.modelPicker.query.length,
+      });
     } else if (input && !/^[1-9]$/.test(input)) {
       s.modelPicker.query += input;
       c.observability?.recordEvent("model_picker.query_changed", {
@@ -135,11 +155,12 @@ export function onKey(c: Controller, key: InputKey, input: string): void {
     return;
   }
   if (s.helpOpen) {
-    if (key.escape || key.return) {
+    if (key.escape) {
       c.observability?.recordEvent("help.closed", {
-        reason: key.escape ? "escape" : "return",
+        reason: "escape",
       });
       s.helpOpen = false;
+      s.helpTopic = undefined;
     }
     c.bump();
     return;
@@ -164,14 +185,18 @@ export function onKey(c: Controller, key: InputKey, input: string): void {
   if (key.ctrl && input === "o") {
     c.toggleToolExpand();
   } else if (key.escape) {
-    // Double-ESC while busy forces cancellation of running tools.
-    const now = Date.now();
-    if (s.busy && now - s.lastEscTime < DOUBLE_ESC_WINDOW_MS) {
-      c.forceCancel();
-    } else {
-      c.interrupt();
+    if (s.busy) {
+      const now = Date.now();
+      if (now - s.lastEscTime < DOUBLE_ESC_WINDOW_MS) c.forceCancel();
+      else c.interrupt();
+      s.lastEscTime = now;
+      return;
     }
-    s.lastEscTime = now;
+    if (!s.input.length) return;
+    c.setInput("");
+    s.inputKey += 1;
+    s.lastEscTime = 0;
+    c.bump();
   }
 }
 

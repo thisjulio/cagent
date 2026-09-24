@@ -10,6 +10,8 @@ import type { Registry } from "../registry";
 import type { SkillActivation } from "../skills/types";
 import type { ToolCategory } from "../tool-category";
 import type { Task } from "../tasks";
+import type { LspServer } from "../lsp/doctor";
+import type { ProviderUsage } from "../usage";
 import type { CustomCommand } from "../commands/types";
 import type { SubagentRequest } from "../subagents/executor";
 import type { VerificationRunner } from "../verification/runner";
@@ -35,6 +37,7 @@ export type ChatItem = {
   command?: string;
   startedAt?: number;
   durationMs?: number;
+  changesWorkspace?: boolean;
   display?: ToolDisplay;
 };
 
@@ -57,6 +60,9 @@ export type UIState = {
   tokens?: number;
   inputTokens?: number;
   outputTokens?: number;
+  cacheReadTokens: number;
+  cacheCreationTokens: number;
+  providerUsage: (ProviderUsage & { timestamp: number })[];
   contextWindow: number;
   threshold: number;
   busy: boolean;
@@ -77,6 +83,21 @@ export type UIState = {
   } | null;
   sessionList: { id: string; updated: string; title: string }[] | null;
   helpOpen: boolean;
+  helpTopic?: string;
+  infoPanel: "usage" | "telemetry" | null;
+  telemetrySummary?: {
+    file: string;
+    bytes: number;
+    spans: number;
+    events: number;
+    metrics: number;
+    providerCalls: number;
+    agentTurns: number;
+  };
+  lspPanel: boolean;
+  lspServers: LspServer[];
+  toolViewerIndex: number | null;
+  permissionMode: "ask" | "auto" | "read-only";
   title: string;
   sessionId: string;
   suggest: string[];
@@ -116,6 +137,7 @@ export interface ControllerDeps {
   maxTurns?: number;
   maxToolCalls?: number;
   readOnly?: boolean;
+  permissionMode?: "ask" | "auto" | "read-only";
   onText?: (text: string) => void;
   onReasoning?: (text: string) => void;
   onToolEvent?: (event: {

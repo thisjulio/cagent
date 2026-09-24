@@ -105,6 +105,32 @@ export function InputArea({
               void paste(textarea.current, key.shift, onClipboard);
               return;
             }
+            const editor = textarea.current;
+            if (editor && key.ctrl && key.name === "u") {
+              key.preventDefault();
+              editor.deleteToLineStart();
+            } else if (editor && key.ctrl && key.name === "w") {
+              key.preventDefault();
+              editor.deleteWordBackward();
+            } else if (editor && key.ctrl && key.name === "a") {
+              key.preventDefault();
+              editor.gotoLineStart();
+            } else if (editor && key.ctrl && key.name === "e") {
+              key.preventDefault();
+              editor.gotoLineTextEnd();
+            } else if (editor && key.ctrl && key.name === "left") {
+              key.preventDefault();
+              editor.moveWordBackward();
+            } else if (editor && key.ctrl && key.name === "right") {
+              key.preventDefault();
+              editor.moveWordForward();
+            } else if (editor && key.name === "home") {
+              key.preventDefault();
+              editor.gotoLineStart();
+            } else if (editor && key.name === "end") {
+              key.preventDefault();
+              editor.gotoLineTextEnd();
+            }
             // ponytail: intercept up before the textarea's binding handler runs;
             // preventDefault stops move-up in the keypress phase, and the
             // keyrelease move-up is a no-op on a single-line empty field.
@@ -143,7 +169,7 @@ async function paste(
   const value = await readClipboard();
   onClipboard?.("paste", value?.length ?? 0, value !== undefined);
   if (value !== undefined) {
-    textarea.insertText(plain ? value : value);
+    textarea.insertText(value.replace(/\r\n?|\n/g, " "));
     textarea.cursorOffset = textarea.plainText.length;
   }
 }

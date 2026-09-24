@@ -33,3 +33,7 @@ plugins:
     path: ./plugins/codex-prompts
   - name: claude-plugins
     path: ./plugins/claude-plugins
+  - name: lsp
+    path: ./plugins/lsp
+    config:
+      lsp: true

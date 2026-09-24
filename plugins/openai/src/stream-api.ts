@@ -26,7 +26,14 @@ export async function* streamApi(
     stream_options: { include_usage: true },
   });
   let finish = "stop";
-  let usage: { input_tokens: number; output_tokens: number } | undefined;
+  let usage:
+    | {
+        input_tokens: number;
+        output_tokens: number;
+        cache_read_tokens?: number;
+        cache_creation_tokens?: number;
+      }
+    | undefined;
   const toolCalls = new Map<
     number,
     { id: string; name: string; arguments: string }
@@ -58,6 +65,8 @@ export async function* streamApi(
       usage = {
         input_tokens: chunk.usage.prompt_tokens,
         output_tokens: chunk.usage.completion_tokens,
+        cache_read_tokens:
+          chunk.usage.prompt_tokens_details?.cached_tokens ?? 0,
       };
     }
   }

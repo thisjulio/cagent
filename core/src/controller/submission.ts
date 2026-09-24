@@ -144,7 +144,7 @@ export async function submitMessage(
       allowlist: controller.config.allowlist,
       ask: controller.ask,
       bus: controller.bus,
-      readOnly: controller.readOnly,
+      readOnly: false,
       hooks: controller.registry.hooks,
       session: controller.session,
       interrupted: () => controller.isInterrupted(),
@@ -184,7 +184,10 @@ export async function submitMessage(
           await compact(controller);
         }
       },
-      traceAttributes: { "turn.id": turnId },
+      traceAttributes: {
+        "turn.id": turnId,
+        session_id: controller.session.id,
+      },
       verification: controller.verification,
       continueTurn: async () => {
         const queued = controller.takeQueuedMessages();

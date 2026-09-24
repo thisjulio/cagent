@@ -23,6 +23,7 @@ const commands: Record<string, SlashHandler> = {
     });
     c.bump();
   },
+  "/lsp": (c) => c.openLspDoctor(),
   "/compact": (c, arg) => {
     appendChat(c.state, {
       kind: "user",
@@ -80,9 +81,34 @@ const commands: Record<string, SlashHandler> = {
     }
     c.bump();
   },
-  "/help": (c) => {
-    c.observability?.recordEvent("help.opened");
+  "/help": (c, arg) => {
     c.state.helpOpen = true;
+    c.state.helpTopic = arg.trim() || undefined;
+    c.observability?.recordEvent("command.executed", {
+      "command.name": "/help",
+      "command.known": true,
+      "argument.length": arg.trim().length,
+      session_id: c.state.sessionId,
+    });
+    c.bump();
+  },
+  "/usage": (c) => {
+    c.state.infoPanel = "usage";
+    c.observability?.recordEvent("command.executed", {
+      "command.name": "/usage",
+      "command.known": true,
+      session_id: c.state.sessionId,
+    });
+    c.bump();
+  },
+  "/telemetry": (c) => {
+    c.state.infoPanel = "telemetry";
+    c.state.telemetrySummary = c.getTelemetrySummary();
+    c.observability?.recordEvent("command.executed", {
+      "command.name": "/telemetry",
+      "command.known": true,
+      session_id: c.state.sessionId,
+    });
     c.bump();
   },
   "/reload-skills": (c) => {
@@ -198,6 +224,7 @@ export function runSlash(c: Controller, text: string): void | Promise<void> {
     "command.name": name,
     "command.known": Boolean(handler || custom || pluginCommand),
     "argument.length": arg.length,
+    session_id: c.state.sessionId,
   });
   if (!handler && custom) {
     return c.submit(expandCommand(custom, arg));

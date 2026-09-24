@@ -118,6 +118,11 @@ async function* streamChatCompletions(
                 usage: {
                   input_tokens: inputTokens,
                   output_tokens: outputTokens,
+                  cache_read_tokens:
+                    typeof usage?.prompt_tokens_details?.cached_tokens ===
+                    "number"
+                      ? usage.prompt_tokens_details.cached_tokens
+                      : 0,
                 },
               }
             : {}),

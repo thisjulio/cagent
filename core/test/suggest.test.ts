@@ -16,6 +16,7 @@ describe("slashSuggestions", () => {
         "/compact",
         "/help",
         "/init",
+        "/lsp",
         "/model",
         "/new",
         "/preference",
@@ -25,6 +26,8 @@ describe("slashSuggestions", () => {
         "/sessions",
         "/skill",
         "/tasks",
+        "/telemetry",
+        "/usage",
         "/variant",
       ].sort(),
     ));

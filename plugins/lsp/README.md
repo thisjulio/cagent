@@ -4,10 +4,10 @@ The LSP plugin provides a minimal JSON-RPC client for language servers running
 over standard input and output. It supports TypeScript/JavaScript, Python, and
 Rust by default.
 
-Install the language servers separately:
+TypeScript/JavaScript and Python servers ship with the plugin as dependencies
+(`typescript-language-server` and `pyright`) and are resolved from the local
+`node_modules/.bin` automatically. Rust requires a separate install:
 
-- TypeScript/JavaScript: `typescript-language-server --stdio`
-- Python: `pyright-langserver --stdio`
 - Rust: `rust-analyzer`
 
 Enable the plugin in `cagent.yml`:

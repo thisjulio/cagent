@@ -25,6 +25,7 @@ import { openModelPicker, pickModel } from "./models";
 import { toolDenied, toolPost, toolPre, toolStream } from "./tool-events";
 import { onKey } from "./keys";
 import type { ControllerDeps, InputKey, UIState } from "./state";
+import { detectLspServers } from "../lsp/doctor";
 import { invokeSkill as invokeSkillAction } from "./skill-actions";
 import { appendChat, MAX_CHAT_ITEMS, notify } from "./chat-buffer";
 import { parseSubagentMention } from "../subagents/mention";
@@ -52,7 +53,7 @@ export class Controller {
   session: Session;
   maxTurns?: number;
   maxToolCalls?: number;
-  readonly readOnly: boolean;
+  readOnly: boolean;
   onText?: (text: string) => void;
   onReasoning?: (text: string) => void;
   onToolEvent?: ControllerDeps["onToolEvent"];
@@ -247,7 +248,8 @@ export class Controller {
     this.session = new Session(deps.sessionId, deps.sessionDir);
     this.maxTurns = deps.maxTurns;
     this.maxToolCalls = deps.maxToolCalls;
-    this.readOnly = deps.readOnly ?? false;
+    this.readOnly =
+      deps.permissionMode === "read-only" || deps.readOnly === true;
     this.onText = deps.onText;
     this.onReasoning = deps.onReasoning;
     this.onToolEvent = deps.onToolEvent;
@@ -271,6 +273,9 @@ export class Controller {
       tokens: undefined,
       inputTokens: undefined,
       outputTokens: undefined,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 0,
+      providerUsage: [],
       contextWindow,
       threshold,
       busy: false,
@@ -288,6 +293,12 @@ export class Controller {
       modelPicker: null,
       sessionList: null,
       helpOpen: false,
+      infoPanel: null,
+      lspPanel: false,
+      lspServers: [],
+      toolViewerIndex: null,
+      permissionMode:
+        deps.permissionMode ?? (deps.readOnly ? "read-only" : "ask"),
       suggest: [],
       suggestIdx: -1,
       inputKey: 0,
@@ -326,6 +337,56 @@ export class Controller {
 
   onToolPre(p: unknown): void {
     toolPre(this.state, p);
+    this.bump();
+  }
+
+  async detectLspStatus(): Promise<void> {
+    this.state.lspServers = await detectLspServers(process.cwd());
+    this.bump();
+  }
+
+  openToolViewer(direction: "forward" | "backward" = "forward"): boolean {
+    const tools = this.state.chat.filter(
+      (item) =>
+        item.kind === "tool" && !item.running && item.changesWorkspace === true,
+    );
+    if (!tools.length) {
+      notify(this.state, "no file changes yet");
+      return false;
+    }
+    const index =
+      this.state.toolViewerIndex === null
+        ? tools.length - 1
+        : direction === "forward"
+          ? (this.state.toolViewerIndex - 1 + tools.length) % tools.length
+          : (this.state.toolViewerIndex + 1) % tools.length;
+    this.state.toolViewerIndex = index;
+    const item = tools[index];
+    this.observability?.recordEvent("tool.diff_viewed", {
+      index,
+      "tool.name": item.toolName ?? "unknown",
+      session_id: this.state.sessionId,
+    });
+    this.bump();
+    return true;
+  }
+
+  getTelemetrySummary(): NonNullable<UIState["telemetrySummary"]> | undefined {
+    const telemetry = this.observability as typeof this.observability & {
+      summary?: (sessionId: string) => NonNullable<UIState["telemetrySummary"]>;
+    };
+    return telemetry?.summary?.(this.session.id);
+  }
+
+  async openLspDoctor(): Promise<void> {
+    this.observability?.recordEvent("command.executed", {
+      "command.name": "/lsp",
+      "command.known": true,
+      session_id: this.state.sessionId,
+    });
+    this.state.lspPanel = true;
+    this.bump();
+    this.state.lspServers = await detectLspServers(process.cwd());
     this.bump();
   }
 
@@ -408,6 +469,19 @@ export class Controller {
   }
 
   ask: ToolAsk = async (tool: ToolDefinition, args: ToolArgs) => {
+    if (
+      this.state.permissionMode === "read-only" &&
+      !this.isToolReadOnly(tool, args)
+    ) {
+      this.state.chat.push({
+        kind: "meta",
+        content: "permission denied: read-only mode (Ctrl+M to switch)",
+      });
+      this.bump();
+      return false;
+    }
+    if (this.state.permissionMode === "read-only") return true;
+    if (this.state.permissionMode === "auto") return true;
     if (this.deps.config.permissions === false) return true;
     const cmd =
       typeof args.command === "string" ? args.command : JSON.stringify(args);
@@ -417,6 +491,24 @@ export class Controller {
       this.askResolver = resolve;
     });
   };
+
+  isToolReadOnly(tool: ToolDefinition, args: ToolArgs): boolean {
+    if (tool.readOnly) return true;
+    if (tool.name !== "bash") return false;
+    const command = typeof args.command === "string" ? args.command.trim() : "";
+    return /^(ls|pwd|cat|head|tail|grep|rg|find|git\s+(status|diff|log|show|branch)|which|command\s+-v)(\s|$)/.test(
+      command,
+    );
+  }
+
+  cyclePermissionMode(): void {
+    const modes = ["ask", "auto", "read-only"] as const;
+    const from = this.state.permissionMode;
+    const to = modes[(modes.indexOf(from) + 1) % modes.length];
+    this.state.permissionMode = to;
+    this.observability?.recordEvent("permission.mode_changed", { from, to });
+    this.bump();
+  }
 
   answerAsk(ok: boolean): void {
     if (!this.askResolver) return;

@@ -19,7 +19,12 @@ export interface StreamOpts {
   onText?: (text: string) => void;
   onReasoning?: (text: string) => void;
   onToolOutput?: (content: string) => void;
-  onUsage?: (usage: { inputTokens?: number; outputTokens?: number }) => void;
+  onUsage?: (usage: {
+    inputTokens?: number;
+    outputTokens?: number;
+    cacheReadTokens?: number;
+    cacheCreationTokens?: number;
+  }) => void;
   interrupted?: () => boolean;
   attempts?: number;
   observability?: Observability;

@@ -4,6 +4,8 @@
   "type": "module",
   "main": "src/index.ts",
   "dependencies": {
-    "@cagent/sdk": "workspace:*"
+    "@cagent/sdk": "workspace:*",
+    "pyright": "^1.1.414",
+    "typescript-language-server": "^6.0.0"
   }
 }

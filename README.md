@@ -191,6 +191,21 @@ cagent upgrade
 
 The terminal status bar shows the selected model route and context usage. Use `/help` inside a session to discover available commands.
 
+## Interactive TUI
+
+Run `cagent --interactive` to start a terminal session without submitting a prompt. Slash commands are available from the input:
+
+| Command | Description |
+| --- | --- |
+| `/help [topic]` | Browse command/key help or inspect a topic. |
+| `/model`, `/sessions` | Select a model or resume a session. |
+| `/new`, `/rename`, `/compact` | Manage the current conversation. |
+| `/skill <name>`, `/reload-skills` | Invoke or reload skills. |
+| `/usage`, `/telemetry`, `/lsp` | Inspect token usage, local telemetry, or language-server status. |
+| `/tasks`, `/preference`, `/variant`, `/init` | Manage tasks, preferences, model variant, or project instructions. |
+
+Keyboard shortcuts: `Esc` closes a panel, clears idle input, or interrupts a running turn; `Ctrl+C` clears input, cancels a turn, or exits with status 130; `Ctrl+M` cycles ask/auto/read-only permissions; `Ctrl+O` opens tool output and `Shift+Ctrl+O` moves to the previous tool call; `Tab` completes commands. Edit input with `Ctrl+U`, `Ctrl+W`, `Ctrl+A`, `Ctrl+E`, `Ctrl+Left/Right`, or `Home`/`End`.
+
 ## Included plugins
 
 - `openai`: OpenAI and Codex provider.

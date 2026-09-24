@@ -1,4 +1,7 @@
-export function HelpBox() {
+import { helpCommands, helpDetails, helpKeys } from "../help-catalog";
+
+export function HelpBox({ topic = "" }: { topic?: string }) {
+  const details = topic ? helpDetails(topic) : [];
   return (
     <box
       border
@@ -6,18 +9,28 @@ export function HelpBox() {
       borderColor="#666666"
       paddingX={1}
       flexDirection="column"
+      height="100%"
+      minHeight={0}
       flexShrink={0}
     >
-      <text>
-        commands: <strong>/model</strong> <strong>/sessions</strong>{" "}
-        <strong>/compact</strong> <strong>/new</strong> <strong>/rename</strong>{" "}
-        <strong>/skill</strong> <strong>/reload-skills</strong>{" "}
-        <strong>/help</strong> <strong>/init</strong>
-      </text>
-      <text>
-        keys: <strong>Esc</strong> interrupts/closes <strong>ctrl+o</strong>{" "}
-        expands the last tool <strong>y/n/a</strong> allow/deny/always
-      </text>
+      <scrollbox flexGrow={1} flexShrink={1}>
+        <text fg="#d97757">Commands</text>
+        {helpCommands.map((item) => (
+          <text key={item.name}>
+            <strong>{item.name}</strong> — {item.description}
+          </text>
+        ))}
+        <text fg="#d97757">Keys</text>
+        {helpKeys.map((item) => (
+          <text key={item.name}>
+            <strong>{item.name}</strong> — {item.description}
+          </text>
+        ))}
+        {details.map((line) => (
+          <text key={line}>{line}</text>
+        ))}
+      </scrollbox>
+      <text fg="#666666">↑↓ scroll · Esc close</text>
     </box>
   );
 }

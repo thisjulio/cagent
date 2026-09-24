@@ -1,13 +1,14 @@
 import path from "node:path";
 import type { LspServerConfig } from "./types";
+import { resolveBinary } from "./resolve";
 
 const defaults: Record<string, LspServerConfig> = {
   typescript: {
-    command: ["typescript-language-server", "--stdio"],
+    command: [resolveBinary("typescript-language-server"), "--stdio"],
     extensions: [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"],
   },
   python: {
-    command: ["pyright-langserver", "--stdio"],
+    command: [resolveBinary("pyright-langserver"), "--stdio"],
     extensions: [".py", ".pyi"],
   },
   rust: { command: ["rust-analyzer"], extensions: [".rs"] },

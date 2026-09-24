@@ -65,6 +65,8 @@ export async function streamOnce(opts: StreamOpts): Promise<{
           opts.onUsage?.({
             inputTokens: chunk.usage?.input_tokens,
             outputTokens: chunk.usage?.output_tokens,
+            cacheReadTokens: chunk.usage?.cache_read_tokens,
+            cacheCreationTokens: chunk.usage?.cache_creation_tokens,
           });
         }
         if (opts.interrupted?.()) break;

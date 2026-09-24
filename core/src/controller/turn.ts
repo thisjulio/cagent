@@ -159,7 +159,9 @@ async function runAgentTurn(
     allowlist: host.allowlist,
     ask: host.ask,
     bus: host.bus,
-    readOnly: host.readOnly ?? false,
+    // Permission policy is evaluated by the controller at each tool approval,
+    // so Ctrl+M changes also apply to turns that are already running.
+    readOnly: false,
     hooks: host.hooks,
     signal: host.signal,
     onText: (text) => {
@@ -190,6 +192,26 @@ async function runAgentTurn(
         host.state.inputTokens = usage.inputTokens;
       if (usage.outputTokens !== undefined)
         host.state.outputTokens = usage.outputTokens;
+      if (usage.cacheReadTokens !== undefined)
+        host.state.cacheReadTokens += usage.cacheReadTokens;
+      if (usage.cacheCreationTokens !== undefined)
+        host.state.cacheCreationTokens += usage.cacheCreationTokens;
+      host.state.providerUsage.push({
+        inputTokens: usage.inputTokens ?? 0,
+        outputTokens: usage.outputTokens ?? 0,
+        cacheReadTokens: usage.cacheReadTokens ?? 0,
+        cacheCreationTokens: usage.cacheCreationTokens ?? 0,
+        timestamp: Date.now(),
+      });
+      host.state.providerUsage = host.state.providerUsage.slice(-5);
+      host.observability?.recordEvent("provider.usage", {
+        "provider.model": host.model,
+        input_tokens: usage.inputTokens ?? 0,
+        output_tokens: usage.outputTokens ?? 0,
+        cache_read_tokens: usage.cacheReadTokens ?? 0,
+        cache_creation_tokens: usage.cacheCreationTokens ?? 0,
+        session_id: host.session.id,
+      });
       if (usage.inputTokens !== undefined && usage.outputTokens !== undefined) {
         host.state.tokens = usage.inputTokens + usage.outputTokens;
       }

@@ -28,13 +28,11 @@ function makeController() {
   } as unknown as Controller;
 }
 
-describe("double-ESC cancellation", () => {
-  test("single ESC while idle calls interrupt", () => {
+describe("Escape key behavior", () => {
+  test("single ESC while idle with empty input is a no-op", () => {
     const c = makeController();
-    const base = Date.now();
-    Date.now = () => base;
     onKey(c, { escape: true }, "");
-    expect(c.interrupt).toHaveBeenCalledTimes(1);
+    expect(c.interrupt).toHaveBeenCalledTimes(0);
     expect(c.forceCancel).toHaveBeenCalledTimes(0);
   });
 
@@ -69,16 +67,13 @@ describe("double-ESC cancellation", () => {
     expect(c.forceCancel).toHaveBeenCalledTimes(0);
   });
 
-  test("double ESC while idle does not forceCancel", () => {
+  test("ESC clears typed input while idle", () => {
     const c = makeController();
     c.state.busy = false;
-    const base = Date.now();
-    Date.now = () => base;
+    c.state.input = "draft";
     onKey(c, { escape: true }, "");
-    Date.now = () => base + 100;
-    onKey(c, { escape: true }, "");
-
-    expect(c.interrupt).toHaveBeenCalledTimes(2);
+    expect(c.setInput).toHaveBeenCalledWith("");
+    expect(c.interrupt).toHaveBeenCalledTimes(0);
     expect(c.forceCancel).toHaveBeenCalledTimes(0);
   });
 });

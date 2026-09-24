@@ -174,8 +174,16 @@ export class LspClient {
       references: "textDocument/references",
       hover: "textDocument/hover",
     }[operation];
-    if (!method || !position)
+    if (!method || !position) {
       throw new Error(`Unsupported LSP operation: ${operation}`);
+    }
+    if (operation === "references") {
+      return this.request(method, {
+        textDocument: { uri },
+        position,
+        context: { includeDeclaration: true },
+      });
+    }
     return this.request(method, { textDocument: { uri }, position });
   }
 

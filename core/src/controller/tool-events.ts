@@ -52,6 +52,7 @@ export function toolPost(state: UIState, p: unknown): void {
       output: string;
       isError?: boolean;
       display?: import("@cagent/sdk").ToolDisplay;
+      changesWorkspace?: boolean;
     };
     error?: string;
   };
@@ -60,6 +61,7 @@ export function toolPost(state: UIState, p: unknown): void {
     e.running = false;
     if (e.startedAt) e.durationMs = Date.now() - e.startedAt;
     e.isError = !!error || result?.isError === true;
+    e.changesWorkspace = result?.changesWorkspace === true;
     e.display = result?.display;
     if (!e.content) e.content = error ?? result?.output ?? "";
   }

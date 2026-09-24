@@ -150,7 +150,11 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
     sessionId: options.headless?.session,
     maxTurns: options.headless?.maxTurns,
     maxToolCalls: options.headless?.maxToolCalls,
-    readOnly: options.headless?.permissionMode === "read-only",
+    readOnly:
+      (options.cli?.permissionMode ?? options.headless?.permissionMode) ===
+      "read-only",
+    permissionMode:
+      options.cli?.permissionMode ?? options.headless?.permissionMode,
     contextExtensions: loadedPlugins.contextExtensions,
     contextTokenBudget: config.context_extension_tokens,
     systemPrompt: buildSystemPrompt(
@@ -237,6 +241,7 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
   }
   const renderer = await createCliRenderer({ exitOnCtrlC: false });
   createRoot(renderer).render(React.createElement(App, { c }));
+  void c.detectLspStatus().catch(() => {});
   void initializeModel(c, config.model).catch((error) => {
     notify(c.state, error instanceof Error ? error.message : String(error));
   });

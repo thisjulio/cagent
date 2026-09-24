@@ -12,7 +12,11 @@ function fakeClient(): OpenAI {
     { choices: [{ delta: { content: " world" } }] },
     {
       choices: [{ delta: {}, finish_reason: "stop" }],
-      usage: { prompt_tokens: 7, completion_tokens: 2 },
+      usage: {
+        prompt_tokens: 7,
+        completion_tokens: 2,
+        prompt_tokens_details: { cached_tokens: 3 },
+      },
     },
   ];
   return {
@@ -46,7 +50,11 @@ describe("openai adapter", () => {
     let finish:
       | {
           finish_reason: string;
-          usage?: { input_tokens: number; output_tokens: number };
+          usage?: {
+            input_tokens: number;
+            output_tokens: number;
+            cache_read_tokens?: number;
+          };
         }
       | undefined;
     for await (const chunk of adapter.stream({
@@ -59,7 +67,11 @@ describe("openai adapter", () => {
     }
     expect(parts.join("")).toBe("Hello world");
     expect(finish?.finish_reason).toBe("stop");
-    expect(finish?.usage).toEqual({ input_tokens: 7, output_tokens: 2 });
+    expect(finish?.usage).toEqual({
+      input_tokens: 7,
+      output_tokens: 2,
+      cache_read_tokens: 3,
+    });
   });
 
   test("fetchCodexModelRecords preserves context-window metadata", async () => {
@@ -164,7 +176,11 @@ describe("openai adapter", () => {
         if (chunk.type === "finish") finish = chunk;
       }
       expect(parts.join("")).toBe("Hello world");
-      expect(finish?.usage).toEqual({ input_tokens: 3, output_tokens: 2 });
+      expect(finish?.usage).toEqual({
+        input_tokens: 3,
+        output_tokens: 2,
+        cache_read_tokens: 0,
+      });
     } finally {
       globalThis.fetch = orig;
     }

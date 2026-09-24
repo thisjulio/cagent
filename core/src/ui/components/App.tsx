@@ -14,6 +14,9 @@ import { TaskPanel, type TaskPanelHandle } from "./TaskPanel";
 import { QuestionPanel } from "./QuestionPanel";
 import { ProjectContext } from "./ProjectContext";
 import { WelcomePanel } from "./WelcomePanel";
+import { SessionInfoPanel } from "./SessionInfoPanel";
+import { LspPanel } from "./LspPanel";
+import { ToolViewer } from "./ToolViewer";
 import { formatHeaderTitle } from "../render/title";
 export function App({ c }: { c: Controller }) {
   const [, setV] = useState(0);
@@ -31,6 +34,9 @@ export function App({ c }: { c: Controller }) {
     const input = key.sequence || (key.name === "space" ? " " : "");
     const overlay =
       s.helpOpen ||
+      s.infoPanel ||
+      s.lspPanel ||
+      s.toolViewerIndex !== null ||
       s.modelPicker ||
       s.sessionList ||
       s.pendingAsk ||
@@ -40,14 +46,30 @@ export function App({ c }: { c: Controller }) {
       c.observability?.recordEvent("keyboard.ctrl_c", {
         busy: s.busy,
         cleared_input: s.input.length > 0,
+        session_id: s.sessionId,
       });
-      if (s.input.length > 0) {
+      if (s.busy) {
+        c.interrupt();
+      } else if (s.input.length > 0) {
         c.setInput("");
         s.inputKey += 1;
       } else {
         renderer.destroy();
-        process.exit(0);
+        process.exit(130);
       }
+      key.preventDefault();
+      return;
+    }
+    if (key.ctrl && key.name === "m") {
+      if (c.config.permissions !== false) c.cyclePermissionMode();
+      key.preventDefault();
+      return;
+    }
+    if (key.sequence === "?" && !key.ctrl && !overlay && !s.busy && !s.input) {
+      c.submit("/help");
+      s.helpOpen = true;
+      s.helpTopic = undefined;
+      c.bump();
       key.preventDefault();
       return;
     }
@@ -67,8 +89,20 @@ export function App({ c }: { c: Controller }) {
       return;
     }
     if (key.ctrl && key.name === "o") {
-      c.observability?.recordEvent("tool_output.toggled");
-      c.handleKey({ ctrl: true }, "o");
+      if (key.shift) {
+        if (s.toolViewerIndex !== null) c.openToolViewer("backward");
+      } else if (s.toolViewerIndex !== null) {
+        c.openToolViewer("forward");
+      } else {
+        const tools = s.chat.filter(
+          (item) =>
+            item.kind === "tool" &&
+            !item.running &&
+            item.changesWorkspace === true,
+        );
+        if (tools.length) c.openToolViewer();
+        else c.handleKey({ ctrl: true }, "o");
+      }
       key.preventDefault();
       return;
     }
@@ -102,8 +136,17 @@ export function App({ c }: { c: Controller }) {
       key.preventDefault();
       return;
     }
+    if (key.name === "pageup" || key.name === "pagedown") {
+      key.preventDefault();
+      return;
+    }
     if (s.pendingAsk) {
       c.handleKey({}, input);
+      key.preventDefault();
+      return;
+    }
+    if (s.modelPicker && key.name === "backspace") {
+      c.handleKey({ backspace: true }, "");
       key.preventDefault();
       return;
     }
@@ -116,6 +159,9 @@ export function App({ c }: { c: Controller }) {
   const running = lastLog?.running ? lastLog.tool : undefined;
   const overlay =
     s.helpOpen ||
+    s.infoPanel ||
+    s.lspPanel ||
+    s.toolViewerIndex !== null ||
     s.modelPicker ||
     s.sessionList ||
     s.pendingAsk ||
@@ -144,9 +190,7 @@ export function App({ c }: { c: Controller }) {
             terminalWidth(),
           )}
         </text>
-        <text fg={s.busy ? "#d97757" : "#777777"}>
-          {s.busy ? "queued input" : status}
-        </text>
+        <text fg="#777777">{status}</text>
       </box>
       {s.chat.length === 0 ? (
         <WelcomePanel />
@@ -159,7 +203,35 @@ export function App({ c }: { c: Controller }) {
         expanded={s.taskPanelExpanded}
       />
       {s.helpOpen ? (
-        <HelpBox />
+        <HelpBox topic={s.helpTopic} />
+      ) : s.infoPanel ? (
+        <SessionInfoPanel
+          kind={s.infoPanel}
+          chat={s.chat}
+          tokens={s.tokens}
+          inputTokens={s.inputTokens}
+          outputTokens={s.outputTokens}
+          cacheReadTokens={s.cacheReadTokens}
+          cacheCreationTokens={s.cacheCreationTokens}
+          providerUsage={s.providerUsage}
+          model={s.model}
+          sessionId={s.sessionId}
+          telemetryEnabled={Boolean(c.observability)}
+          telemetrySummary={s.telemetrySummary}
+          contextWindow={s.contextWindow}
+        />
+      ) : s.lspPanel ? (
+        <LspPanel servers={s.lspServers} />
+      ) : s.toolViewerIndex !== null ? (
+        <ToolViewer
+          tools={s.chat.filter(
+            (item) =>
+              item.kind === "tool" &&
+              !item.running &&
+              item.changesWorkspace === true,
+          )}
+          index={s.toolViewerIndex}
+        />
       ) : s.modelPicker ? (
         <ModelPicker
           routes={filterModels(s.modelPicker.entries, s.modelPicker.query)}
@@ -213,6 +285,12 @@ export function App({ c }: { c: Controller }) {
         outputTokens={s.outputTokens}
         contextWindow={s.contextWindow ?? s.threshold}
         threshold={s.threshold}
+        permissionMode={s.permissionMode}
+        permissionsEnabled={c.config.permissions !== false}
+        missingLspLanguages={s.lspServers
+          .filter((server) => server.status === "missing")
+          .map((server) => server.language)}
+        onOpenLsp={() => void c.openLspDoctor()}
       />
     </box>
   );

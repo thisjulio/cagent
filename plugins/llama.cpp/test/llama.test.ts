@@ -283,7 +283,7 @@ describe("llama.cpp adapter", () => {
       expect(chunks).toContainEqual({
         type: "finish",
         finish_reason: "stop",
-        usage: { input_tokens: 2163, output_tokens: 12 },
+        usage: { input_tokens: 2163, output_tokens: 12, cache_read_tokens: 0 },
       });
     } finally {
       globalThis.fetch = orig;

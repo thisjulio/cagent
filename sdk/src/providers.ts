@@ -16,7 +16,12 @@ export type LlmChunk =
   | {
       type: "finish";
       finish_reason: string;
-      usage?: { input_tokens: number; output_tokens: number };
+      usage?: {
+        input_tokens: number;
+        output_tokens: number;
+        cache_read_tokens?: number;
+        cache_creation_tokens?: number;
+      };
     };
 
 export interface LlmCallOptions {

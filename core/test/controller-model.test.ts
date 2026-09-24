@@ -257,7 +257,7 @@ describe("controller model and commands", () => {
     const c = new Controller(deps());
     await c.submit("/help");
     expect(c.state.helpOpen).toBe(true);
-    c.handleKey({ return: true }, "");
+    c.handleKey({ escape: true }, "");
     expect(c.state.helpOpen).toBe(false);
   });
 

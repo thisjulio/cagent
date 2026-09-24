@@ -64,7 +64,14 @@ export async function* streamCodex(
   const decoder = new TextDecoder();
   let buf = "";
   let finish = "stop";
-  let usage: { input_tokens: number; output_tokens: number } | undefined;
+  let usage:
+    | {
+        input_tokens: number;
+        output_tokens: number;
+        cache_read_tokens?: number;
+        cache_creation_tokens?: number;
+      }
+    | undefined;
   for (;;) {
     const { value, done } = await reader.read();
     if (done) break;
@@ -114,12 +121,17 @@ export async function* streamCodex(
         } else if (event === "response.completed") {
           const r = data.response as Record<string, unknown> | undefined;
           const u = r?.usage as
-            | { input_tokens?: number; output_tokens?: number }
+            | {
+                input_tokens?: number;
+                output_tokens?: number;
+                input_tokens_details?: { cached_tokens?: number };
+              }
             | undefined;
           if (u)
             usage = {
               input_tokens: u.input_tokens ?? 0,
               output_tokens: u.output_tokens ?? 0,
+              cache_read_tokens: u.input_tokens_details?.cached_tokens ?? 0,
             };
           finish = String(r?.status ?? "stop");
         }

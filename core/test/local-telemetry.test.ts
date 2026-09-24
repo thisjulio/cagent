@@ -47,4 +47,35 @@ describe("local telemetry", () => {
     expect(telemetry).toBeDefined();
     expect("events" in telemetry).toBe(false);
   });
+
+  test("rotates the live file without losing completed spans", () => {
+    const directory = fs.mkdtempSync(
+      path.join(os.tmpdir(), "cagent-telemetry-rotation-"),
+    );
+    const file = path.join(directory, "events.jsonl");
+    const telemetry = new LocalFileObservability(file, 1200);
+    const spanIds: string[] = [];
+    for (let index = 0; index < 8; index++) {
+      const span = telemetry.startSpan("rotation.test", { index });
+      spanIds.push(span.id);
+      span.end();
+      telemetry.flush();
+    }
+    const found = fs
+      .readdirSync(directory)
+      .filter((name) => name.startsWith("events.jsonl"))
+      .flatMap((name) =>
+        fs
+          .readFileSync(path.join(directory, name), "utf8")
+          .split("\n")
+          .filter(Boolean)
+          .map((line) => JSON.parse(line) as { span_id?: string }),
+      )
+      .flatMap((record) => (record.span_id ? [record.span_id] : []));
+    expect(found.sort()).toEqual(spanIds.sort());
+    expect(
+      fs.readdirSync(directory).filter((name) => /events\.jsonl\.\d/.test(name))
+        .length,
+    ).toBeLessThanOrEqual(5);
+  });
 });
