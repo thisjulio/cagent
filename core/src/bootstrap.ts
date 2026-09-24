@@ -147,7 +147,7 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
     model: route,
     variant: config.variant,
     contextWindow,
-    sessionId: options.headless?.session,
+    sessionId: options.cli?.session ?? options.headless?.session,
     maxTurns: options.headless?.maxTurns,
     maxToolCalls: options.headless?.maxToolCalls,
     readOnly:
@@ -241,6 +241,7 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
   }
   const renderer = await createCliRenderer({ exitOnCtrlC: false });
   createRoot(renderer).render(React.createElement(App, { c }));
+  if (options.cli?.resume) c.openSessions();
   void c.detectLspStatus().catch(() => {});
   void initializeModel(c, config.model).catch((error) => {
     notify(c.state, error instanceof Error ? error.message : String(error));

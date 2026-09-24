@@ -38,14 +38,18 @@ export function latestUserMessage(dir?: string): string | null {
 
 function summarizeSession(file: string, name: string): SessionSummary | null {
   const stats = fs.statSync(file);
-  const records = readSessionRecords(file).slice(0, 100);
+  const records = readSessionRecords(file).slice(0, 200);
   const firstUser = firstUserMessage(records);
   if (!firstUser) return null;
   const title = sessionTitle(records) || firstUser;
+  const project = projectMeta(records);
   return {
     id: name.slice(0, -6),
     updated: stats.mtime.toISOString(),
     title: title.slice(0, 60),
+    messageCount: records.filter((record) => record.type === "user").length,
+    cwd: project?.cwd,
+    branch: project?.branch,
   };
 }
 
@@ -59,4 +63,23 @@ function sessionTitle(records: SessionRecord[]): string {
     (entry) => entry.type === "meta" && entry.payload.kind === "title",
   );
   return String(record?.payload.title ?? "");
+}
+
+function projectMeta(
+  records: SessionRecord[],
+): { cwd?: string; branch?: string } | null {
+  const record = records.find(
+    (entry) =>
+      entry.type === "meta" &&
+      entry.payload.kind === "project" &&
+      typeof entry.payload.cwd === "string",
+  );
+  if (!record) return null;
+  return {
+    cwd: String(record.payload.cwd),
+    branch:
+      typeof record.payload.branch === "string"
+        ? String(record.payload.branch)
+        : undefined,
+  };
 }

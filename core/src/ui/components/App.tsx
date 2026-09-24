@@ -18,6 +18,8 @@ import { SessionInfoPanel } from "./SessionInfoPanel";
 import { LspPanel } from "./LspPanel";
 import { ToolViewer } from "./ToolViewer";
 import { formatHeaderTitle } from "../render/title";
+import { getHelpCatalog } from "../help-catalog";
+import { CommandPalette } from "./CommandPalette";
 export function App({ c }: { c: Controller }) {
   const [, setV] = useState(0);
   const renderer = useRenderer();
@@ -32,8 +34,52 @@ export function App({ c }: { c: Controller }) {
   useKeyboard((key: KeyEvent) => {
     const s = c.state;
     const input = key.sequence || (key.name === "space" ? " " : "");
+    if (s.commandPaletteOpen) {
+      const items = getHelpCatalog({
+        customNames: c.customCommandNames(),
+        pluginNames: c.pluginCommandNames(),
+        skillNames: c.skillCommandNames(),
+        agentNames: c.subagentNames(),
+      }).filter((item) =>
+        `${item.name} ${item.description}`
+          .toLowerCase()
+          .includes(s.commandPaletteQuery.toLowerCase()),
+      );
+      if (key.name === "escape") c.closeCommandPalette();
+      else if (key.name === "up") {
+        s.commandPaletteIndex = items.length
+          ? (s.commandPaletteIndex + items.length - 1) % items.length
+          : 0;
+        c.bump();
+      } else if (key.name === "down") {
+        s.commandPaletteIndex = items.length
+          ? (s.commandPaletteIndex + 1) % items.length
+          : 0;
+        c.bump();
+      } else if (key.name === "return") {
+        const item = items[s.commandPaletteIndex];
+        c.closeCommandPalette();
+        if (item && item.name.startsWith("/")) void c.submit(item.name);
+      } else if (key.name === "backspace") {
+        s.commandPaletteQuery = s.commandPaletteQuery.slice(0, -1);
+        s.commandPaletteIndex = 0;
+        c.bump();
+      } else if (input && !key.ctrl && !key.meta) {
+        s.commandPaletteQuery += input;
+        s.commandPaletteIndex = 0;
+        c.bump();
+      }
+      key.preventDefault();
+      return;
+    }
+    if (key.ctrl && key.name === "p") {
+      c.openCommandPalette();
+      key.preventDefault();
+      return;
+    }
     const overlay =
       s.helpOpen ||
+      s.commandPaletteOpen ||
       s.infoPanel ||
       s.lspPanel ||
       s.toolViewerIndex !== null ||
@@ -155,6 +201,12 @@ export function App({ c }: { c: Controller }) {
     }
   });
   const s = c.state;
+  const helpItems = getHelpCatalog({
+    customNames: c.customCommandNames(),
+    pluginNames: c.pluginCommandNames(),
+    skillNames: c.skillCommandNames(),
+    agentNames: c.subagentNames(),
+  });
   const lastLog = s.toolLog[s.toolLog.length - 1];
   const running = lastLog?.running ? lastLog.tool : undefined;
   const overlay =
@@ -193,7 +245,14 @@ export function App({ c }: { c: Controller }) {
         <text fg="#777777">{status}</text>
       </box>
       {s.chat.length === 0 ? (
-        <WelcomePanel />
+        <WelcomePanel
+          project={process.cwd()}
+          model={s.model}
+          permissionMode={s.permissionMode}
+          skillCount={c.skillCommandNames().length}
+          agentCount={c.subagentNames().length}
+          mcpCount={c.registry.providers().size}
+        />
       ) : (
         <ChatViewport chat={s.chat} busy={s.busy} controller={c} />
       )}
@@ -203,7 +262,9 @@ export function App({ c }: { c: Controller }) {
         expanded={s.taskPanelExpanded}
       />
       {s.helpOpen ? (
-        <HelpBox topic={s.helpTopic} />
+        <HelpBox topic={s.helpTopic} items={helpItems} />
+      ) : s.commandPaletteOpen ? (
+        <CommandPalette controller={c} items={helpItems} />
       ) : s.infoPanel ? (
         <SessionInfoPanel
           kind={s.infoPanel}
@@ -241,6 +302,8 @@ export function App({ c }: { c: Controller }) {
       ) : s.sessionList ? (
         <SessionList
           list={s.sessionList}
+          scope={s.sessionScope}
+          query={s.sessionQuery}
           onSelect={(id) => c.resumeSession(id)}
         />
       ) : s.questionRequest ? (

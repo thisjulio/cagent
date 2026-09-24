@@ -1,5 +1,7 @@
 import { streamOnce } from "../loop";
 import { Session } from "../session/index";
+import { captureProjectMeta, projectMetaRecord } from "../session/project";
+import { fuzzy } from "../fuzzy";
 import { splitRoute } from "../route";
 import type { Message } from "@cagent/sdk";
 import type { SessionModelSelection } from "../session/index";
@@ -151,6 +153,7 @@ export function toTitle(records: LoadedRecord[]): string {
 export function startNewSession(c: Controller): void {
   c.observability?.recordEvent("session.created");
   c.session = new Session(undefined, c.sessionDir);
+  c.session.append(projectMetaRecord(captureProjectMeta()));
   c.messages = [{ role: "system" as const, content: c.systemPrompt ?? "" }];
   c.interrupted = false;
   const s = c.state;
@@ -220,12 +223,23 @@ export async function restoreSession(c: Controller, id: string): Promise<void> {
   c.bump();
 }
 
+export function projectSessions<
+  T extends { id: string; cwd?: string; title: string },
+>(all: T[], scope: "project" | "all", query: string, cwd: string): T[] {
+  const scoped = scope === "project" ? all.filter((s) => s.cwd === cwd) : all;
+  const haystacks = scoped.map((s) => `${s.id} ${s.title}`);
+  const matched = fuzzy(haystacks, query);
+  const matchedIds = new Set(matched.map((entry) => entry.split(" ")[0]));
+  return scoped.filter((s) => matchedIds.has(s.id));
+}
+
 export function openSessions(c: Controller): void {
-  c.state.sessionList = Session.list();
+  const all = Session.list();
+  c.state.sessionAll = all;
+  c.state.sessionScope = "project";
+  c.state.sessionQuery = "";
+  c.state.sessionList = projectSessions(all, "project", "", process.cwd());
   c.observability?.recordEvent("session_picker.opened", {
-    "session.count": c.state.sessionList.length,
-  });
-  c.observability?.recordEvent("session.listed", {
     "session.count": c.state.sessionList.length,
   });
   c.bump();

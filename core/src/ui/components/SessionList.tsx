@@ -1,12 +1,17 @@
 import type { UIState } from "../../controller/state";
+import { relTime } from "../render/reltime";
 
 type SessionInfo = NonNullable<UIState["sessionList"]>[number];
 
 export function SessionList({
   list,
+  scope,
+  query,
   onSelect,
 }: {
   list: SessionInfo[];
+  scope: "project" | "all";
+  query: string;
   onSelect: (id: string) => void;
 }) {
   return (
@@ -19,12 +24,16 @@ export function SessionList({
       paddingX={1}
     >
       <text fg="#d97757"> Resume session </text>
-      <text fg="#999999">Select a conversation to restore</text>
+      <text fg="#999999">
+        {`scope: ${scope === "project" ? "this project" : "all"} · search: ${
+          query || "(none)"
+        }`}
+      </text>
       <select
         focused
         height={Math.min(8, Math.max(1, list.length))}
         options={list.map((s) => ({
-          name: `${s.id.slice(0, 8)}  ${s.updated.slice(0, 19)}  ${s.title.slice(0, 30)}`,
+          name: `${s.id.slice(0, 8)}  ${relTime(s.updated)}  ${s.messageCount} msgs  ${s.title}`,
           description: "",
           value: s.id,
         }))}
@@ -32,7 +41,9 @@ export function SessionList({
           if (option?.value) onSelect(String(option.value));
         }}
       />
-      <text fg="#666666">↑↓ navigate Enter resume Esc cancel</text>
+      <text fg="#666666">
+        ↑↓ navigate · type: search · Tab scope · Enter resume · Esc cancel
+      </text>
     </box>
   );
 }

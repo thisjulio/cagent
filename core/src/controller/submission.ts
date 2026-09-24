@@ -11,6 +11,7 @@ import { buildImageContent } from "./submit-image";
 import { compactionEventFields } from "./compaction-events";
 import { loadPreferences } from "../preferences";
 import { taskCheckpointMessage } from "./task-continuation";
+import { appendPrompt } from "../session/history";
 export async function submitMessage(
   controller: Controller,
   text: string,
@@ -25,6 +26,7 @@ export async function submitMessage(
   }
 
   const { content, imagePaths } = imageContent;
+  appendPrompt(process.cwd(), text);
   resetCompletedTasks(controller);
   appendChat(state, { kind: "user", content: text, imagePaths, turnId });
   state.busy = true;

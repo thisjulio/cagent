@@ -12,6 +12,7 @@ import { QuestionService } from "./question-service";
 import { runSlash } from "../commands/commands";
 import { inputSuggestions } from "../commands/suggest";
 import { Session, type QueueMessage } from "../session/index";
+import { captureProjectMeta, projectMetaRecord } from "../session/project";
 import type { ToolAsk } from "../tools";
 import { generateTitle, toChatItems, toTitle } from "./sessions";
 import {
@@ -102,6 +103,30 @@ export class Controller {
   }
   customCommand(name: string): CustomCommand | undefined {
     return this.deps.commands?.get(name.slice(1));
+  }
+  customCommandNames(): string[] {
+    return [...(this.deps.commands?.keys() ?? [])];
+  }
+  pluginCommandNames(): string[] {
+    return this.deps.registry.commands().map((command) => command.name);
+  }
+  skillCommandNames(): string[] {
+    return this.deps.skillNames?.() ?? [];
+  }
+  subagentNames(): string[] {
+    return this.agentNames();
+  }
+  openCommandPalette(): void {
+    this.state.commandPaletteOpen = true;
+    this.state.commandPaletteQuery = "";
+    this.state.commandPaletteIndex = 0;
+    this.bump();
+  }
+  closeCommandPalette(): void {
+    this.state.commandPaletteOpen = false;
+    this.state.commandPaletteQuery = "";
+    this.state.commandPaletteIndex = 0;
+    this.bump();
   }
   nextSkillCallId(): number {
     return this.skillCallId++;
@@ -292,7 +317,16 @@ export class Controller {
       questionSelectedOptions: [],
       modelPicker: null,
       sessionList: null,
+      sessionAll: [],
+      sessionScope: "project",
+      sessionQuery: "",
+      historySearch: false,
+      historyIdx: -1,
+      historyEntries: [],
       helpOpen: false,
+      commandPaletteOpen: false,
+      commandPaletteQuery: "",
+      commandPaletteIndex: 0,
       infoPanel: null,
       lspPanel: false,
       lspServers: [],
@@ -311,6 +345,8 @@ export class Controller {
         kind: "meta",
         content: `resuming session ${this.session.id} (${loaded.messages.length} messages)`,
       });
+    if (!loaded.records.length)
+      this.session.append(projectMetaRecord(captureProjectMeta()));
     for (const message of this.queue)
       appendChat(s, {
         kind: "user",

@@ -3,6 +3,8 @@ import { parseCliArgs, cliHelp } from "./cli-args";
 import { bootstrap } from "./bootstrap";
 import { VERSION } from "./version";
 import type { BootstrapOptions } from "./bootstrap";
+import { Session } from "./session/index";
+import { projectSessions } from "./controller/sessions";
 
 export async function runCli(
   args: string[],
@@ -43,6 +45,15 @@ export async function runCli(
   if (options.version) {
     console.log(`cagent ${VERSION}`);
     return true;
+  }
+  if (options.continue && !options.session) {
+    const candidates = projectSessions(
+      Session.list(),
+      "project",
+      "",
+      process.cwd(),
+    );
+    if (candidates.length > 0) options.session = candidates[0].id;
   }
   if (options.interactive || (!options.nonInteractive && !options.prompt)) {
     await bootstrap({ ...bootstrapOptions, cli: options });

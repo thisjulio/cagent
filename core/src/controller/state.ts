@@ -81,9 +81,34 @@ export type UIState = {
     entries: { route: string; models: string[] }[];
     query: string;
   } | null;
-  sessionList: { id: string; updated: string; title: string }[] | null;
+  sessionList:
+    | {
+        id: string;
+        updated: string;
+        title: string;
+        cwd?: string;
+        branch?: string;
+        messageCount: number;
+      }[]
+    | null;
+  sessionAll: {
+    id: string;
+    updated: string;
+    title: string;
+    cwd?: string;
+    branch?: string;
+    messageCount: number;
+  }[];
+  sessionScope: "project" | "all";
+  sessionQuery: string;
+  historySearch: boolean;
+  historyIdx: number;
+  historyEntries: string[];
   helpOpen: boolean;
   helpTopic?: string;
+  commandPaletteOpen: boolean;
+  commandPaletteQuery: string;
+  commandPaletteIndex: number;
   infoPanel: "usage" | "telemetry" | null;
   telemetrySummary?: {
     file: string;

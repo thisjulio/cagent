@@ -1,7 +1,19 @@
-import { helpCommands, helpDetails, helpKeys } from "../help-catalog";
+import {
+  getHelpCatalog,
+  helpDetails,
+  helpKeys,
+  type HelpItem,
+} from "../help-catalog";
 
-export function HelpBox({ topic = "" }: { topic?: string }) {
+export function HelpBox({
+  topic = "",
+  items = getHelpCatalog(),
+}: {
+  topic?: string;
+  items?: HelpItem[];
+}) {
   const details = topic ? helpDetails(topic) : [];
+  const groups = [...new Set(items.map((item) => item.group))];
   return (
     <box
       border
@@ -14,13 +26,19 @@ export function HelpBox({ topic = "" }: { topic?: string }) {
       flexShrink={0}
     >
       <scrollbox flexGrow={1} flexShrink={1}>
-        <text fg="#d97757">Commands</text>
-        {helpCommands.map((item) => (
-          <text key={item.name}>
-            <strong>{item.name}</strong> — {item.description}
-          </text>
+        {groups.map((group) => (
+          <box key={group} flexDirection="column">
+            <text fg="#d97757">{group}</text>
+            {items
+              .filter((item) => item.group === group)
+              .map((item) => (
+                <text key={`${group}:${item.name}`}>
+                  <strong>{item.name}</strong> — {item.description}
+                </text>
+              ))}
+          </box>
         ))}
-        <text fg="#d97757">Keys</text>
+        <text fg="#d97757">Keyboard shortcuts</text>
         {helpKeys.map((item) => (
           <text key={item.name}>
             <strong>{item.name}</strong> — {item.description}
@@ -30,7 +48,7 @@ export function HelpBox({ topic = "" }: { topic?: string }) {
           <text key={line}>{line}</text>
         ))}
       </scrollbox>
-      <text fg="#666666">↑↓ scroll · Esc close</text>
+      <text fg="#666666">↑↓ scroll · Esc close · Ctrl+P palette</text>
     </box>
   );
 }

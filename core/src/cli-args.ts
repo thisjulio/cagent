@@ -11,6 +11,8 @@ export type CliOptions = {
   interactive: boolean;
   nonInteractive: boolean;
   session?: string;
+  continue: boolean;
+  resume: boolean;
   newSession: boolean;
   maxTurns: number;
   maxToolCalls: number;
@@ -43,6 +45,8 @@ export function parseCliArgs(args: string[], stdin = ""): CliOptions {
     interactive: false,
     nonInteractive: false,
     newSession: true,
+    continue: false,
+    resume: false,
     maxTurns: 20,
     maxToolCalls: 50,
     timeoutMs: 600_000,
@@ -68,7 +72,9 @@ export function parseCliArgs(args: string[], stdin = ""): CliOptions {
     else if (arg === "--session") {
       options.session = next();
       options.newSession = false;
-    } else if (arg === "--prompt" || arg === "-p") positional.push(next());
+    } else if (arg === "--continue" || arg === "-c") options.continue = true;
+    else if (arg === "--resume" || arg === "-r") options.resume = true;
+    else if (arg === "--prompt" || arg === "-p") positional.push(next());
     else if (arg === "--file" || arg === "-f") options.files.push(next());
     else if (arg === "--directory" || arg === "-d")
       options.directories.push(next());
@@ -132,6 +138,8 @@ Options:
       --interactive       Force the TUI
       --non-interactive   Force headless execution
       --session ID        Continue an existing session
+  -c, --continue          Continue the latest session for this project
+  -r, --resume            Open the session picker on start
       --new-session       Start a new session (default)
       --yes               Approve tool requests automatically
       --permission-mode MODE  ask, auto, or read-only

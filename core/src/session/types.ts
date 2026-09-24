@@ -36,4 +36,7 @@ export type SessionSummary = {
   id: string;
   updated: string;
   title: string;
+  cwd?: string;
+  branch?: string;
+  messageCount: number;
 };

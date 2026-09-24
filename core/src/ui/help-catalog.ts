@@ -1,32 +1,94 @@
-export const helpCommands = (
-  [
-    ["/model", "switch model (live-search picker)"],
-    ["/sessions", "resume a previous session"],
-    ["/compact", "summarize the conversation to free context"],
-    ["/new", "start a fresh session"],
-    ["/rename", "rename the current session"],
-    ["/skill <name>", "load a skill; bare /skill opens a picker"],
-    ["/reload-skills", "rescan skill directories"],
-    ["/help", "open this panel; /help <topic> shows details"],
-    ["/auth.openai", "manage OpenAI OAuth credentials"],
-    ["/usage", "tokens, cost and cache dashboard"],
-    ["/telemetry", "session telemetry summary"],
-    ["/lsp", "LSP doctor and one-click install"],
-    ["/init", "create a project instruction file"],
-  ] as const
-).map(([name, description]) => ({ name, description }));
+import { commandNames } from "../commands/commands";
 
+export type HelpItem = { name: string; description: string; group: string };
+
+const descriptions: Record<string, string> = {
+  "/init": "create project instructions",
+  "/preference": "manage saved preferences",
+  "/lsp": "inspect and install language servers",
+  "/compact": "summarize the conversation to free context",
+  "/sessions": "resume a previous session",
+  "/session": "resume a previous session",
+  "/new": "start a fresh session",
+  "/rename": "rename the current session",
+  "/tasks": "manage the task list",
+  "/model": "switch model",
+  "/variant": "show or set the model variant",
+  "/help": "browse commands and keyboard shortcuts",
+  "/usage": "show token and cost usage",
+  "/telemetry": "show session telemetry",
+  "/auth.openai": "manage OpenAI credentials",
+  "/skill": "load an available skill",
+  "/reload-skills": "rescan skill directories",
+};
+
+export function getHelpCatalog(
+  options: {
+    customNames?: string[];
+    pluginNames?: string[];
+    skillNames?: string[];
+    agentNames?: string[];
+  } = {},
+): HelpItem[] {
+  const items: HelpItem[] = commandNames.map((name) => ({
+    name,
+    description: descriptions[name] ?? "run command",
+    group: "Built-in commands",
+  }));
+  for (const name of options.pluginNames ?? [])
+    items.push({
+      name: name.startsWith("/") ? name : `/${name}`,
+      description: "plugin command",
+      group: "Plugin commands",
+    });
+  for (const name of options.customNames ?? [])
+    items.push({
+      name: name.startsWith("/") ? name : `/${name}`,
+      description: "custom command",
+      group: "Custom commands",
+    });
+  for (const name of options.skillNames ?? [])
+    items.push({
+      name: `/skill ${name}`,
+      description: "load skill",
+      group: "Skills",
+    });
+  for (const name of options.agentNames ?? [])
+    items.push({
+      name: `@${name}`,
+      description: "delegate to subagent",
+      group: "Subagents",
+    });
+  items.push({
+    name: "$<command>",
+    description: "run a shell command",
+    group: "Input",
+  });
+  items.push({
+    name: "@<agent>",
+    description: "mention a subagent",
+    group: "Input",
+  });
+  return items;
+}
+
+export const helpCommands = getHelpCatalog().map(({ name, description }) => ({
+  name,
+  description,
+}));
 export const helpKeys = [
+  ["Ctrl+P", "open command palette"],
+  ["Ctrl+T", "toggle task panel"],
   ["Enter", "send prompt"],
   ["Esc", "clear typed text / close panel; interrupt a running turn"],
   ["Tab", "cycle command autocomplete"],
-  ["Ctrl+C", "clear input, cancel turn, or exit with code 130"],
-  ["Ctrl+O", "open tool diff viewer, then cycle forward"],
+  ["Ctrl+C", "clear input, cancel turn, or exit"],
+  ["Ctrl+O", "open tool diff viewer"],
   ["Shift+Ctrl+O", "cycle backward through tool calls"],
-  ["Ctrl+M", "cycle permission mode ask → auto → read-only"],
-  ["y / n / a", "allow / deny / always-allow the current permission request"],
-  ["↑↓", "edit history navigation and scroll panels"],
-  ["PgUp/PgDn", "page scroll in panels"],
+  ["Ctrl+M", "cycle permission mode"],
+  ["y / n / a", "allow / deny / always-allow request"],
+  ["↑↓", "edit history and scroll panels"],
+  ["PgUp/PgDn", "page scroll"],
   ["Ctrl+U", "delete to line start"],
   ["Ctrl+W", "delete previous word"],
   ["Ctrl+A / Ctrl+E", "jump to start / end"],
@@ -36,59 +98,14 @@ export const helpKeys = [
 
 export function helpDetails(topic: string): string[] {
   const normalized = topic.toLowerCase().trim().replace(/^\/+/, "");
-  const command = helpCommands.find(
-    (item) => item.name.toLowerCase().replace(/^\/+/, "") === normalized,
+  const item = [...helpCommands, ...helpKeys].find(
+    (entry) => entry.name.toLowerCase().replace(/^\/+/, "") === normalized,
   );
-  const key = helpKeys.find((item) => item.name.toLowerCase() === normalized);
-  if (command)
-    return [
-      `${command.name} — ${command.description}`,
-      `Syntax: ${command.name}${command.name === "/help" ? " [topic]" : ""}`,
-      `Example: ${command.name}`,
-      "Related keys: Esc closes this panel",
-    ];
-  if (key)
-    return [`${key.name} — ${key.description}`, "Purpose: keyboard shortcut"];
-  if (normalized === "help" || normalized === "permissions")
-    return [
-      `${normalized} — interactive TUI reference`,
-      "Use /help to browse commands and keys.",
-    ];
-  const candidates = [...helpCommands, ...helpKeys]
-    .map((item) => item.name)
-    .sort(
-      (a, b) =>
-        distance(normalizeTopic(a), normalizeTopic(topic)) -
-        distance(normalizeTopic(b), normalizeTopic(topic)),
-    )
-    .slice(0, 3);
-  return [
-    `unknown topic: '${topic}'`,
-    ...candidates.map((candidate) => `  ${candidate}`),
-  ];
-}
-
-function normalizeTopic(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/^\/+/, "")
-    .replace(/^ctrl\+/, "ctrl+");
-}
-
-function distance(a: string, b: string): number {
-  const row = Array.from({ length: b.length + 1 }, (_, index) => index);
-  for (let i = 1; i <= a.length; i++) {
-    let diagonal = row[0];
-    row[0] = i;
-    for (let j = 1; j <= b.length; j++) {
-      const above = row[j];
-      row[j] = Math.min(
-        row[j] + 1,
-        row[j - 1] + 1,
-        diagonal + (a[i - 1] === b[j - 1] ? 0 : 1),
-      );
-      diagonal = above;
-    }
-  }
-  return row[b.length];
+  return item
+    ? [`${item.name} — ${item.description}`]
+    : [
+        `unknown topic: '${topic}'`,
+        "Use /help to browse available commands and shortcuts.",
+        "/help",
+      ];
 }

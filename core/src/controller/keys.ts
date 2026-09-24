@@ -1,5 +1,6 @@
 import type { Controller } from "./controller";
 import type { InputKey } from "./state";
+import { projectSessions } from "./sessions";
 
 // ponytail: input key orchestration (autocomplete, pickers, pendingAsk) lives
 // outside the controller to keep it under 500 lines; this is a state-rules layer.
@@ -9,6 +10,40 @@ const DOUBLE_ESC_WINDOW_MS = 500;
 
 export function onKey(c: Controller, key: InputKey, input: string): void {
   const s = c.state;
+  if (s.sessionList) {
+    if (key.escape) {
+      s.sessionList = null;
+      s.sessionAll = [];
+      s.sessionScope = "project";
+      s.sessionQuery = "";
+    } else if (key.tab) {
+      s.sessionScope = s.sessionScope === "project" ? "all" : "project";
+      s.sessionList = projectSessions(
+        s.sessionAll,
+        s.sessionScope,
+        s.sessionQuery,
+        process.cwd(),
+      );
+    } else if (key.backspace) {
+      s.sessionQuery = s.sessionQuery.slice(0, -1);
+      s.sessionList = projectSessions(
+        s.sessionAll,
+        s.sessionScope,
+        s.sessionQuery,
+        process.cwd(),
+      );
+    } else if (input && !key.ctrl) {
+      s.sessionQuery += input;
+      s.sessionList = projectSessions(
+        s.sessionAll,
+        s.sessionScope,
+        s.sessionQuery,
+        process.cwd(),
+      );
+    }
+    c.bump();
+    return;
+  }
   if (key.tab) {
     // ponytail: suggestIdx starts at -1; the first tab selects suggestion 0.
     // inputKey++ tells the UI that the value was completed externally.
@@ -144,14 +179,6 @@ export function onKey(c: Controller, key: InputKey, input: string): void {
     else if (input === "y") c.answerAsk(true);
     else if (input === "n") c.answerAsk(false);
     else if (input === "a") c.allowAlways();
-    return;
-  }
-  if (s.sessionList) {
-    if (key.escape) {
-      c.observability?.recordEvent("session_picker.cancelled");
-      s.sessionList = null;
-    }
-    c.bump();
     return;
   }
   if (s.helpOpen) {
