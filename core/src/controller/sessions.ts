@@ -224,10 +224,12 @@ export async function restoreSession(c: Controller, id: string): Promise<void> {
 }
 
 export function projectSessions<
-  T extends { id: string; cwd?: string; title: string },
+  T extends { id: string; cwd?: string; branch?: string; title: string },
 >(all: T[], scope: "project" | "all", query: string, cwd: string): T[] {
   const scoped = scope === "project" ? all.filter((s) => s.cwd === cwd) : all;
-  const haystacks = scoped.map((s) => `${s.id} ${s.title}`);
+  const haystacks = scoped.map(
+    (s) => `${s.id} ${s.title} ${s.cwd ?? ""} ${s.branch ?? ""}`,
+  );
   const matched = fuzzy(haystacks, query);
   const matchedIds = new Set(matched.map((entry) => entry.split(" ")[0]));
   return scoped.filter((s) => matchedIds.has(s.id));

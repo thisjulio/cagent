@@ -25,6 +25,7 @@ import {
 import { openModelPicker, pickModel } from "./models";
 import { toolDenied, toolPost, toolPre, toolStream } from "./tool-events";
 import { onKey } from "./keys";
+import { loadHistory, searchHistory } from "../session/history";
 import type { ControllerDeps, InputKey, UIState } from "./state";
 import { detectLspServers } from "../lsp/doctor";
 import { invokeSkill as invokeSkillAction } from "./skill-actions";
@@ -602,7 +603,15 @@ export class Controller {
   }
 
   latestUserMessage(): string | null {
-    return Session.latestUserMessage(this.deps.sessionDir);
+    const message = [...this.messages]
+      .reverse()
+      .find((entry) => entry.role === "user");
+    if (message && typeof message.content === "string") return message.content;
+    return null;
+  }
+
+  historyEntries(query = ""): string[] {
+    return searchHistory(process.cwd(), query).map((entry) => entry.text);
   }
 
   setInput(v: string): void {

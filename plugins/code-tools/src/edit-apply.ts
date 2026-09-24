@@ -43,6 +43,11 @@ async function processTarget(
     patch: number;
     out: string[];
     displays: import("@cagent/sdk").ToolDisplay[];
+    changedRanges: Array<{
+      path: string;
+      startLine: number;
+      endLine: number;
+    }>;
   },
 ): Promise<boolean> {
   let abs: string;
@@ -178,6 +183,12 @@ async function processTarget(
   recordRead(moveAbs ?? abs);
   recordWrite(moveAbs ?? abs, next);
   clearFailures(abs);
+  const changedLines = applied.lines.length - oldLines.length;
+  o.changedRanges.push({
+    path: moveAbs ?? abs,
+    startLine: 1,
+    endLine: Math.max(1, oldLines.length + Math.max(0, changedLines)),
+  });
   const diff = unifiedDiff(oldLines, applied.lines).split("\n");
   const label = moveAbs ? `${rel(abs)} -> ${rel(moveAbs)}` : rel(abs);
   o.out.push(
@@ -200,14 +211,24 @@ export async function applyTargets(
   output: string;
   isError: boolean;
   changesWorkspace?: boolean;
+  changedRanges: Array<{
+    path: string;
+    startLine: number;
+    endLine: number;
+  }>;
   display?: import("@cagent/sdk").ToolDisplay;
 }> {
   const tscBefore = await tscErrors(root());
   const out: string[] = [];
   const displays: import("@cagent/sdk").ToolDisplay[] = [];
+  const changedRanges: Array<{
+    path: string;
+    startLine: number;
+    endLine: number;
+  }> = [];
   let ok = 0;
   for (const t of targets)
-    if (await processTarget(t, { ...o, out, displays })) ok++;
+    if (await processTarget(t, { ...o, out, displays, changedRanges })) ok++;
 
   const fmt = await runFormat(root());
   // ponytail: the format step rewrites the whole project on disk after recordRead/recordWrite, so resync every tracked path from the filesystem; a stale hash would trip E_STALE on the next edit.
@@ -231,6 +252,7 @@ export async function applyTargets(
     output: out.join("\n"),
     isError: ok === 0,
     changesWorkspace: ok > 0,
+    changedRanges,
     display: displays.length === 1 ? displays[0] : undefined,
   };
 }

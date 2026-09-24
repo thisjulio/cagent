@@ -36,6 +36,11 @@ export interface ToolResult {
   isError?: boolean;
   evidence?: ToolEvidence[];
   changesWorkspace?: boolean;
+  changedRanges?: Array<{
+    path: string;
+    startLine: number;
+    endLine: number;
+  }>;
   display?: ToolDisplay;
 }
 

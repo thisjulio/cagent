@@ -1,6 +1,7 @@
 import type { Controller } from "./controller";
 import type { InputKey } from "./state";
 import { projectSessions } from "./sessions";
+import { searchHistory } from "../session/history";
 
 // ponytail: input key orchestration (autocomplete, pickers, pendingAsk) lives
 // outside the controller to keep it under 500 lines; this is a state-rules layer.
@@ -40,6 +41,39 @@ export function onKey(c: Controller, key: InputKey, input: string): void {
         s.sessionQuery,
         process.cwd(),
       );
+    }
+    c.bump();
+    return;
+  }
+  if (s.historySearch) {
+    if (key.escape) {
+      s.historySearch = false;
+      s.historyIdx = -1;
+      s.historyEntries = [];
+    } else if (key.return) {
+      s.historySearch = false;
+      s.historyIdx = -1;
+      s.historyEntries = [];
+    } else if (key.upArrow) {
+      s.historyIdx = Math.min(s.historyIdx + 1, s.historyEntries.length - 1);
+      if (s.historyIdx >= 0) s.input = s.historyEntries[s.historyIdx];
+      s.inputKey += 1;
+    } else if (key.downArrow) {
+      s.historyIdx = Math.max(s.historyIdx - 1, -1);
+      s.input = s.historyIdx < 0 ? "" : s.historyEntries[s.historyIdx];
+      s.inputKey += 1;
+    } else if (key.backspace) {
+      s.input = s.input.slice(0, -1);
+      s.historyEntries = searchHistory(process.cwd(), s.input).map(
+        (e) => e.text,
+      );
+      s.historyIdx = -1;
+    } else if (input && !key.ctrl) {
+      s.input += input;
+      s.historyEntries = searchHistory(process.cwd(), s.input).map(
+        (e) => e.text,
+      );
+      s.historyIdx = -1;
     }
     c.bump();
     return;

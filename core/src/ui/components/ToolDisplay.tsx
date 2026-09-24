@@ -64,12 +64,13 @@ function DiffDisplay({
     <box flexDirection="column" width="100%" minWidth={0} overflow="hidden">
       <diff
         diff={display.content}
-        view="unified"
+        view="split"
         filetype={display.filetype}
         syntaxStyle={syntaxStyle}
         width="100%"
         minWidth={0}
         showLineNumbers
+        syncScroll
         wrapMode="none"
       />
     </box>

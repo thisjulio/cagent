@@ -49,6 +49,15 @@ function displayLineCount(display: ToolDisplay): number {
   );
 }
 
+function lspOutput(content: string | undefined): string[] {
+  if (!content) return [];
+  const lines = content.split("\n");
+  const start = lines.findIndex(
+    (line) => line === "LSP diagnostics:" || line.startsWith("LSP impact"),
+  );
+  return start < 0 ? [] : lines.slice(start);
+}
+
 function wrapCommand(command: string, width: number): string[] {
   if (command.length <= width) return [command];
   const lines: string[] = [];
@@ -175,27 +184,52 @@ function ToolItemComponent({
         </text>
       ) : null}
       {item.expanded && item.display ? (
-        <box
-          flexDirection="row"
-          width="100%"
-          minWidth={0}
-          overflow="hidden"
-          paddingLeft={0}
-        >
-          <box flexDirection="column" width={3} flexShrink={0}>
-            {Array.from(
-              { length: displayLineCount(item.display) },
-              (_, index) => (
-                <text key={`display-line-${index}`} fg="#d97757">
-                  │{" "}
+        <>
+          <box
+            flexDirection="row"
+            width="100%"
+            minWidth={0}
+            overflow="hidden"
+            paddingLeft={0}
+          >
+            <box flexDirection="column" width={3} flexShrink={0}>
+              {Array.from(
+                { length: displayLineCount(item.display) },
+                (_, index) => (
+                  <text key={`display-line-${index}`} fg="#d97757">
+                    │{" "}
+                  </text>
+                ),
+              )}
+            </box>
+            <box flexGrow={1} flexBasis={0} minWidth={0} flexShrink={1}>
+              <ToolDisplayComponent display={item.display} />
+            </box>
+          </box>
+          {lspOutput(item.content).length > 0 ? (
+            <box flexDirection="column" width="100%" minWidth={0}>
+              <text key="lsp-separator">
+                <span fg="#d97757">│</span>
+              </text>
+              {lspOutput(item.content).map((line, lineIndex) => (
+                <text key={`lsp-line-${lineIndex}`}>
+                  <span fg="#d97757">│ </span>
+                  <span
+                    fg={
+                      line.startsWith("LSP ")
+                        ? "#f59e0b"
+                        : item.isError
+                          ? "#fca5a5"
+                          : "#f59e0b"
+                    }
+                  >
+                    {line}
+                  </span>
                 </text>
-              ),
-            )}
-          </box>
-          <box flexGrow={1} flexBasis={0} minWidth={0} flexShrink={1}>
-            <ToolDisplayComponent display={item.display} />
-          </box>
-        </box>
+              ))}
+            </box>
+          ) : null}
+        </>
       ) : item.expanded && item.content ? (
         <box flexDirection="column" width="100%" minWidth={0}>
           {item.content.split("\n").map((line, lineIndex) => (

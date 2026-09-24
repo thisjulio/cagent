@@ -46,7 +46,7 @@ function summarizeSession(file: string, name: string): SessionSummary | null {
   return {
     id: name.slice(0, -6),
     updated: stats.mtime.toISOString(),
-    title: title.slice(0, 60),
+    title,
     messageCount: records.filter((record) => record.type === "user").length,
     cwd: project?.cwd,
     branch: project?.branch,

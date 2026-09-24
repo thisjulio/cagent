@@ -72,6 +72,30 @@ export function App({ c }: { c: Controller }) {
       key.preventDefault();
       return;
     }
+    if (
+      (key.name === "up" || key.name === "down") &&
+      s.historySearch &&
+      !s.sessionList &&
+      !s.modelPicker &&
+      !s.questionRequest &&
+      !s.pendingAsk
+    ) {
+      c.handleKey(
+        { upArrow: key.name === "up", downArrow: key.name === "down" },
+        input,
+      );
+      key.preventDefault();
+      return;
+    }
+    if (key.ctrl && key.name === "r" && !s.sessionList) {
+      s.historySearch = true;
+      s.historyIdx = -1;
+      s.historyEntries = c.historyEntries(s.input);
+      s.inputKey += 1;
+      c.bump();
+      key.preventDefault();
+      return;
+    }
     if (key.ctrl && key.name === "p") {
       c.openCommandPalette();
       key.preventDefault();
@@ -190,6 +214,23 @@ export function App({ c }: { c: Controller }) {
       c.handleKey({}, input);
       key.preventDefault();
       return;
+    }
+    if (s.historySearch) {
+      if (
+        key.name === "return" ||
+        key.name === "backspace" ||
+        (isPrintable(input) && !key.ctrl && !key.meta)
+      ) {
+        c.handleKey(
+          {
+            return: key.name === "return",
+            backspace: key.name === "backspace",
+          },
+          input,
+        );
+        key.preventDefault();
+        return;
+      }
     }
     if (s.modelPicker && key.name === "backspace") {
       c.handleKey({ backspace: true }, "");

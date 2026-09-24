@@ -127,10 +127,23 @@ export async function runToolPipeline(
       { "tool.name": tool.name },
     );
     bus.emit("tools/post", { tool: tool.name, result });
-    await hooks?.run({ phase: "after_tool", tool: tool.name, args, result });
+    const afterResponses =
+      (await hooks?.run({
+        phase: "after_tool",
+        tool: tool.name,
+        args,
+        result,
+      })) ?? [];
+    const hookMessages = afterResponses
+      .map((response) => response.message)
+      .filter((message): message is string => Boolean(message));
     return {
       ...result,
-      output: appendCapped("", result.output, MAX_TOOL_OUTPUT_CHARS),
+      output: appendCapped(
+        "",
+        [result.output, ...hookMessages].filter(Boolean).join("\n"),
+        MAX_TOOL_OUTPUT_CHARS,
+      ),
     };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

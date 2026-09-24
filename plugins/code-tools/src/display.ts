@@ -1,5 +1,6 @@
 import path from "node:path";
 import type { ToolDisplay } from "@cagent/sdk";
+import { unifiedDiff } from "./diff";
 
 export function filetypeForPath(file: string): string | undefined {
   const extension = path.extname(file).toLowerCase();
@@ -45,13 +46,19 @@ export function unifiedPatch(
   newLines: string[],
   file: string,
 ): string {
-  const body = oldLines
-    .map((line) => `-${line}`)
-    .concat(newLines.map((line) => `+${line}`));
+  const body = unifiedDiff(oldLines, newLines).split("\n");
+  const changed = body.flatMap((line, index) =>
+    line.startsWith("+") || line.startsWith("-") ? [index] : [],
+  );
+  const first = changed[0] ?? 0;
+  const last = changed.at(-1) ?? 0;
+  const from = Math.max(0, first - 3);
+  const to = Math.min(body.length, last + 4);
   return [
+    `diff --git a/${file} b/${file}`,
     `--- ${file}`,
     `+++ ${file}`,
     `@@ -1,${oldLines.length} +1,${newLines.length} @@`,
-    ...body,
+    ...body.slice(from, to),
   ].join("\n");
 }
