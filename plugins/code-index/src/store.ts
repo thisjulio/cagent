@@ -2,34 +2,10 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import type { PluginContext } from "@cagent/sdk";
+import { fileGrammars, grammarFor } from "./grammar";
 import { parseFile, type SymbolTag } from "./tags";
 
-const TAG_CACHE_VERSION = 3;
-const EXTENSIONS: Record<string, string> = {
-  ".ts": "typescript",
-  ".tsx": "tsx",
-  ".js": "javascript",
-  ".jsx": "javascript",
-  ".mjs": "javascript",
-  ".cjs": "javascript",
-  ".py": "python",
-  ".rs": "rust",
-  ".go": "go",
-  ".java": "java",
-  ".c": "c",
-  ".h": "c",
-  ".cc": "cpp",
-  ".cxx": "cpp",
-  ".cpp": "cpp",
-  ".hh": "cpp",
-  ".hxx": "cpp",
-  ".hpp": "cpp",
-  ".mm": "cpp",
-  ".css": "css",
-  ".html": "html",
-  ".json": "json",
-  ".toml": "toml",
-};
+const TAG_CACHE_VERSION = 5;
 
 export function createCodeIndex(ctx: PluginContext) {
   const root = path.resolve(process.cwd());
@@ -76,7 +52,7 @@ export function createCodeIndex(ctx: PluginContext) {
     const tags = await parseFile(
       relative,
       source,
-      EXTENSIONS[path.extname(abs)],
+      grammarFor(relative, source),
     );
     cache.set(abs, { hash, tags });
     await fs.mkdir(path.dirname(cachePath), { recursive: true });
@@ -97,7 +73,7 @@ export function createCodeIndex(ctx: PluginContext) {
       for (const entry of entries) {
         if (entry.isDirectory()) {
           if (!ignored.has(entry.name)) await walk(path.join(dir, entry.name));
-        } else if (entry.isFile() && EXTENSIONS[path.extname(entry.name)]) {
+        } else if (entry.isFile() && fileGrammars[path.extname(entry.name)]) {
           found.push(
             path
               .relative(root, path.join(dir, entry.name))
@@ -152,6 +128,7 @@ export function createCodeIndex(ctx: PluginContext) {
         dirty = false;
         indexedFiles = currentSet;
         mapRows = result
+          .filter((tag) => !tag.isLocal)
           .sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line)
           .map(
             (tag) =>

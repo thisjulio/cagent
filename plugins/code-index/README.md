@@ -23,9 +23,13 @@ qualified names derived from that list, but remain flat, bounded lists rather
 than a tree. Scope is syntactic, not semantic resolution: imports and types are
 not resolved, and the grammar queries can omit declarations.
 
-TypeScript, TSX, and JavaScript module variable tags exclude block/function
-locals by default. Parameters are not indexed. Kinds are stable short labels
-within this plugin, not a promise of exact Universal Ctags kind compatibility.
+TypeScript, TSX, and JavaScript local variables are indexed with `isLocal: true`
+for file outlines and symbol lookup, but excluded from the bounded repository
+map. Outlines label them `(local)`; repeated local names can make `read_symbol`
+ambiguous. Parameters are not indexed. `.h` files containing C++ syntax use the
+C++ grammar, while ordinary C headers retain the C grammar; this is a heuristic
+and can misclassify ambiguous headers. Kinds are short labels, not a promise
+of Universal Ctags kind compatibility.
 
 Tools:
 
@@ -61,7 +65,15 @@ and qualified duplicate tags are excluded. `moduleRecall` additionally
 excludes Ctags symbols whose immediate JS/TS scope is a function, method, or
 generator. This is only an approximation of module scope (nested scope can
 escape that filter), not a precision measurement. Do not compare these
-percentages to earlier unfiltered Ctags campaign figures.
+percentages to earlier unfiltered Ctags campaign figures. With the same
+methodology before and after the grammar and local-tag changes, the 2026-09-24
+snapshot measured p-limit 18.99% -> 95.57%, fmt 52.80% -> 83.47%, and cagent
+24.66% -> 81.73% exact-location recall. Within these targets, JavaScript,
+TypeScript, C++, C, CSS, and Python each reached at least 80% except languages
+with no eligible baseline tags. These gains do not establish precision or
+semantic correctness; local tags are available in outlines but excluded from
+repository maps. The benchmark tracks the working tree, so cagent's denominator
+can change while editing.
 
 Tree-sitter is retained for the syntax index: it provides the polyglot,
 embeddable parser substrate needed by this plugin, while per-language queries

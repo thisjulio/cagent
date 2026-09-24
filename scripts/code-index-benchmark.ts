@@ -1,32 +1,7 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-
-const grammars: Record<string, string> = {
-  ".ts": "typescript",
-  ".tsx": "tsx",
-  ".js": "javascript",
-  ".jsx": "javascript",
-  ".mjs": "javascript",
-  ".cjs": "javascript",
-  ".py": "python",
-  ".rs": "rust",
-  ".go": "go",
-  ".java": "java",
-  ".c": "c",
-  ".h": "c",
-  ".cc": "cpp",
-  ".cxx": "cpp",
-  ".cpp": "cpp",
-  ".hh": "cpp",
-  ".hxx": "cpp",
-  ".hpp": "cpp",
-  ".mm": "cpp",
-  ".css": "css",
-  ".html": "html",
-  ".json": "json",
-  ".toml": "toml",
-};
+import { fileGrammars } from "../plugins/code-index/src/grammar";
 const ignored = new Set([
   ".git",
   "node_modules",
@@ -85,7 +60,7 @@ async function filesIn(root: string, dir = root): Promise<string[]> {
   for (const entry of await fs.readdir(dir, { withFileTypes: true })) {
     if (entry.isDirectory() && !ignored.has(entry.name))
       found.push(...(await filesIn(root, path.join(dir, entry.name))));
-    else if (entry.isFile() && grammars[path.extname(entry.name)])
+    else if (entry.isFile() && fileGrammars[path.extname(entry.name)])
       found.push(path.relative(root, path.join(dir, entry.name)));
   }
   return found.sort();
@@ -134,24 +109,26 @@ async function extract(root: string, files: string[]) {
       ]);
       if (exitCode !== 0)
         throw new Error(`parser worker failed (${exitCode}): ${stderr}`);
-      return JSON.parse(stdout) as { tags: string[]; errors: string[] };
+      return JSON.parse(stdout) as {
+        tags: string[];
+        errors: string[];
+        languages: Record<string, string>;
+      };
     }),
   );
   return {
     ours: new Set(results.flatMap((result) => result.tags)),
     errors: results.flatMap((result) => result.errors),
+    languages: Object.assign(
+      {},
+      ...results.map((result) => result.languages),
+    ) as Record<string, string>,
   };
 }
 
 async function compare(root: string) {
   const files = await filesIn(root);
   const byLanguage: Record<string, number> = {};
-  const fileGrammars = new Map<string, string>();
-  for (const file of files) {
-    const grammar = grammars[path.extname(file)]!;
-    fileGrammars.set(file, grammar);
-    byLanguage[grammar] = (byLanguage[grammar] ?? 0) + 1;
-  }
   const extraction = extract(root, files);
   const proc = Bun.spawn(
     [
@@ -166,13 +143,15 @@ async function compare(root: string) {
     ],
     { cwd: root, stdout: "pipe", stderr: "pipe" },
   );
-  const [ctagsOutput, ctagsErrors, exitCode, { ours, errors }] =
+  const [ctagsOutput, ctagsErrors, exitCode, { ours, errors, languages }] =
     await Promise.all([
       new Response(proc.stdout).text(),
       new Response(proc.stderr).text(),
       proc.exited,
       extraction,
     ]);
+  for (const grammar of Object.values(languages))
+    byLanguage[grammar] = (byLanguage[grammar] ?? 0) + 1;
   if (exitCode !== 0) throw new Error(ctagsErrors);
   const baseline = new Map<string, BaselineTag>();
   for (const line of ctagsOutput.split("\n")) {
@@ -200,7 +179,7 @@ async function compare(root: string) {
   }
   const eligible = [...baseline.entries()].filter(([key, tag]) => {
     const file = key.slice(0, key.indexOf(":"));
-    const grammar = fileGrammars.get(file);
+    const grammar = languages[file];
     if (!["javascript", "typescript", "tsx"].includes(grammar ?? ""))
       return true;
     return (
@@ -209,10 +188,28 @@ async function compare(root: string) {
     );
   });
   const eligibleHits = eligible.filter(([key]) => ours.has(key)).length;
+  const recallByLanguage: Record<
+    string,
+    { matched: number; baseline: number; recall: number }
+  > = {};
+  for (const key of baseline.keys()) {
+    const grammar = languages[key.slice(0, key.indexOf(":"))];
+    if (!grammar) continue;
+    const row = recallByLanguage[grammar] ?? {
+      matched: 0,
+      baseline: 0,
+      recall: 0,
+    };
+    row.baseline++;
+    if (ours.has(key)) row.matched++;
+    row.recall = row.matched / row.baseline;
+    recallByLanguage[grammar] = row;
+  }
   return {
     root,
     files: files.length,
     byLanguage,
+    recallByLanguage,
     pluginTags: ours.size,
     ctagsTags: baseline.size,
     matched: matched.length,

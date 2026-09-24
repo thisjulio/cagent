@@ -48,6 +48,7 @@ export type SymbolTag = {
   kind: string;
   scope: string[];
   file: string;
+  isLocal?: boolean;
   line: number;
   endLine: number;
   signature: string;
@@ -95,12 +96,12 @@ async function getLanguage(name: string): Promise<Language> {
 
 const queries: Record<string, string> = {
   typescript:
-    "(function_declaration name: (identifier) @name) @definition\n(class_declaration name: (type_identifier) @name) @definition\n(interface_declaration name: (type_identifier) @name) @definition\n(type_alias_declaration name: (type_identifier) @name) @definition\n(enum_declaration name: (identifier) @name) @definition\n(method_definition name: (property_identifier) @name) @definition\n(public_field_definition name: (property_identifier) @name) @definition\n(variable_declarator name: (identifier) @name) @definition\n(internal_module name: (identifier) @name) @definition",
+    "(function_declaration name: (identifier) @name) @definition\n(function_signature name: (identifier) @name) @definition\n(class_declaration name: (type_identifier) @name) @definition\n(interface_declaration name: (type_identifier) @name) @definition\n(type_alias_declaration name: (type_identifier) @name) @definition\n(enum_declaration name: (identifier) @name) @definition\n(method_definition name: (property_identifier) @name) @definition\n(public_field_definition name: (property_identifier) @name) @definition\n(variable_declarator name: (identifier) @name) @definition\n(internal_module name: (identifier) @name) @definition",
   tsx: "(function_declaration name: (identifier) @name) @definition\n(class_declaration name: (type_identifier) @name) @definition\n(interface_declaration name: (type_identifier) @name) @definition\n(type_alias_declaration name: (type_identifier) @name) @definition\n(method_definition name: (property_identifier) @name) @definition\n(variable_declarator name: (identifier) @name) @definition",
   javascript:
     "(function_declaration name: (identifier) @name) @definition\n(class_declaration name: (identifier) @name) @definition\n(method_definition name: (property_identifier) @name) @definition\n(method_definition name: (private_property_identifier) @name) @definition\n(variable_declarator name: (identifier) @name value: [(function_expression) (arrow_function)]) @definition\n(pair key: (property_identifier) @name value: [(function_expression) (arrow_function)]) @definition\n(assignment_expression left: (member_expression property: (property_identifier) @name) right: [(function_expression) (arrow_function)]) @definition\n(variable_declarator name: (identifier) @name) @definition\n(field_definition property: (property_identifier) @name) @definition\n(field_definition property: (private_property_identifier) @name) @definition",
   python:
-    "(function_definition name: (identifier) @name) @definition\n(class_definition name: (identifier) @name) @definition",
+    "(function_definition name: (identifier) @name) @definition\n(class_definition name: (identifier) @name) @definition\n(assignment left: (identifier) @name) @definition",
   rust: [
     "(function_item name: (identifier) @name) @definition",
     "(struct_item name: (type_identifier) @name) @definition",
@@ -118,7 +119,7 @@ const queries: Record<string, string> = {
   java: "(class_declaration name: (identifier) @name) @definition\n(method_declaration name: (identifier) @name) @definition\n(interface_declaration name: (identifier) @name) @definition\n(enum_declaration name: (identifier) @name) @definition\n(record_declaration name: (identifier) @name) @definition\n(annotation_type_declaration name: (identifier) @name) @definition\n(field_declaration declarator: (variable_declarator name: (identifier) @name)) @definition\n(enum_constant name: (identifier) @name) @definition\n(constant_declaration declarator: (variable_declarator name: (identifier) @name)) @definition",
   c: "(function_definition declarator: (function_declarator declarator: (identifier) @name)) @definition\n(struct_specifier name: (type_identifier) @name) @definition\n(type_definition declarator: (type_identifier) @name) @definition\n(enum_specifier name: (type_identifier) @name) @definition\n(enumerator name: (identifier) @name) @definition\n(preproc_def name: (identifier) @name) @definition\n(preproc_function_def name: (identifier) @name) @definition\n(declaration declarator: (init_declarator declarator: (identifier) @name)) @definition\n(declaration declarator: (identifier) @name) @definition\n(declaration declarator: (function_declarator declarator: (identifier) @name)) @definition",
   cpp: "(function_definition declarator: (function_declarator declarator: (identifier) @name)) @definition\n(function_definition declarator: (function_declarator declarator: (field_identifier) @name)) @definition\n(class_specifier name: (type_identifier) @name) @definition\n(struct_specifier name: (type_identifier) @name) @definition\n(enum_specifier name: (type_identifier) @name) @definition\n(enumerator name: (identifier) @name) @definition\n(alias_declaration name: (type_identifier) @name) @definition\n(namespace_definition name: (namespace_identifier) @name) @definition\n(field_declaration declarator: (field_identifier) @name) @definition\n(preproc_def name: (identifier) @name) @definition\n(preproc_function_def name: (identifier) @name) @definition\n(declaration declarator: (init_declarator declarator: (identifier) @name)) @definition\n(declaration declarator: (identifier) @name) @definition\n(declaration declarator: (function_declarator declarator: (identifier) @name)) @definition\n(type_definition declarator: (type_identifier) @name) @definition\n(union_specifier name: (type_identifier) @name) @definition\n(field_declaration declarator: (function_declarator declarator: (_) @name)) @definition\n(declaration declarator: (function_declarator declarator: (_) @name)) @definition\n(function_definition declarator: (function_declarator declarator: (_) @name)) @definition\n(class_specifier name: (template_type name: (type_identifier) @name)) @definition\n(struct_specifier name: (template_type name: (type_identifier) @name)) @definition\n(function_definition declarator: (function_declarator declarator: (template_function name: (identifier) @name))) @definition",
-  css: "(rule_set (selectors) @name) @definition",
+  css: "(rule_set (selectors) @name) @definition\n(rule_set (selectors [(class_selector) (id_selector) (descendant_selector)] @name)) @definition",
   html: "(element (start_tag (tag_name) @name)) @definition",
   json: "(pair key: (string) @name) @definition",
   toml: "(pair (bare_key) @name) @definition\n(table (bare_key) @name) @definition",
@@ -127,6 +128,7 @@ const queries: Record<string, string> = {
 const kinds: Record<string, Record<string, string>> = {
   typescript: {
     function_declaration: "f",
+    function_signature: "f",
     class_declaration: "c",
     interface_declaration: "i",
     type_alias_declaration: "t",
@@ -155,7 +157,11 @@ const kinds: Record<string, Record<string, string>> = {
     field_definition: "m",
     variable_declarator: "v",
   },
-  python: { function_definition: "f", class_definition: "c" },
+  python: {
+    function_definition: "f",
+    class_definition: "c",
+    expression_statement: "v",
+  },
   rust: {
     function_item: "f",
     struct_item: "s",
@@ -404,14 +410,15 @@ export async function parseFile(
           (capture) => capture.name === "definition",
         )?.node;
         if (!nameNode || !definition) return [];
-        if (
-          (grammar === "typescript" ||
+        const localVariable =
+          ((grammar === "typescript" ||
             grammar === "tsx" ||
             grammar === "javascript") &&
-          nameNode.parent?.type === "variable_declarator" &&
-          !isModuleVariable(nameNode)
-        )
-          return [];
+            nameNode.parent?.type === "variable_declarator" &&
+            !isModuleVariable(nameNode)) ||
+          (grammar === "python" &&
+            definition.type === "assignment" &&
+            isLocalVariable(definition));
         if (
           (grammar === "typescript" ||
             grammar === "tsx" ||
@@ -447,6 +454,7 @@ export async function parseFile(
             kind,
             scope,
             file: path.relative(process.cwd(), file).split(path.sep).join("/"),
+            ...(localVariable ? { isLocal: true } : {}),
             line: nameNode.startPosition.row + 1,
             endLine: semanticNode.endPosition.row + 1,
             signature: semanticNode.text.split("\n", 1)[0].trim().slice(0, 240),

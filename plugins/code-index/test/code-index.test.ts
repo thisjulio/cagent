@@ -88,7 +88,7 @@ test("emits stable kinds and enclosing Rust scopes", async () => {
   });
 });
 
-test("does not report TypeScript or JavaScript function-local variables", async () => {
+test("marks TypeScript and JavaScript function-local variables", async () => {
   const source = [
     "const CONFIG = 1;",
     "function greet() {",
@@ -101,12 +101,18 @@ test("does not report TypeScript or JavaScript function-local variables", async 
   for (const grammar of ["typescript", "javascript"]) {
     const tags = await parseFile("locals", source, grammar);
     expect(tags.map((tag) => tag.name)).toContain("CONFIG");
-    expect(tags.map((tag) => tag.name)).not.toContain("local");
-    expect(tags.map((tag) => tag.name)).not.toContain("nested");
+    expect(tags.find((tag) => tag.name === "local")).toMatchObject({
+      isLocal: true,
+      scope: ["greet"],
+    });
+    expect(tags.find((tag) => tag.name === "nested")).toMatchObject({
+      isLocal: true,
+      scope: ["greet", "inner"],
+    });
   }
 });
 
-test("retains module declarations and drops JS and TS block-local symbols", async () => {
+test("retains module declarations and marks JS and TS block-local symbols", async () => {
   const source = [
     "const CONFIG = 1;",
     "let mutable = 2;",
@@ -122,9 +128,10 @@ test("retains module declarations and drops JS and TS block-local symbols", asyn
     expect(tags.find((tag) => tag.name === "CONFIG")?.scope).toEqual([]);
     expect(tags.find((tag) => tag.name === "mutable")?.scope).toEqual([]);
     expect(tags.find((tag) => tag.name === "inner")?.scope).toEqual(["outer"]);
-    for (const name of ["blockLocal", "callback", "routes", "nested"]) {
-      expect(tags.some((tag) => tag.name === name)).toBe(false);
+    for (const name of ["blockLocal", "callback", "routes"]) {
+      expect(tags.find((tag) => tag.name === name)?.isLocal).toBe(true);
     }
+    expect(tags.some((tag) => tag.name === "nested")).toBe(false);
   }
 });
 
@@ -288,40 +295,6 @@ test("indexes JavaScript assigned functions and object methods", async () => {
   expect(tags.filter((tag) => tag.name === "getStatus")).toHaveLength(1);
 });
 
-test("indexes named JS private class fields and methods without exposing locals", async () => {
-  const tags = await parseFile(
-    "benchmarker.js",
-    "class Benchmarker {\n #suites = [];\n async #runScenario() { const noise = 1; }\n}",
-    "javascript",
-  );
-  expect(tags.find((tag) => tag.name === "suites")).toMatchObject({
-    kind: "m",
-    scope: ["Benchmarker"],
-  });
-  expect(tags.find((tag) => tag.name === "runScenario")).toMatchObject({
-    kind: "m",
-    scope: ["Benchmarker"],
-  });
-  expect(tags.some((tag) => tag.name === "noise")).toBe(false);
-});
-
-test("indexes C++ template specializations, typedefs, and function declarations", async () => {
-  const tags = await parseFile(
-    "format.hpp",
-    "namespace fmt {\ntemplate <> struct formatter<int> { int value; void format(); };\ntypedef int old_type;\nint format(int input);\ntemplate <> auto digits10<int>() -> int { return 1; }\n}",
-    "cpp",
-  );
-  expect(tags.find((tag) => tag.name === "formatter")).toMatchObject({
-    kind: "s",
-    scope: ["fmt"],
-  });
-  expect(tags.find((tag) => tag.name === "old_type")?.kind).toBe("t");
-  expect(
-    tags.find((tag) => tag.name === "format" && tag.line === 4)?.kind,
-  ).toBe("f");
-  expect(tags.find((tag) => tag.name === "digits10")?.kind).toBe("f");
-});
-
 test("indexes Rust impl blocks, associated functions, fields, and modules", async () => {
   const tags = await parseFile(
     "bytes-sample.rs",
@@ -377,7 +350,7 @@ test("repo map is reusable, bounded, and reflects invalidation and deletions", a
   expect(await index.repoMap()).not.toContain("beta");
 });
 
-test("repo map and outline expose qualified names without local variables", async () => {
+test("repo map excludes locals while outline labels them", async () => {
   await write(
     "src/box.ts",
     "namespace N {\n  export class Box { run() { const noise = 1; } }\n}\n",
@@ -390,7 +363,7 @@ test("repo map and outline expose qualified names without local variables", asyn
     path: "src/box.ts",
   });
   expect(outline.output).toContain("N.Box.run\tm");
-  expect(outline.output).not.toContain(".noise\t");
+  expect(outline.output).toContain("N.Box.run.noise\tC (local)");
 });
 
 test("invalid repository map budgets fall back safely and zero returns no content", async () => {

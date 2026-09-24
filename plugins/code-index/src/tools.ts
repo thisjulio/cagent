@@ -37,7 +37,7 @@ export function codeIndexTools(index: CodeIndex) {
             ? tags
                 .map(
                   (tag) =>
-                    `${tag.line}\t${tag.scope.length ? `${tag.scope.join(".")}.` : ""}${tag.name}\t${tag.kind}\t${tag.signature}`,
+                    `${tag.line}\t${tag.scope.length ? `${tag.scope.join(".")}.` : ""}${tag.name}\t${tag.kind}${tag.isLocal ? " (local)" : ""}\t${tag.signature}`,
                 )
                 .join("\n")
             : "No indexed symbols found.",
