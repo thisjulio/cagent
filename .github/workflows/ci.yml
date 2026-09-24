@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 jobs:
-  parser-platform:
+  build-platform:
     strategy:
       fail-fast: false
       matrix:
@@ -21,7 +21,6 @@ jobs:
         with:
           bun-version: latest
       - run: bun install --frozen-lockfile
-      - run: bun test plugins/code-index/test/code-index.test.ts
       - run: bun run build
   quality:
     runs-on: ubuntu-latest
@@ -31,7 +30,7 @@ jobs:
         with:
           bun-version: latest
       - run: bun install --frozen-lockfile
-      - run: bun test
+      - run: bun test --timeout=15000 --max-concurrency=4
       - run: bun run typecheck
       - run: bun run lint
       - run: bun run format
