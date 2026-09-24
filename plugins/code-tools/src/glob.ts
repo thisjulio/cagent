@@ -51,5 +51,6 @@ export function globTool(ctx: PluginContext) {
         };
       }
     },
+    { readOnly: true },
   );
 }

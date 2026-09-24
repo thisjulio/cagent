@@ -117,5 +117,6 @@ export function readTool(ctx: PluginContext) {
           : undefined,
       };
     },
+    { readOnly: true },
   );
 }

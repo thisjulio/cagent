@@ -146,5 +146,6 @@ export function searchAstTool(ctx: PluginContext) {
         };
       }
     },
+    { readOnly: true },
   );
 }

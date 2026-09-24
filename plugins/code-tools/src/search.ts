@@ -170,5 +170,6 @@ export function searchTool(ctx: PluginContext) {
         };
       }
     },
+    { readOnly: true },
   );
 }

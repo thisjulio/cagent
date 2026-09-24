@@ -21,26 +21,44 @@ export function permission(
   allowlist: string[],
   readOnly = false,
 ): "allow" | "ask" | "deny" {
-  if (readOnly && !isReadOnlyTool(tool.name)) return "deny";
+  if (readOnly && !tool.readOnly) return "deny";
+  if (readOnly) return "allow";
   const target =
     typeof args.command === "string"
       ? (args.command as string).trim()
       : JSON.stringify(args);
-  return allowlist.includes(target) ? "allow" : "ask";
+  const shellCommand = typeof args.command === "string";
+  return allowlist.includes(target) &&
+    !(shellCommand && hasShellControlSyntax(target))
+    ? "allow"
+    : "ask";
 }
 
-function isReadOnlyTool(name: string): boolean {
-  const normalized = name.toLowerCase();
-  return (
-    normalized.startsWith("read_") ||
-    normalized === "read" ||
-    normalized === "glob" ||
-    normalized === "list_files" ||
-    normalized === "search" ||
-    normalized === "search_ast" ||
-    normalized === "grep" ||
-    normalized === "lsp"
-  );
+function hasShellControlSyntax(command: string): boolean {
+  let quote: "'" | '"' | undefined;
+  let escaped = false;
+  for (let i = 0; i < command.length; i++) {
+    const char = command[i];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (char === "`" || (char === "$" && quote !== "'")) return true;
+    if (char === "\\" && quote !== "'") {
+      escaped = true;
+      continue;
+    }
+    if (quote) {
+      if (char === quote) quote = undefined;
+      continue;
+    }
+    if (char === "'" || char === '"') {
+      quote = char;
+      continue;
+    }
+    if (";&|<>\n\r".includes(char)) return true;
+  }
+  return quote !== undefined || escaped;
 }
 
 export async function runToolPipeline(
@@ -58,6 +76,17 @@ export async function runToolPipeline(
   readOnly = false,
 ): Promise<import("@cagent/sdk").ToolResult> {
   const toolTitle = ensureToolTitle(title, tool.name);
+  const decision = permission(tool, args, allowlist, readOnly);
+  if (decision === "deny") {
+    const reason = `${tool.name} is disabled in read-only mode`;
+    bus.emit("tools/denied", {
+      tool: tool.name,
+      args,
+      title: toolTitle,
+      reason,
+    });
+    return { output: reason, isError: true };
+  }
   const before =
     (await hooks?.run({ phase: "before_tool", tool: tool.name, args })) ?? [];
   const blocking = before.find(
@@ -79,15 +108,8 @@ export async function runToolPipeline(
       };
     }
   }
-  const decision = permission(tool, args, allowlist, readOnly);
-  if (
-    decision !== "allow" &&
-    (decision === "deny" || !(await ask(tool, args)))
-  ) {
-    const reason =
-      decision === "deny"
-        ? `${tool.name} is disabled in read-only mode`
-        : `user denied execution of ${tool.name}`;
+  if (decision !== "allow" && !(await ask(tool, args))) {
+    const reason = `user denied execution of ${tool.name}`;
     bus.emit("tools/denied", {
       tool: tool.name,
       args,

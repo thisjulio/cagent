@@ -82,5 +82,6 @@ export function createReadSkillTool(catalog: SkillCatalog): ToolDefinition {
         };
       }
     },
+    { readOnly: true },
   );
 }

@@ -112,5 +112,6 @@ export function lspTool(ctx: PluginContext) {
         };
       }
     },
+    { readOnly: true },
   );
 }

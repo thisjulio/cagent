@@ -43,6 +43,7 @@ export interface ToolDefinition {
   name: string;
   description: string;
   parameters: Record<string, unknown>;
+  readOnly?: boolean;
   execute: (args: ToolArgs) => Promise<ToolResult>;
 }
 
@@ -51,8 +52,9 @@ export function defineTool(
   description: string,
   parameters: Record<string, unknown>,
   execute: (args: ToolArgs) => Promise<ToolResult>,
+  options: { readOnly?: boolean } = {},
 ): ToolDefinition {
-  return { name, description, parameters, execute };
+  return { name, description, parameters, ...options, execute };
 }
 
 export type ToolSchemaOverride = {

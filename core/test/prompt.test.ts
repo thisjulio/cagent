@@ -18,6 +18,15 @@ describe("buildSystemPrompt", () => {
     "Follow active persistent user preferences when writing task titles",
   );
   expect(p).toContain("Do not assume a product-wide default language.");
+  expect(p).toContain(
+    "The runtime executes tool calls sequentially, including independent calls returned together.",
+  );
+  expect(p).not.toContain("Stop after three searches");
+  expect(p).not.toContain("Keep final answers to five lines");
+  expect(p).toContain("do not create a task list for a trivial change");
+  expect(p).not.toContain(
+    "Write every task title in the language of the latest user request",
+  );
 });
 
 describe("scoped rules", () => {
