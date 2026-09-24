@@ -47,6 +47,7 @@ export function listTasks(tasks: Task[]): Task[] {
 }
 
 export function nextTask(tasks: Task[], evidence?: string): Task[] {
+  if (!evidence?.trim()) throw new Error("completion evidence is required");
   return advanceTask(tasks, "completed", evidence);
 }
 

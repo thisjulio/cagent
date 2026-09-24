@@ -33,7 +33,7 @@ describe("task domain", () => {
 
   it("adds immediately after the active task", () => {
     const initial = createTasks([], ["Plan", "Verify", "Release"]);
-    const active = nextTask(initial);
+    const active = nextTask(initial, "Plan completed");
     const tasks = addTask(active, "Review");
     expect(tasks.map((task) => task.title)).toEqual([
       "Plan",
@@ -50,6 +50,15 @@ describe("task domain", () => {
       "in_progress",
     ]);
     expect(tasks[0]?.evidence).toBe("verified");
+  });
+
+  it("requires evidence before completing a task", () => {
+    const tasks = createTasks([], ["Plan"]);
+    expect(() => nextTask(tasks)).toThrow("completion evidence is required");
+    expect(() => nextTask(tasks, "  ")).toThrow(
+      "completion evidence is required",
+    );
+    expect(tasks[0]?.status).toBe("in_progress");
   });
 
   it("skip advances without completing the current task", () => {

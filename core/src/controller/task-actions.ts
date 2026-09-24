@@ -66,8 +66,11 @@ function applyTaskOperation(
     return createTasks(tasks, stringArray(args.titles));
   if (operation === "add") return addTask(tasks, String(args.title ?? ""));
   if (operation === "list") return listTasks(tasks);
-  if (operation === "next")
-    return nextTask(tasks, optionalString(args.details));
+  if (operation === "next") {
+    const evidence = optionalString(args.details)?.trim();
+    if (!evidence) throw new Error("next requires completion evidence");
+    return nextTask(tasks, evidence);
+  }
   if (operation === "skip")
     return skipTask(tasks, optionalString(args.details));
   if (operation === "resume") return resumeTask(tasks);
