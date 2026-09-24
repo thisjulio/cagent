@@ -23,28 +23,43 @@ Rules:
 
 ## Commands
 
-- `bun install` - workspace dependencies
-- `bun test` - core + plugins (`bun test core/test/loop.test.ts` for one file)
-- `bun run build` - release build validation
-- `bun run typecheck` - TypeScript validation
-- `bun run lint` - Biome validation
-- `bun run verify` - mandatory build, typecheck, lint, and test pipeline
-- `bun start` - run the agent
-- `bun core/scripts/snap.tsx` - UI snapshot at 60/80/120 columns
-- `graphify update .` - update the knowledge graph (AST, no API cost)
+- `bun install --frozen-lockfile` - install the workspace exactly as CI does.
+- `bun start` - run `core/src/main.ts`.
+- `bun test` - run the full test suite. Run one test file with `bun test core/test/loop.test.ts`.
+- `bun run build` - build the release executable.
+- `bun run typecheck` - run `tsc --noEmit` on core, SDK, and plugin source.
+- `bun run lint` - run Biome's linter (formatting is disabled in this command).
+- `bun run verify` - locally run build, typecheck, lint, and tests.
+- `bun core/scripts/snap.tsx` - render UI snapshots at 60, 80, and 120 columns.
+- `bun run check:plugins` - validate plugin package metadata after manifest changes.
+- `graphify update .` - update the knowledge graph (AST, no API cost).
+
+CI (`.github/workflows/ci.yml`) installs with `bun install --frozen-lockfile`; its quality job runs `bun test --timeout=15000 --max-concurrency=4`, `bun run typecheck`, `bun run lint`, `bun run format`, and `bun run knip`. A separate Linux/macOS/Windows matrix runs `bun run build`.
 
 ## Workspace
 
 ```
 package.json          # Bun workspaces: core, sdk, plugins/*
-core/                 # binary, loop, registry, events, UI
-core/scripts/         # snap.tsx - UI snapshot
-sdk/                  # plugin interfaces, registry, events, config
-plugins/stub/         # minimal plugin example (registration pattern)
-plugins/openai/       # provider
-plugins/bash/         # tool
-plugins/code-tools/   # tool
+core/                 # CLI, agent loop, controller, sessions, tools, UI, tests
+core/src/ui/          # OpenTUI rendering and components
+core/test/            # core behavior and architecture tests
+core/scripts/         # snap.tsx - UI snapshots
+sdk/                  # plugin interfaces and shared services
+plugins/              # providers, tools, and integration adapters
+plugins/stub/         # minimal plugin registration example
+docs/adr/             # accepted and proposed architecture decisions
 ```
+
+The workspace also includes `plugins/mcp`, `plugins/lsp`, and compatibility
+adapters for Claude and Codex, in addition to `openai`, `llama.cpp`, `bash`,
+and `code-tools`.
+
+## Project References
+
+- [`README.md`](README.md) - usage, configuration, included plugins, and architecture.
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) - contribution and development workflow.
+- [`CONTEXT.md`](CONTEXT.md) - domain glossary.
+- [`docs/adr/`](docs/adr/) - architecture decisions; check their status before relying on one.
 
 ## Finding Your Way Around the Code
 
@@ -71,6 +86,7 @@ ui -> controller -> domain (loop, session, registry) -> sdk
 
 - Arrows point only to the right. An import against the direction breaks `core/test/arch.test.ts`.
 - The core never imports from `plugins/*`; it knows only the `sdk` interfaces.
+- Plugins depend on `sdk`, not core implementation modules (see `plugins/AGENTS.md`).
 - Dependencies enter through constructors or parameters (see `ControllerDeps`), never through singleton imports.
 
 ## Extension Without Editing
@@ -113,11 +129,12 @@ Only add to an existing file when the change belongs to the same concept already
 
 ## Definition of Done
 
-- [ ] `bun test` passes, including `core/test/arch.test.ts`
+- [ ] `bun test` passes, including `core/test/arch.test.ts` (CI uses `--timeout=15000 --max-concurrency=4`)
 - [ ] `bun run build` passes
 - [ ] `bun run typecheck` passes
 - [ ] `bun run lint` passes
-- [ ] `bun run verify` passes without skipped checks
+- [ ] CI quality checks pass: `bun run format` and `bun run knip` also run there
+- [ ] `bun run check:plugins` passes after plugin manifest changes
 - [ ] no touched file exceeds 500 lines
 - [ ] new code is in the location specified by the table above - nothing added to `app.tsx`
 - [ ] for UI changes: snapshot run and compared with the approved wireframe

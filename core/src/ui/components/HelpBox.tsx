@@ -12,7 +12,7 @@ export function HelpBox() {
         commands: <strong>/model</strong> <strong>/sessions</strong>{" "}
         <strong>/compact</strong> <strong>/new</strong> <strong>/rename</strong>{" "}
         <strong>/skill</strong> <strong>/reload-skills</strong>{" "}
-        <strong>/help</strong>
+        <strong>/help</strong> <strong>/init</strong>
       </text>
       <text>
         keys: <strong>Esc</strong> interrupts/closes <strong>ctrl+o</strong>{" "}

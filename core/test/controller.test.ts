@@ -35,6 +35,20 @@ function deps(
 }
 
 describe("controller", () => {
+  it("refreshes the system message from the current project context", () => {
+    let currentPrompt = "old";
+    const c = new Controller({
+      ...deps(),
+      rebuildSystemPrompt: () => currentPrompt,
+    });
+
+    currentPrompt = "updated";
+    c.refreshProjectContext();
+
+    expect(c.systemPrompt).toBe("updated");
+    expect(c.messages[0]).toEqual({ role: "system", content: "updated" });
+  });
+
   it("defaults automatic compaction to 80% of the model context window", () => {
     const c = new Controller({ ...deps(), contextWindow: 100_000 });
 

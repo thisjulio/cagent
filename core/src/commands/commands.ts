@@ -3,11 +3,13 @@ import { expandCommand } from "./discovery";
 import { appendChat, notify } from "../controller/chat-buffer";
 import type { Task } from "../tasks";
 import { MAX_PREFERENCE_LENGTH, type UserPreference } from "../preferences";
+import { runInit } from "./init";
 
 type SlashHandler = (c: Controller, arg: string) => void | Promise<void>;
 
 // ponytail: the dispatch map replaces the if chain in submit; a new command is a new entry, without touching the controller.
 const commands: Record<string, SlashHandler> = {
+  "/init": runInit,
   "/preference": (c, arg) => {
     const [operation = "list", ...rest] = arg.trim().split(/\s+/);
     const text = rest.join(" ").trim();

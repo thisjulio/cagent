@@ -159,6 +159,13 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
       config.instructions,
       skills,
     ),
+    rebuildSystemPrompt: () =>
+      buildSystemPrompt(
+        process.cwd(),
+        loadedPlugins.promptSections,
+        config.instructions,
+        skills,
+      ),
     reloadSkills,
     invokeSkill: async (name, args) => {
       const record = skills?.byName.get(name);

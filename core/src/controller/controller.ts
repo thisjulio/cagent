@@ -126,6 +126,12 @@ export class Controller {
   get systemPrompt(): string | undefined {
     return this.deps.systemPrompt;
   }
+  refreshProjectContext(): void {
+    const next = this.deps.rebuildSystemPrompt?.();
+    if (!next || this.messages[0]?.role !== "system") return;
+    this.deps.systemPrompt = next;
+    this.messages[0] = { role: "system", content: next };
+  }
   get observability(): ControllerDeps["observability"] {
     return this.deps.observability;
   }

@@ -15,6 +15,7 @@ describe("slashSuggestions", () => {
       [
         "/compact",
         "/help",
+        "/init",
         "/model",
         "/new",
         "/preference",

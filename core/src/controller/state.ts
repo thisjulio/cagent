@@ -110,6 +110,7 @@ export interface ControllerDeps {
   variant?: string;
   contextWindow?: number;
   systemPrompt: string;
+  rebuildSystemPrompt?: () => string;
   sessionDir?: string;
   sessionId?: string;
   maxTurns?: number;
