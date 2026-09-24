@@ -50,6 +50,19 @@ grammar families. Zero-tag files may lack supported declarations or use
 constructs not yet captured. These figures predate the scope and local-variable
 changes; they are a parsing smoke test, not a current precision or recall audit.
 
+Benchmark the corpus (including this repository as `cagent`) with
+`CODE_INDEX_WORKERS=8 bun scripts/code-index-benchmark.ts`; set
+`CODE_INDEX_CORPUS` to override the default `/tmp/code-index-campaign` clone
+location, or pass repository names to select a subset. The benchmark uses
+separate Bun processes for file shards, capped at eight workers, and runs
+Universal Ctags concurrently. It compares exact file, line, and declared name
+among named code kinds; anonymous generated tags, JSON keys, CSS selectors,
+and qualified duplicate tags are excluded. `moduleRecall` additionally
+excludes Ctags symbols whose immediate JS/TS scope is a function, method, or
+generator. This is only an approximation of module scope (nested scope can
+escape that filter), not a precision measurement. Do not compare these
+percentages to earlier unfiltered Ctags campaign figures.
+
 Tree-sitter is retained for the syntax index: it provides the polyglot,
 embeddable parser substrate needed by this plugin, while per-language queries
 remain the main maintenance cost. The existing `@ast-grep/napi` integration is

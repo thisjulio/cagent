@@ -288,6 +288,40 @@ test("indexes JavaScript assigned functions and object methods", async () => {
   expect(tags.filter((tag) => tag.name === "getStatus")).toHaveLength(1);
 });
 
+test("indexes named JS private class fields and methods without exposing locals", async () => {
+  const tags = await parseFile(
+    "benchmarker.js",
+    "class Benchmarker {\n #suites = [];\n async #runScenario() { const noise = 1; }\n}",
+    "javascript",
+  );
+  expect(tags.find((tag) => tag.name === "suites")).toMatchObject({
+    kind: "m",
+    scope: ["Benchmarker"],
+  });
+  expect(tags.find((tag) => tag.name === "runScenario")).toMatchObject({
+    kind: "m",
+    scope: ["Benchmarker"],
+  });
+  expect(tags.some((tag) => tag.name === "noise")).toBe(false);
+});
+
+test("indexes C++ template specializations, typedefs, and function declarations", async () => {
+  const tags = await parseFile(
+    "format.hpp",
+    "namespace fmt {\ntemplate <> struct formatter<int> { int value; void format(); };\ntypedef int old_type;\nint format(int input);\ntemplate <> auto digits10<int>() -> int { return 1; }\n}",
+    "cpp",
+  );
+  expect(tags.find((tag) => tag.name === "formatter")).toMatchObject({
+    kind: "s",
+    scope: ["fmt"],
+  });
+  expect(tags.find((tag) => tag.name === "old_type")?.kind).toBe("t");
+  expect(
+    tags.find((tag) => tag.name === "format" && tag.line === 4)?.kind,
+  ).toBe("f");
+  expect(tags.find((tag) => tag.name === "digits10")?.kind).toBe("f");
+});
+
 test("indexes Rust impl blocks, associated functions, fields, and modules", async () => {
   const tags = await parseFile(
     "bytes-sample.rs",

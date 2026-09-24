@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
-import { parseFile } from "../plugins/code-index/src/tags";
 
 const grammars: Record<string, string> = {
   ".ts": "typescript",
@@ -38,13 +38,16 @@ const ignored = new Set([
   "graphify-out",
 ]);
 const repos = [
-  "express",
-  "p-limit",
-  "fmt",
-  "json",
-  "bytes",
-  "ripgrep",
+  "flask",
+  "gin",
   "guava",
+  "json",
+  "p-limit",
+  "ripgrep",
+  "express",
+  "gh-cli",
+  "bytes",
+  "fmt",
   "junit5",
   "cagent",
 ];
@@ -73,6 +76,8 @@ type BaselineTag = {
   name: string;
   line: number;
   kind: string;
+  scope?: string;
+  scopeKind?: string;
 };
 
 async function filesIn(root: string, dir = root): Promise<string[]> {
@@ -86,32 +91,74 @@ async function filesIn(root: string, dir = root): Promise<string[]> {
   return found.sort();
 }
 
+const configuredWorkers = Number(
+  process.env.CODE_INDEX_WORKERS ?? os.availableParallelism(),
+);
+if (!Number.isInteger(configuredWorkers) || configuredWorkers < 1)
+  throw new Error("CODE_INDEX_WORKERS must be a positive integer");
+const workers = Math.min(configuredWorkers, 8);
+
+async function extract(root: string, files: string[]) {
+  const shards: Array<{ files: string[]; bytes: number }> = Array.from(
+    { length: Math.min(workers, files.length) },
+    () => ({ files: [], bytes: 0 }),
+  );
+  const sizes = await Promise.all(
+    files.map(async (file) => ({
+      file,
+      bytes: (await fs.stat(path.join(root, file))).size,
+    })),
+  );
+  for (const { file, bytes } of sizes.sort((a, b) => b.bytes - a.bytes)) {
+    const shard = shards.reduce((smallest, next) =>
+      next.bytes < smallest.bytes ? next : smallest,
+    );
+    shard.files.push(file);
+    shard.bytes += bytes;
+  }
+  const results = await Promise.all(
+    shards.map(async (shard) => {
+      const proc = Bun.spawn(
+        [
+          process.execPath,
+          path.join(import.meta.dir, "code-index-benchmark-worker.ts"),
+          root,
+          ...shard.files,
+        ],
+        { stdout: "pipe", stderr: "pipe" },
+      );
+      const [stdout, stderr, exitCode] = await Promise.all([
+        new Response(proc.stdout).text(),
+        new Response(proc.stderr).text(),
+        proc.exited,
+      ]);
+      if (exitCode !== 0)
+        throw new Error(`parser worker failed (${exitCode}): ${stderr}`);
+      return JSON.parse(stdout) as { tags: string[]; errors: string[] };
+    }),
+  );
+  return {
+    ours: new Set(results.flatMap((result) => result.tags)),
+    errors: results.flatMap((result) => result.errors),
+  };
+}
+
 async function compare(root: string) {
   const files = await filesIn(root);
-  const ours = new Set<string>();
   const byLanguage: Record<string, number> = {};
-  const errors: string[] = [];
+  const fileGrammars = new Map<string, string>();
   for (const file of files) {
     const grammar = grammars[path.extname(file)]!;
+    fileGrammars.set(file, grammar);
     byLanguage[grammar] = (byLanguage[grammar] ?? 0) + 1;
-    try {
-      for (const tag of await parseFile(
-        path.join(root, file),
-        await fs.readFile(path.join(root, file), "utf8"),
-        grammar,
-      )) {
-        ours.add(`${file}:${tag.line}:${tag.name}`);
-      }
-    } catch (error) {
-      errors.push(`${file}: ${String(error)}`);
-    }
   }
-  const proc = Bun.spawnSync(
+  const extraction = extract(root, files);
+  const proc = Bun.spawn(
     [
       "ctags",
       "--output-format=json",
       "--fields=+nK",
-      "--extras=+q",
+      "--extras=-q",
       "--languages=C,C++,CSS,Go,HTML,Java,JavaScript,JSON,Python,Rust,TOML,TypeScript",
       "-f",
       "-",
@@ -119,16 +166,28 @@ async function compare(root: string) {
     ],
     { cwd: root, stdout: "pipe", stderr: "pipe" },
   );
-  if (proc.exitCode !== 0)
-    throw new Error(new TextDecoder().decode(proc.stderr));
+  const [ctagsOutput, ctagsErrors, exitCode, { ours, errors }] =
+    await Promise.all([
+      new Response(proc.stdout).text(),
+      new Response(proc.stderr).text(),
+      proc.exited,
+      extraction,
+    ]);
+  if (exitCode !== 0) throw new Error(ctagsErrors);
   const baseline = new Map<string, BaselineTag>();
-  for (const line of new TextDecoder().decode(proc.stdout).split("\n")) {
+  for (const line of ctagsOutput.split("\n")) {
     if (!line) continue;
     const tag = JSON.parse(line) as BaselineTag;
-    if (tag._type !== "tag" || !tag.line || !tag.path || !kinds.has(tag.kind))
+    if (
+      tag._type !== "tag" ||
+      !tag.line ||
+      !tag.path ||
+      !kinds.has(tag.kind) ||
+      tag.name.startsWith("anonymous") ||
+      tag.name.startsWith("__anon")
+    )
       continue;
-    // Qualified C++ names (e.g. Box::run) are not reduced to their leaf by splitting on dots.
-    // Preserve the full spelling here so mismatches remain visible in diagnostics.
+    // Keep the baseline's declared spelling, including C++ qualified names.
     const key = `${path.relative(root, path.resolve(root, tag.path))}:${tag.line}:${tag.name}`;
     baseline.set(key, tag);
   }
@@ -139,6 +198,17 @@ async function compare(root: string) {
     const kind = baseline.get(key)!.kind;
     missingByKind[kind] = (missingByKind[kind] ?? 0) + 1;
   }
+  const eligible = [...baseline.entries()].filter(([key, tag]) => {
+    const file = key.slice(0, key.indexOf(":"));
+    const grammar = fileGrammars.get(file);
+    if (!["javascript", "typescript", "tsx"].includes(grammar ?? ""))
+      return true;
+    return (
+      !tag.scope ||
+      !["function", "method", "generator"].includes(tag.scopeKind ?? "")
+    );
+  });
+  const eligibleHits = eligible.filter(([key]) => ours.has(key)).length;
   return {
     root,
     files: files.length,
@@ -147,6 +217,9 @@ async function compare(root: string) {
     ctagsTags: baseline.size,
     matched: matched.length,
     recall: baseline.size ? matched.length / baseline.size : null,
+    moduleRecall: eligible.length ? eligibleHits / eligible.length : null,
+    moduleMatched: eligibleHits,
+    moduleBaseline: eligible.length,
     missingByKind,
     misses: misses.slice(0, 20),
     errors,

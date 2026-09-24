@@ -4,7 +4,7 @@ import { createHash } from "node:crypto";
 import type { PluginContext } from "@cagent/sdk";
 import { parseFile, type SymbolTag } from "./tags";
 
-const TAG_CACHE_VERSION = 2;
+const TAG_CACHE_VERSION = 3;
 const EXTENSIONS: Record<string, string> = {
   ".ts": "typescript",
   ".tsx": "tsx",
