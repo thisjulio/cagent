@@ -293,4 +293,44 @@ a7.ts
     ]);
     expect(log.stdout.trim().split("\n").length).toBeGreaterThanOrEqual(1);
   });
+
+  it("edit_file: second edit after a whole-project format does not go stale", async () => {
+    // A minimal "whole-project" formatter: rewrites a file on disk after the edit.
+    fs.writeFileSync(
+      path.join(ws, "fmt.js"),
+      "const fs = require('fs'); const p = 'fmt.ts'; fs.writeFileSync(p, fs.readFileSync(p, 'utf8').replace(' ;', ';'));\n",
+    );
+    fs.writeFileSync(
+      path.join(ws, "package.json"),
+      JSON.stringify({
+        name: "ws",
+        scripts: {
+          format: "node fmt.js",
+        },
+      }),
+    );
+    const { tools } = freshTools();
+    await tools
+      .get("write_file")!
+      .execute({ path: "fmt.ts", content: "const x = 1 ;\n" });
+    await tools.get("read_file")!.execute({ path: "fmt.ts" });
+    const first = await tools.get("edit_file")!.execute({
+      path: "fmt.ts",
+      blocks: "<<< SEARCH\nconst x = 1 ;\n>>>\n<<< REPLACE\nconst y = 1 ;\n>>>",
+    });
+    expect(first.isError).toBeFalsy();
+    // The format step rewrote the file on disk after the edit was recorded.
+    expect(fs.readFileSync(path.join(ws, "fmt.ts"), "utf8")).toBe(
+      "const y = 1;\n",
+    );
+    const second = await tools.get("edit_file")!.execute({
+      path: "fmt.ts",
+      blocks: "<<< SEARCH\nconst y = 1;\n>>>\n<<< REPLACE\nconst z = 1;\n>>>",
+    });
+    expect(second.isError).toBeFalsy();
+    expect(second.output).not.toContain("E_STALE");
+    expect(fs.readFileSync(path.join(ws, "fmt.ts"), "utf8")).toBe(
+      "const z = 1;\n",
+    );
+  });
 });

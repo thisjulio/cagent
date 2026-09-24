@@ -66,15 +66,6 @@
         "@cagent/sdk": "workspace:*",
       },
     },
-    "plugins/code-index": {
-      "name": "@cagent/plugin-code-index",
-      "version": "0.1.0",
-      "dependencies": {
-        "@cagent/sdk": "workspace:*",
-        "tree-sitter-wasms": "^0.1.13",
-        "web-tree-sitter": "0.25.10",
-      },
-    },
     "plugins/code-tools": {
       "name": "@cagent/plugin-code-tools",
       "version": "0.1.0",
@@ -195,8 +186,6 @@
     "@cagent/plugin-claude-hooks": ["@cagent/plugin-claude-hooks@workspace:plugins/claude-hooks"],
 
     "@cagent/plugin-claude-plugins": ["@cagent/plugin-claude-plugins@workspace:plugins/claude-plugins"],
-
-    "@cagent/plugin-code-index": ["@cagent/plugin-code-index@workspace:plugins/code-index"],
 
     "@cagent/plugin-code-tools": ["@cagent/plugin-code-tools@workspace:plugins/code-tools"],
 
@@ -597,8 +586,6 @@
     "toidentifier": ["toidentifier@1.0.1", "", {}, "sha512-o5sSPKEkg/DIQNmH43V0/uerLrpzVedkUh8tGNvaeXpfpuwjKenlSox/2O/BTlZUtEe+JG7s5YhEz608PlAHRA=="],
 
     "tr46": ["tr46@0.0.3", "", {}, "sha512-N3WMsuqV66lT30CrXNbEjx4GEwlow3v6rr4mCcv6prnfwhS01rkgyFdjPNBYd9br7LpXV1+Emh01fHnq2Gdgrw=="],
-
-    "tree-sitter-wasms": ["tree-sitter-wasms@0.1.13", "", { "dependencies": { "tree-sitter-wasms": "^0.1.11" } }, "sha512-wT+cR6DwaIz80/vho3AvSF0N4txuNx/5bcRKoXouOfClpxh/qqrF4URNLQXbbt8MaAxeksZcZd1j8gcGjc+QxQ=="],
 
     "tslib": ["tslib@2.8.1", "", {}, "sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w=="],
 

@@ -65,3 +65,18 @@ export function wasReverted(absPath: string): boolean {
   const prev = lastWrite.get(absPath);
   return prev !== undefined && fileHash(absPath) !== prev;
 }
+// ponytail: after a whole-project format the tracked hashes are stale on disk, so resync every tracked path from the filesystem; drop the ones that no longer exist.
+// Iterate a snapshot: recordRead re-inserts the key while the live LruMap iterator would revisit it forever.
+export function syncTracked(): void {
+  for (const abs of [...reads.keys()]) {
+    if (!fs.existsSync(abs)) {
+      reads.delete(abs);
+      lastWrite.delete(abs);
+      lineAnchor.delete(abs);
+    } else {
+      recordRead(abs);
+      // ponytail: lastWrite must mirror the on-disk hash too, otherwise wasReverted would fire on the next read after a format.
+      lastWrite.set(abs, fileHash(abs));
+    }
+  }
+}
