@@ -93,6 +93,43 @@ describe("controller", () => {
     ).toBe(false);
   });
 
+  it("requests fixed handoff sections and caps the persisted checkpoint summary", async () => {
+    const d = deps(false, {
+      compact_keep_tokens: 2_000,
+      compact_summary_tokens: 50,
+    });
+    let prompt = "";
+    d.adapter.stream = async function* ({ messages }) {
+      prompt = String(messages[0]?.content ?? "");
+      yield { type: "text", text: "handoff ".repeat(200) };
+      yield { type: "finish", finish_reason: "stop" };
+    };
+    const c = new Controller(d);
+    c.messages.push(
+      { role: "user", content: "old ".repeat(750) },
+      { role: "assistant", content: "recent ".repeat(750) },
+      { role: "user", content: "latest ".repeat(750) },
+    );
+
+    await c.compact();
+
+    expect(prompt).toContain("## Current state");
+    expect(prompt).toContain("## Decisions");
+    expect(prompt).toContain("## Changes");
+    expect(prompt).toContain("## Verification");
+    expect(prompt).toContain("## Pending work");
+    expect(prompt).toContain("## References");
+    expect(c.messages[1]?.content.length).toBeLessThanOrEqual(
+      "[context checkpoint handoff]\n".length + 50 * 4,
+    );
+    const checkpoint = c.session.load().records.at(-1)?.payload.checkpoint as
+      | { summary: string; recentMessages: unknown[]; version: number }
+      | undefined;
+    expect(checkpoint?.version).toBe(1);
+    expect(checkpoint?.summary.length).toBeLessThanOrEqual(50 * 4);
+    expect(checkpoint?.recentMessages.length).toBeGreaterThan(0);
+  });
+
   it("compacts and retries after the provider reports a context limit", async () => {
     const d = deps(false, {
       compact_keep_tokens: 20,

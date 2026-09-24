@@ -137,6 +137,39 @@ describe("JSONL sessions", () => {
     expect(loaded.records).toHaveLength(2);
   });
 
+  it("restores a typed checkpoint with its recent tail while retaining the full log", () => {
+    const s = new Session("typed-checkpoint", dir);
+    const tail = [
+      { role: "assistant" as const, content: "recent answer" },
+      { role: "user" as const, content: "latest question" },
+    ];
+    s.append({ ts: 1, type: "user", payload: { content: "old history" } });
+    s.append({
+      ts: 2,
+      type: "meta",
+      payload: {
+        kind: "checkpoint",
+        checkpoint: {
+          version: 1,
+          summary: "## Current state\nWorking",
+          recentMessages: tail,
+        },
+      },
+    });
+
+    const loaded = new Session(s.id, dir).load();
+
+    expect(loaded.messages).toEqual([
+      {
+        role: "user",
+        content: "[context checkpoint handoff]\n## Current state\nWorking",
+      },
+      ...tail,
+    ]);
+    expect(loaded.records).toHaveLength(1);
+    expect(s.load().records[0]?.payload.kind).toBe("checkpoint");
+  });
+
   it("restores activated skills as system messages", () => {
     const s = new Session("skill", dir);
     s.append({

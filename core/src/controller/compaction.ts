@@ -4,6 +4,34 @@ import { splitRoute } from "../route";
 import type { Controller } from "./controller";
 import { appendChat } from "./chat-buffer";
 import { recentContext } from "../context/recent-context";
+import type { Message } from "@cagent/sdk";
+import type { SessionCheckpoint } from "../session/types";
+
+const CHARS_PER_TOKEN = 4;
+
+function boundedSummary(summary: string, tokenBudget: number): string {
+  const maxChars = Math.max(1, Math.floor(tokenBudget) * CHARS_PER_TOKEN);
+  if (summary.length <= maxChars) return summary;
+  const marker = "\n\n[handoff truncated to configured token budget]";
+  if (maxChars <= marker.length) return summary.slice(0, maxChars);
+  return `${summary.slice(0, Math.max(0, maxChars - marker.length))}${marker}`;
+}
+
+function checkpointPrompt(tokenBudget: number): string {
+  return [
+    "Create a structured handoff for another model to continue this task.",
+    "Use exactly these Markdown headings, in this order:",
+    "## Current state",
+    "## Decisions",
+    "## Changes",
+    "## Verification",
+    "## Pending work",
+    "## References",
+    "Under each heading, include concise, concrete facts; write 'None' if there are none.",
+    "Preserve completed and in-progress work, decisions and rationale, files and symbols, executed commands and exact results, constraints, risks, explicit next steps, and important user preferences.",
+    `Keep the handoff within approximately ${tokenBudget} tokens (${Math.max(1, Math.floor(tokenBudget)) * CHARS_PER_TOKEN} characters). Do not invent facts.`,
+  ].join("\n");
+}
 
 function summaryForDisplay(previous: string, chunk: string): string {
   const marker = "\n\n";
@@ -65,6 +93,7 @@ export async function compact(
   }
   const recentStart = old.length - recent.length;
   const compacted = old.slice(0, recentStart);
+  const summaryTokenBudget = c.config.compact_summary_tokens ?? 4000;
   c.observability?.recordEvent("compaction.started", {
     force,
     reason,
@@ -99,8 +128,7 @@ export async function compact(
     messages: [
       {
         role: "system",
-        content:
-          "Create a structured handoff for another model. Preserve completed work, current work, files and symbols involved, decisions and why, executed commands and results, constraints, risks, and explicit next steps. Be concise but detailed enough to continue without repeating work. Do not invent facts.",
+        content: checkpointPrompt(summaryTokenBudget),
       },
       {
         role: "user",
@@ -123,17 +151,23 @@ export async function compact(
     return;
   }
   const rest = removeOrphanedToolOutputs(recent);
+  const bounded = boundedSummary(summary, summaryTokenBudget);
+  const checkpoint: SessionCheckpoint = {
+    version: 1,
+    summary: bounded,
+    recentMessages: rest,
+  };
   s.compacting = false;
   progress.content = "compaction complete";
   c.messages.length = 1;
   c.messages.push(
-    { role: "user", content: `[context checkpoint handoff]\n${summary}` },
+    { role: "user", content: `[context checkpoint handoff]\n${bounded}` },
     ...rest,
   );
   c.session.append({
     ts: Date.now(),
     type: "meta",
-    payload: { kind: "compacted", summary },
+    payload: { kind: "checkpoint", checkpoint },
   });
   appendChat(s, {
     kind: "meta",

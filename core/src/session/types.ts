@@ -7,6 +7,12 @@ export type QueueMessage = {
   status: "queued" | "processing";
 };
 
+export type SessionCheckpoint = {
+  version: 1;
+  summary: string;
+  recentMessages: Message[];
+};
+
 export type SessionRecord = {
   ts: number;
   turnId?: string;

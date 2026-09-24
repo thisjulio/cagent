@@ -32,7 +32,10 @@ export function effectiveSessionRecords(
   records: SessionRecord[],
 ): SessionRecord[] {
   const compacted = records.findLastIndex(
-    (record) => record.type === "meta" && record.payload.kind === "compacted",
+    (record) =>
+      record.type === "meta" &&
+      (record.payload.kind === "checkpoint" ||
+        record.payload.kind === "compacted"),
   );
   if (compacted === -1) return records;
   return [

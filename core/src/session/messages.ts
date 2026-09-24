@@ -12,6 +12,16 @@ export function recordsToMessages(records: SessionRecord[]): Message[] {
         role: "user",
         content: `[previous conversation summary]\n${String(payload.summary ?? "")}`,
       });
+    } else if (record.type === "meta" && payload.kind === "checkpoint") {
+      const checkpoint = payload.checkpoint as
+        | { version?: number; summary?: string; recentMessages?: Message[] }
+        | undefined;
+      messages.push({
+        role: "user",
+        content: `[context checkpoint handoff]\n${String(checkpoint?.summary ?? "")}`,
+      });
+      if (checkpoint?.version === 1 && Array.isArray(checkpoint.recentMessages))
+        messages.push(...checkpoint.recentMessages);
     } else if (record.type === "user") {
       messages.push({ role: "user", content: String(payload.content ?? "") });
     } else if (record.type === "assistant") {
