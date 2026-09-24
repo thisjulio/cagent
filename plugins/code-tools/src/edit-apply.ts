@@ -209,6 +209,16 @@ export async function applyTargets(
     if (await processTarget(t, { ...o, out, displays })) ok++;
 
   const fmt = await runFormat(root());
+  // ponytail: the format step rewrites the files on disk after recordRead/recordWrite, so refresh the hash from disk for every successfully written path; a stale hash would trip E_STALE on the next edit.
+  for (const t of targets) {
+    if (t.file?.op === "delete") continue;
+    try {
+      const abs = guardPath(t.path);
+      if (fs.existsSync(abs)) recordRead(abs);
+    } catch {
+      // Path errors are already reported above.
+    }
+  }
   const tscAfter = await tscErrors(root());
   const newErrors = tscAfter.filter((l) => !tscBefore.includes(l));
   if (fmt) out.push(`format:\n${fmt.slice(0, 500)}`);
