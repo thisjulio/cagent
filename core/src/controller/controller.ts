@@ -48,6 +48,7 @@ import { submitSubagent as submitSubagentAction } from "./subagent-submission";
 import { createStreamThrottle } from "./stream-throttle";
 import { compactionThreshold } from "./compaction-threshold";
 import { createQueue, enqueueMessage } from "./message-queue";
+import { notifyTerminalAttention } from "../terminal-attention";
 import {
   loadPreferences,
   savePreferences,
@@ -375,6 +376,7 @@ export class Controller {
     this.questionService.onChange(() => {
       const pending = this.questionService.list();
       this.state.questionRequest = pending.length > 0 ? pending[0] : null;
+      if (this.state.questionRequest) notifyTerminalAttention();
       if (!this.state.questionRequest) {
         this.state.questionIndex = 0;
         this.state.questionSelectedOption = 0;
@@ -540,7 +542,11 @@ export class Controller {
     await submitMessage(this, text);
   }
 
-  ask: ToolAsk = async (tool: ToolDefinition, args: ToolArgs) => {
+  ask: ToolAsk = async (
+    tool: ToolDefinition,
+    args: ToolArgs,
+    title?: string,
+  ) => {
     if (
       this.state.permissionMode === "ask" &&
       tool.name !== "bash" &&
@@ -563,7 +569,20 @@ export class Controller {
     if (this.deps.config.permissions === false) return true;
     const cmd =
       typeof args.command === "string" ? args.command : JSON.stringify(args);
-    this.state.pendingAsk = { tool: tool.name, cmd };
+    const hasControlSyntax =
+      tool.name === "bash" &&
+      hasShellControlSyntax(
+        typeof args.command === "string" ? args.command : "",
+      );
+    this.state.pendingAsk = {
+      tool: tool.name,
+      cmd,
+      title,
+      args,
+      canAlwaysAllow: tool.name === "bash" && !hasControlSyntax,
+      allowScope: tool.name === "bash" ? "sempre bash*" : undefined,
+    };
+    notifyTerminalAttention();
     this.bump();
     return new Promise<boolean>((resolve) => {
       this.askResolver = resolve;

@@ -1,7 +1,8 @@
 import { SyntaxStyle, TextAttributes } from "@opentui/core";
+import { useState } from "react";
 import type { AgentTurnBlock, AgentItem } from "../render/blocks";
 import type { Controller } from "../../controller/controller";
-import { categoryLabel } from "../../tool-category";
+import type { ToolCategory } from "../../tool-category";
 import { formatTime } from "../render/time";
 import { ToolDisplayComponent } from "./ToolDisplay";
 import { redactCommand } from "../../tool-preview";
@@ -9,6 +10,34 @@ import { redactCommand } from "../../tool-preview";
 const MAX_THINKING_LINES = 12;
 const MAX_THINKING_CHARS = 2400;
 const markdownSyntaxStyle = SyntaxStyle.create();
+
+function categoryIcon(category: ToolCategory): string {
+  return {
+    shell: "⌘",
+    read: "◉",
+    write: "✎",
+    search: "⌕",
+    skill: "✦",
+    agent: "◆",
+    mcptool: "◇",
+    generic: "•",
+  }[category];
+}
+
+function resultSummary(item: Extract<AgentItem, { type: "TOOL" }>): string {
+  if (item.running || !item.content) return "";
+  const content = item.content;
+  if (item.isError) return "exit 1";
+  if (item.toolCategory === "search") {
+    const count = content.split("\n").filter((line) => line.trim()).length;
+    return `${count} resultado${count === 1 ? "" : "s"}`;
+  }
+  if (item.toolCategory === "shell" && /(?:pass|test)/i.test(item.cmd ?? "")) {
+    const match = content.match(/(\d+)\s+(?:pass|passed)/i);
+    return match ? `${match[1]} pass` : "pass";
+  }
+  return "";
+}
 
 function lspOutput(content: string | undefined): string[] {
   if (!content) return [];
@@ -38,6 +67,7 @@ function ThinkingItemComponent({
 }: {
   item: Extract<AgentItem, { type: "THINKING" }>;
 }) {
+  const [collapsed, setCollapsed] = useState(true);
   const content = item.content ?? "";
   const visible =
     content.length > MAX_THINKING_CHARS
@@ -48,22 +78,24 @@ function ThinkingItemComponent({
 
   return (
     <box flexDirection="column">
-      <text>
+      <text onMouseDown={() => setCollapsed((value) => !value)}>
         <span fg="#d97757">├─ </span>
-        <strong fg="#ffffff">thinking</strong>
+        <strong fg="#ffffff">{collapsed ? "▸" : "▾"} thinking</strong>
       </text>
-      <box flexDirection="column">
-        {lines.map((line, lineIndex) => (
-          <text
-            key={`thinking-line-${lineIndex}`}
-            attributes={TextAttributes.ITALIC}
-            wrapMode="word"
-          >
-            <span fg="#d97757">│ </span>
-            <span fg="#888888">{line || " "}</span>
-          </text>
-        ))}
-      </box>
+      {!collapsed && (
+        <box flexDirection="column">
+          {lines.map((line, lineIndex) => (
+            <text
+              key={`thinking-line-${lineIndex}`}
+              attributes={TextAttributes.ITALIC}
+              wrapMode="word"
+            >
+              <span fg="#d97757">│ </span>
+              <span fg="#888888">{line || " "}</span>
+            </text>
+          ))}
+        </box>
+      )}
       <text fg="#d97757">│ </text>
     </box>
   );
@@ -81,7 +113,7 @@ function ToolItemComponent({
   const lines = item.content ? item.content.split("\n").length : 0;
   const duration = item.running
     ? `(running ${item.timestamp ? ((Date.now() - item.timestamp) / 1000).toFixed(1) : "0.0"}s)`
-    : item.durationMs !== undefined
+    : item.durationMs !== undefined && item.durationMs >= 1000
       ? `(${(item.durationMs / 1000).toFixed(1)}s)`
       : item.denied
         ? "(denied)"
@@ -90,7 +122,10 @@ function ToolItemComponent({
     !item.running && !item.denied && !item.expanded && lines > 0
       ? `+${lines} line${lines === 1 ? "" : "s"} (ctrl+o)`
       : "";
-  const details = [duration, lineHint].filter(Boolean).join(" ");
+  const details = [duration, resultSummary(item), lineHint]
+    .filter(Boolean)
+    .join(" ");
+  const displayExpanded = item.expanded;
 
   return (
     <box
@@ -107,7 +142,7 @@ function ToolItemComponent({
         <span fg="#d97757">├─ </span>
         <span fg={color}>{status}</span>
         <span fg="#d97757"> </span>
-        <strong>{categoryLabel(item.toolCategory ?? "generic")}</strong>
+        <strong>{categoryIcon(item.toolCategory ?? "generic")}</strong>
         {item.toolName ? (
           <span attributes={TextAttributes.DIM}>
             {" "}
@@ -121,7 +156,7 @@ function ToolItemComponent({
             {" "}
             ·{" "}
             {wrapCommand(
-              item.expanded
+              displayExpanded
                 ? item.cmd
                 : item.cmd.length > 40
                   ? item.cmd.slice(0, 40) + "..."
@@ -144,7 +179,7 @@ function ToolItemComponent({
           </span>
         </text>
       ) : null}
-      {item.expanded && item.display ? (
+      {displayExpanded && item.display ? (
         <>
           <box
             flexDirection="row"
@@ -183,7 +218,7 @@ function ToolItemComponent({
             </box>
           ) : null}
         </>
-      ) : item.expanded && item.content ? (
+      ) : displayExpanded && item.content ? (
         <box flexDirection="column" width="100%" minWidth={0}>
           {item.content.split("\n").map((line, lineIndex) => (
             <text

@@ -13,6 +13,7 @@ import { ensureToolTitle } from "./tool-title";
 export type ToolAsk = (
   tool: ToolDefinition,
   args: ToolArgs,
+  title?: string,
 ) => Promise<boolean>;
 
 export function permission(
@@ -93,7 +94,7 @@ export async function runToolPipeline(
     (response) => response.action === "deny" || response.action === "ask",
   );
   if (blocking) {
-    if (blocking.action === "ask" && (await ask(tool, args))) {
+    if (blocking.action === "ask" && (await ask(tool, args, toolTitle))) {
       // Approval continues through the regular permission check below.
     } else {
       bus.emit("tools/denied", {
@@ -108,7 +109,7 @@ export async function runToolPipeline(
       };
     }
   }
-  if (decision !== "allow" && !(await ask(tool, args))) {
+  if (decision !== "allow" && !(await ask(tool, args, toolTitle))) {
     const reason = `user denied execution of ${tool.name}`;
     bus.emit("tools/denied", {
       tool: tool.name,

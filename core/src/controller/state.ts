@@ -2,6 +2,7 @@ import type {
   ContextExtension,
   Observability,
   ProviderAdapter,
+  ToolArgs,
   ToolDisplay,
 } from "@cagent/sdk";
 import type { AppConfig } from "../config";
@@ -75,7 +76,14 @@ export type UIState = {
   input: string;
   notice: string;
   compacting: boolean;
-  pendingAsk: { tool: string; cmd: string } | null;
+  pendingAsk: {
+    tool: string;
+    cmd: string;
+    title?: string;
+    args?: ToolArgs;
+    canAlwaysAllow?: boolean;
+    allowScope?: string;
+  } | null;
   questionRequest: import("./question-service").QuestionRequest | null;
   questionIndex: number;
   questionSelectedOption: number;

@@ -24,6 +24,8 @@ export function App({ c }: { c: Controller }) {
   const [, setV] = useState(0);
   const renderer = useRenderer();
   const taskPanelRef = useRef<TaskPanelHandle>(null);
+  const escapeArmed = useRef(false);
+  const ctrlCArmed = useRef(false);
 
   useEffect(() => {
     c.bump = () => setV((v) => v + 1);
@@ -112,6 +114,19 @@ export function App({ c }: { c: Controller }) {
       s.pendingAsk ||
       s.questionRequest;
 
+    if (key.name === "escape" && !overlay && !s.busy && s.input.length > 0) {
+      if (!escapeArmed.current) {
+        escapeArmed.current = true;
+        key.preventDefault();
+        return;
+      }
+      c.setInput("");
+      s.inputKey += 1;
+      escapeArmed.current = false;
+      key.preventDefault();
+      return;
+    }
+
     if (key.ctrl && key.name === "c" && !key.shift && !overlay) {
       c.observability?.recordEvent("keyboard.ctrl_c", {
         busy: s.busy,
@@ -123,7 +138,14 @@ export function App({ c }: { c: Controller }) {
       } else if (s.input.length > 0) {
         c.setInput("");
         s.inputKey += 1;
+        ctrlCArmed.current = false;
       } else {
+        if (!ctrlCArmed.current) {
+          ctrlCArmed.current = true;
+          c.bump();
+          key.preventDefault();
+          return;
+        }
         renderer.destroy();
         process.exit(130);
       }
@@ -296,7 +318,9 @@ export function App({ c }: { c: Controller }) {
             terminalWidth(),
           )}
         </text>
-        <text fg="#777777">{status}</text>
+        <text fg="#777777">
+          {status === "permission" ? "waiting for you" : status}
+        </text>
       </box>
       {s.chat.length === 0 ? (
         <WelcomePanel
