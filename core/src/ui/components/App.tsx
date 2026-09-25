@@ -152,7 +152,10 @@ export function App({ c }: { c: Controller }) {
       key.preventDefault();
       return;
     }
-    if (key.sequence === "\u001b[Z" || (key.shift && key.name === "tab")) {
+    if (
+      key.sequence === "\u001b[Z" ||
+      (key.name === "tab" && (key.shift || s.suggest.length === 0))
+    ) {
       c.cyclePermissionMode();
       key.preventDefault();
       return;
@@ -434,6 +437,7 @@ export function App({ c }: { c: Controller }) {
       )}
       <ProjectContext cwd={process.cwd()} />
       <StatusBar
+        cwd={process.cwd()}
         model={s.model}
         variant={s.variant}
         tokens={s.tokens}

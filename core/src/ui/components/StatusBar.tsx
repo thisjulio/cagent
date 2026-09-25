@@ -1,4 +1,7 @@
+import { formatCwd, formatGitBadge, getGitInfo } from "../../gitinfo";
+
 export function StatusBar({
+  cwd,
   model,
   variant,
   tokens,
@@ -12,6 +15,7 @@ export function StatusBar({
   missingLspLanguages = [],
   onOpenLsp,
 }: {
+  cwd: string;
   model: string;
   variant?: string;
   tokens?: number;
@@ -33,48 +37,39 @@ export function StatusBar({
   }
   const usagePct =
     tokens !== undefined && contextWindow ? (tokens / contextWindow) * 100 : 0;
-  const thresholdPct = contextWindow ? (threshold / contextWindow) * 100 : 0;
   const pct = Math.round(usagePct);
   const filled = Math.min(20, Math.round((usagePct / 100) * 20));
-  const meter = `${"█".repeat(filled)}${"-".repeat(20 - filled)}`;
   const tokenInfo =
     tokens !== undefined
       ? `${formatTokens(tokens)}/${formatTokens(contextWindow)}`
       : "no usage yet";
-  const usageColor =
-    usagePct >= thresholdPct
-      ? "#ef4444"
-      : usagePct >= thresholdPct * 0.85
-        ? "#eab308"
-        : "#666666";
-  const modeLabel = permissionsEnabled
-    ? `mode: ${permissionMode}`
-    : "mode: auto (permissions disabled)";
+  const modeLabel = permissionMode;
+  const gitBadge = formatGitBadge(getGitInfo(cwd));
   return (
-    <box
-      border={["top"]}
-      borderColor="#666666"
-      height={2}
-      flexShrink={0}
-      flexDirection="row"
-      justifyContent="space-between"
-    >
-      <box flexDirection="row" alignItems="center" flexGrow={1}>
-        <text fg="#777777">{modeLabel} </text>
-        {missingLspLanguages.length > 0 && (
-          <text fg="#d97757">⚠ lsp:{missingLspLanguages.join(",")} </text>
-        )}
-        <text fg="#666666">{modelLabel}</text>
-        {variant && <text fg="#666666"> ({variant})</text>}
+    <box border={["top"]} borderColor="#666666" height={3} flexShrink={0}>
+      <box flexDirection="row" justifyContent="space-between" paddingX={1}>
+        <box flexDirection="row">
+          <text fg="#5ac878">{formatCwd(cwd)}</text>
+          <text fg="#d97757">{gitBadge ? ` · ${gitBadge}` : ""}</text>
+        </box>
+        <box flexDirection="row">
+          <text fg="#888888">⇧Tab</text>
+          <text fg="#eab308"> {modeLabel}</text>
+        </box>
       </box>
-      <box flexDirection="row">
-        <text fg={usageColor}>
-          {tokenInfo} [{meter}] {pct}% context
-          {tokensPerSecond !== undefined
-            ? ` · ${tokensPerSecond.toFixed(1)} tok/s`
-            : ""}{" "}
-          · /help
-        </text>
+      <box flexDirection="row" justifyContent="space-between" paddingX={1}>
+        <box flexDirection="row" flexShrink={1}>
+          <text fg="#ffffff">{modelLabel}</text>
+          {variant && <text fg="#ffffff"> ({variant})</text>}
+          <text fg="#ffffff"> · {tokenInfo}</text>
+          <text fg="#d97757">
+            {" "}
+            {"█".repeat(filled)}
+            {"░".repeat(20 - filled)}
+          </text>
+          <text fg="#ffffff"> {pct}%</text>
+        </box>
+        <text fg="#888888">? ajuda</text>
       </box>
     </box>
   );
