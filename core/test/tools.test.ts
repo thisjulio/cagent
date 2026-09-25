@@ -1,7 +1,12 @@
 import { describe, expect, it } from "bun:test";
 import { defineTool } from "@cagent/sdk";
 import { EventBus } from "../src/events";
-import { permission, runToolPipeline } from "../src/tools";
+import {
+  hasShellControlSyntax,
+  permission,
+  runToolPipeline,
+} from "../src/tools";
+import { Controller } from "../src/controller/controller";
 
 const tool = defineTool("bash", "exec", {}, async () => ({ output: "ok" }));
 const bus = new EventBus();
@@ -158,5 +163,30 @@ describe("tool pipeline", () => {
     expect(result.output).toBe("found");
     expect(result.isError).toBeUndefined();
     expect(executions).toBe(1);
+  });
+
+  it("detects shell control syntax and excludes write flags from read-only commands", () => {
+    expect(hasShellControlSyntax("ls ; rm -rf build")).toBe(true);
+    expect(hasShellControlSyntax("cat a > b")).toBe(true);
+    const controller = Object.create(Controller.prototype) as Controller;
+    const bash = { ...tool, name: "bash" };
+    for (const command of [
+      "ls ; rm -rf build",
+      "cat a > b",
+      "find . -delete",
+      "find . -exec rm {} ;",
+      "git branch -D main",
+      "git diff --output=x",
+    ]) {
+      expect(controller.isToolReadOnly(bash, { command })).toBe(false);
+    }
+    for (const command of [
+      "ls -la",
+      "find . -name '*.ts'",
+      "git status",
+      "git diff",
+    ]) {
+      expect(controller.isToolReadOnly(bash, { command })).toBe(true);
+    }
   });
 });

@@ -5,6 +5,6 @@
     "plugins/mcp/src/mock-server.ts",
     "plugins/mcp/src/transport-http.ts"
   ],
-  "ignoreBinaries": ["graphify"],
+  "ignoreBinaries": ["graphify", "rg"],
   "ignoreDependencies": ["pyright", "typescript-language-server"]
 }

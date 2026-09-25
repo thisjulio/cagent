@@ -19,6 +19,7 @@ describe("slashSuggestions", () => {
         "/help",
         "/init",
         "/lsp",
+        "/mode",
         "/model",
         "/new",
         "/preference",

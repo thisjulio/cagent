@@ -35,6 +35,13 @@ function deps(
 }
 
 describe("controller", () => {
+  it("permits classified read-only tools in ask mode", async () => {
+    const c = new Controller(deps(true));
+    const readTool = { name: "read_file", readOnly: true } as never;
+    expect(await c.ask(readTool, { path: "README.md" })).toBe(true);
+    expect(c.state.pendingAsk).toBeNull();
+  });
+
   it("refreshes the system message from the current project context", () => {
     let currentPrompt = "old";
     const c = new Controller({
@@ -426,6 +433,7 @@ describe("controller", () => {
 
   it("up arrow with empty history leaves the input empty", () => {
     const c = new Controller(deps());
+    c.latestUserMessage = () => null;
     c.state.input = "";
     c.handleKey({ upArrow: true }, "");
     expect(c.state.input).toBe("");

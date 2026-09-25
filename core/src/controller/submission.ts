@@ -31,13 +31,17 @@ export async function submitMessage(
   }
 
   const { content: imagePrompt, imagePaths } = imageContent;
-  const fileMention = buildFileContext(text);
+  const fileMention = buildFileContext(
+    text,
+    process.cwd(),
+    Math.max(1_000, Math.floor(controller.state.contextWindow * 0.2 * 4)),
+  );
   const content = appendFileContext(imagePrompt, fileMention.context);
   appendPrompt(process.cwd(), text);
   resetCompletedTasks(controller);
   appendChat(state, {
     kind: "user",
-    content: fileMention.content,
+    content: text,
     imagePaths,
     filePaths: fileMention.filePaths,
     turnId,
@@ -52,7 +56,7 @@ export async function submitMessage(
     turnId,
     type: "user",
     payload: {
-      content: fileMention.content,
+      content: text,
       imagePaths,
       filePaths: fileMention.filePaths,
     },

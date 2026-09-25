@@ -26,6 +26,7 @@ export interface AppConfig {
   context_extension_tokens?: number;
   retry_attempts?: number;
   permissions?: boolean;
+  model_prices?: Record<string, import("./usage").ModelPrice>;
   log_level?: "silent" | "error" | "warn" | "info" | "debug";
   observability?: { enabled?: boolean; file?: string };
   skills?: { enabled?: boolean; roots?: string[] };
@@ -98,6 +99,9 @@ export function loadConfig(cwd: string): AppConfig {
       (local.permissions as boolean | undefined) ??
       (global.permissions as boolean | undefined) ??
       true,
+    model_prices:
+      (local.model_prices as AppConfig["model_prices"] | undefined) ??
+      (global.model_prices as AppConfig["model_prices"] | undefined),
     log_level:
       (local.log_level as AppConfig["log_level"]) ??
       (global.log_level as AppConfig["log_level"]) ??

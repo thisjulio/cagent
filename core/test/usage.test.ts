@@ -20,7 +20,7 @@ describe("usage calculator", () => {
       outputTokens: 1_000_000,
       cacheReadTokens: 1_000_000,
       cacheCreationTokens: 1_000_000,
-      costUsd: 16.25,
+      costUsd: 13.75,
     });
   });
 

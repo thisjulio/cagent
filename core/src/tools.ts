@@ -34,7 +34,7 @@ export function permission(
     : "ask";
 }
 
-function hasShellControlSyntax(command: string): boolean {
+export function hasShellControlSyntax(command: string): boolean {
   let quote: "'" | '"' | undefined;
   let escaped = false;
   for (let i = 0; i < command.length; i++) {

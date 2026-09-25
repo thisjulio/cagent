@@ -14,7 +14,7 @@ import { inputSuggestions } from "../commands/suggest";
 import { fuzzyProjectFiles } from "../context/file-mentions";
 import { Session, type QueueMessage } from "../session/index";
 import { captureProjectMeta, projectMetaRecord } from "../session/project";
-import type { ToolAsk } from "../tools";
+import { hasShellControlSyntax, type ToolAsk } from "../tools";
 import { generateTitle, toChatItems, toTitle } from "./sessions";
 import {
   compactSession,
@@ -311,6 +311,12 @@ export class Controller {
       lastTurnTimeToFirstTokenMs: undefined,
       lastTurnPromptTokensCached: undefined,
       providerUsage: [],
+      usageTotals: {
+        inputTokens: 0,
+        outputTokens: 0,
+        cacheReadTokens: 0,
+        cacheCreationTokens: 0,
+      },
       contextWindow,
       threshold,
       busy: false,
@@ -536,6 +542,12 @@ export class Controller {
 
   ask: ToolAsk = async (tool: ToolDefinition, args: ToolArgs) => {
     if (
+      this.state.permissionMode === "ask" &&
+      tool.name !== "bash" &&
+      tool.readOnly
+    )
+      return true;
+    if (
       this.state.permissionMode === "read-only" &&
       !this.isToolReadOnly(tool, args)
     ) {
@@ -562,8 +574,25 @@ export class Controller {
     if (tool.readOnly) return true;
     if (tool.name !== "bash") return false;
     const command = typeof args.command === "string" ? args.command.trim() : "";
-    return /^(ls|pwd|cat|head|tail|grep|rg|find|git\s+(status|diff|log|show|branch)|which|command\s+-v)(\s|$)/.test(
-      command,
+    if (hasShellControlSyntax(command)) return false;
+    const words = command.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) ?? [];
+    const [program, ...flags] = words;
+    const safe = /^(ls|pwd|cat|head|tail|grep|rg|find|which)$/.test(
+      program ?? "",
+    );
+    const safeGit =
+      program === "git" &&
+      /^(status|diff|log|show|branch)$/.test(flags[0] ?? "");
+    if (
+      !safe &&
+      !safeGit &&
+      !/^command\s+-v$/.test(`${program} ${flags[0] ?? ""}`)
+    )
+      return false;
+    return !flags.some((flag) =>
+      /^(--output(?:=.*)?|-D|-delete|-exec(?:dir)?|--exec(?:dir)?)(?:$|=)/.test(
+        flag,
+      ),
     );
   }
 
@@ -640,11 +669,13 @@ export class Controller {
   }
 
   latestUserMessage(): string | null {
+    const entries = loadHistory(process.cwd());
+    const latest = entries.at(-1)?.text;
+    if (latest) return latest;
     const message = [...this.messages]
       .reverse()
       .find((entry) => entry.role === "user");
-    if (message && typeof message.content === "string") return message.content;
-    return null;
+    return typeof message?.content === "string" ? message.content : null;
   }
 
   historyEntries(query = ""): string[] {

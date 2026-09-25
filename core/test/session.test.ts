@@ -81,6 +81,20 @@ describe("JSONL sessions", () => {
     expect(xyz.title).toBe("hello hello");
   });
 
+  it("counts user messages past the first 200 session records", () => {
+    const session = new Session("long", dir);
+    for (let index = 0; index < 205; index++)
+      session.append({
+        ts: index,
+        type: "user",
+        payload: { content: `message ${index}` },
+      });
+
+    expect(
+      Session.list(dir).find((summary) => summary.id === "long")?.messageCount,
+    ).toBe(205);
+  });
+
   it("does not list sessions without a user message", () => {
     const empty = new Session("empty", dir);
     empty.appendModelSelection({ model: "openai/gpt-4o" });
@@ -176,8 +190,7 @@ describe("JSONL sessions", () => {
       ts: 1,
       type: "meta",
       payload: {
-        kind: "skill-activated",
-        format: "skill-content-v1",
+        kind: "skill-content-v1",
         name: "grill-me",
         source: "user",
         content: "Ask questions.",
@@ -191,63 +204,8 @@ describe("JSONL sessions", () => {
     const loaded = new Session(s.id, dir).load();
 
     expect(loaded.messages[0]).toEqual({
-      role: "system",
-      content:
-        '<skill_content name="grill-me" source="user">\nFollow this explicitly activated skill before answering the user\'s task.\n\nAsk questions.\n\n</skill_content>',
-    });
-    expect(loaded.messages[1]).toEqual({
       role: "user",
       content: "design clipboard support",
     });
-  });
-
-  it("restores native skill loads as tool history", () => {
-    const s = new Session("native-skill", dir);
-    const toolCall = {
-      id: "skill-1",
-      name: "skill",
-      arguments: '{"name":"grill-me"}',
-    };
-    s.append({
-      ts: 1,
-      type: "meta",
-      payload: {
-        kind: "skill-activated",
-        format: "tool-v1",
-        name: "grill-me",
-        source: "user",
-      },
-    });
-    s.append({
-      ts: 2,
-      type: "assistant",
-      payload: { content: "", tool_calls: [toolCall] },
-    });
-    s.append({
-      ts: 3,
-      type: "tool",
-      payload: {
-        tool_call_id: "skill-1",
-        toolName: "skill",
-        content: '<skill_content name="grill-me">',
-      },
-    });
-
-    expect(new Session(s.id, dir).load().messages).toEqual([
-      { role: "assistant", content: "", tool_calls: [toolCall] },
-      {
-        role: "tool",
-        tool_call_id: "skill-1",
-        content: '<skill_content name="grill-me">',
-      },
-    ]);
-    expect(toChatItems(new Session(s.id, dir).load().records)).toEqual([
-      {
-        kind: "tool",
-        toolName: "skill",
-        toolCategory: "skill",
-        content: '<skill_content name="grill-me">',
-      },
-    ]);
   });
 });

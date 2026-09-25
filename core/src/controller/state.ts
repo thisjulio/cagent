@@ -68,6 +68,7 @@ export type UIState = {
   lastTurnTimeToFirstTokenMs?: number;
   lastTurnPromptTokensCached?: number;
   providerUsage: (ProviderUsage & { timestamp: number })[];
+  usageTotals: ProviderUsage;
   contextWindow: number;
   threshold: number;
   busy: boolean;

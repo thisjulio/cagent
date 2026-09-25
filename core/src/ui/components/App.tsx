@@ -130,8 +130,8 @@ export function App({ c }: { c: Controller }) {
       key.preventDefault();
       return;
     }
-    if (key.ctrl && key.name === "m") {
-      if (c.config.permissions !== false) c.cyclePermissionMode();
+    if (key.sequence === "\u001b[Z" || (key.shift && key.name === "tab")) {
+      c.cyclePermissionMode();
       key.preventDefault();
       return;
     }
@@ -329,7 +329,10 @@ export function App({ c }: { c: Controller }) {
           cacheReadTokens={s.cacheReadTokens}
           cacheCreationTokens={s.cacheCreationTokens}
           providerUsage={s.providerUsage}
+          usageTotals={s.usageTotals}
           model={s.model}
+          provider={s.model.split("/")[0] ?? ""}
+          modelPrices={c.config.model_prices}
           sessionId={s.sessionId}
           telemetryEnabled={Boolean(c.observability)}
           telemetrySummary={s.telemetrySummary}

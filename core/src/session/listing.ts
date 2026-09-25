@@ -1,11 +1,33 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 import { readSessionRecords } from "./records";
 import type { SessionRecord, SessionSummary } from "./types";
 
 export function sessionDirectory(dir?: string): string {
   return dir ?? path.join(os.homedir(), ".cagent", "sessions");
+}
+
+function countUserMessages(file: string): number {
+  try {
+    return fs
+      .readFileSync(file, "utf8")
+      .split("\n")
+      .filter(Boolean)
+      .reduce((count, line) => {
+        try {
+          return (
+            count +
+            ((JSON.parse(line) as SessionRecord).type === "user" ? 1 : 0)
+          );
+        } catch {
+          return count;
+        }
+      }, 0);
+  } catch {
+    return 0;
+  }
 }
 
 export function listSessions(dir?: string): SessionSummary[] {
@@ -17,6 +39,18 @@ export function listSessions(dir?: string): SessionSummary[] {
     .map((file) => summarizeSession(path.join(base, file), file))
     .filter((summary): summary is SessionSummary => summary !== null)
     .sort((a, b) => b.updated.localeCompare(a.updated));
+}
+
+export function projectRoot(cwd = process.cwd()): string {
+  const result = requireGitRoot(cwd);
+  return result ?? path.resolve(cwd);
+}
+
+function requireGitRoot(cwd: string): string | null {
+  const result = spawnSync("git", ["-C", cwd, "rev-parse", "--show-toplevel"], {
+    encoding: "utf8",
+  });
+  return result.status === 0 ? result.stdout.trim() : null;
 }
 
 export function latestUserMessage(dir?: string): string | null {
@@ -38,7 +72,7 @@ export function latestUserMessage(dir?: string): string | null {
 
 function summarizeSession(file: string, name: string): SessionSummary | null {
   const stats = fs.statSync(file);
-  const records = readSessionRecords(file).slice(0, 200);
+  const records = readSessionRecords(file);
   const firstUser = firstUserMessage(records);
   if (!firstUser) return null;
   const title = sessionTitle(records) || firstUser;
@@ -47,7 +81,7 @@ function summarizeSession(file: string, name: string): SessionSummary | null {
     id: name.slice(0, -6),
     updated: stats.mtime.toISOString(),
     title,
-    messageCount: records.filter((record) => record.type === "user").length,
+    messageCount: countUserMessages(file),
     cwd: project?.cwd,
     branch: project?.branch,
   };

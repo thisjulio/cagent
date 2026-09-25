@@ -19,12 +19,16 @@ export function LspPanel({ servers }: { servers: LspServer[] }) {
           <text key={server.language}>
             {server.language} | {server.binary} | {server.status} |{" "}
             {server.version} |{" "}
-            {server.status === "missing" ? "Install with npm" : "-"}
+            {server.status === "missing"
+              ? server.language === "rs"
+                ? "Install via rustup or your OS package manager"
+                : `Install ${server.binary} using its official instructions`
+              : "-"}
           </text>
         ))}
       </scrollbox>
       <text fg="#666666">
-        Esc close · install prompt is available for missing servers
+        Esc close · follow the server's official installation instructions
       </text>
     </box>
   );

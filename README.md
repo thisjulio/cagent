@@ -201,15 +201,16 @@ Run `cagent --interactive` to start a terminal session without submitting a prom
 | `/help [topic]` | Browse command/key help or inspect a topic. |
 | `/model`, `/sessions` | Select a model or resume a session. |
 | `/new`, `/rename`, `/compact` | Manage the current conversation. |
+| `/mode ask|auto|read-only` | Set the permission mode. |
 | `/skill <name>`, `/reload-skills` | Invoke or reload skills. |
 | `/usage`, `/telemetry`, `/lsp` | Inspect token usage, local telemetry, or language-server status. |
 | `/tasks`, `/preference`, `/variant`, `/init` | Manage tasks, preferences, model variant, or project instructions. |
 
-Keyboard shortcuts: `Esc` closes a panel, clears idle input, or interrupts a running turn; `Ctrl+C` clears input, cancels a turn, or exits with status 130; `Ctrl+M` cycles ask/auto/read-only permissions; `Ctrl+O` opens tool output and `Shift+Ctrl+O` moves to the previous tool call; `Tab` completes commands. Edit input with `Ctrl+U`, `Ctrl+W`, `Ctrl+A`, `Ctrl+E`, `Ctrl+Left/Right`, or `Home`/`End`.
+Keyboard shortcuts: `Esc` closes a panel, clears idle input, or interrupts a running turn; `Ctrl+C` clears input, cancels a turn, or exits with status 130; `Shift+Tab` cycles ask/auto/read-only permissions; `Ctrl+O` opens tool output and `Shift+Ctrl+O` moves to the previous tool call; `Tab` completes commands. Edit input with `Ctrl+U`, `Ctrl+W`, `Ctrl+A`, `Ctrl+E`, `Ctrl+Left/Right`, or `Home`/`End`.
 
 ## Included plugins
 
-The repository includes the plugins below. Enable plugins explicitly in the `plugins` section of `cagent.yml` or `~/.cagent/config.yml`; the list in your active configuration determines what is loaded.
+The repository includes the plugins below. If no plugins are listed in the active configuration, the CLI loads all included plugins. Adding a `plugins` list explicitly selects which plugins are loaded.
 
 | Plugin | Purpose |
 | --- | --- |
@@ -234,7 +235,7 @@ The repository includes the plugins below. Enable plugins explicitly in the `plu
 
 ### Subagents
 
-Use `/agent <name> [task]` to invoke a loaded subagent. The Claude and Codex agent plugins discover definitions from their compatible agent-file locations. A subagent performs the supplied task and returns its result to the current conversation.
+Mention a loaded subagent with `@<name> [task]`. The Claude and Codex agent plugins discover definitions from their compatible agent-file locations. A subagent performs the supplied task and returns its result to the current conversation.
 
 ### Skills
 
@@ -250,7 +251,7 @@ The `mcp` plugin connects to Model Context Protocol servers using supported tran
 
 ### Tasks
 
-Use `/tasks` to inspect the task list and `/task` commands to manage work. Tasks can record ordered steps and progress during a session.
+Use `/tasks` to inspect and manage work. Available operations include `create`, `add`, `list`, `next`, `skip`, `block`, `resume`, and `clear`.
 
 ### Preferences
 

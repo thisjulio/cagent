@@ -51,6 +51,7 @@ export type TurnHost = {
 };
 
 export async function executeTurn(host: TurnHost): Promise<void> {
+  const turnStartedAt = host.state.turnStartedAt;
   let thinkingContent = "";
   let streamedTokens = 0;
   try {
@@ -98,7 +99,9 @@ export async function executeTurn(host: TurnHost): Promise<void> {
   if (
     !process.env.CAGENT_DISABLE_NOTIFICATIONS &&
     process.env.TERM &&
-    process.stdout.isTTY
+    process.stdout.isTTY &&
+    turnStartedAt !== null &&
+    Date.now() - turnStartedAt > 20_000
   ) {
     try {
       process.stdout.write("\u0007");
@@ -207,12 +210,17 @@ async function runAgentTurn(
         host.state.cacheReadTokens += usage.cacheReadTokens;
       if (usage.cacheCreationTokens !== undefined)
         host.state.cacheCreationTokens += usage.cacheCreationTokens;
-      if (usage.tokensPerSecond !== undefined)
-        host.state.lastTurnTokensPerSecond = usage.tokensPerSecond;
       if (usage.timeToFirstTokenMs !== undefined)
         host.state.lastTurnTimeToFirstTokenMs = usage.timeToFirstTokenMs;
       if (usage.promptTokensCached !== undefined)
         host.state.lastTurnPromptTokensCached = usage.promptTokensCached;
+      host.state.usageTotals.inputTokens += usage.inputTokens ?? 0;
+      host.state.usageTotals.outputTokens += usage.outputTokens ?? 0;
+      host.state.usageTotals.cacheReadTokens += usage.cacheReadTokens ?? 0;
+      host.state.usageTotals.cacheCreationTokens +=
+        usage.cacheCreationTokens ?? 0;
+      if (usage.tokensPerSecond !== undefined)
+        host.state.lastTurnTokensPerSecond = usage.tokensPerSecond;
       host.state.providerUsage.push({
         inputTokens: usage.inputTokens ?? 0,
         outputTokens: usage.outputTokens ?? 0,
@@ -224,6 +232,19 @@ async function runAgentTurn(
         timestamp: Date.now(),
       });
       host.state.providerUsage = host.state.providerUsage.slice(-5);
+      host.session.append({
+        ts: Date.now(),
+        type: "meta",
+        payload: {
+          kind: "usage",
+          tokens: (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0),
+          inputTokens: usage.inputTokens ?? 0,
+          outputTokens: usage.outputTokens ?? 0,
+          cacheReadTokens: usage.cacheReadTokens ?? 0,
+          cacheCreationTokens: usage.cacheCreationTokens ?? 0,
+          totals: { ...host.state.usageTotals },
+        },
+      });
       host.observability?.recordEvent("provider.usage", {
         "provider.model": host.model,
         input_tokens: usage.inputTokens ?? 0,

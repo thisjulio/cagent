@@ -1,5 +1,5 @@
 import type { ChatItem } from "../../controller/state";
-import { calculateUsage } from "../../usage";
+import { calculateUsage, canDisplayCost } from "../../usage";
 
 export function SessionInfoPanel({
   kind,
@@ -10,7 +10,10 @@ export function SessionInfoPanel({
   cacheReadTokens,
   cacheCreationTokens,
   providerUsage,
+  usageTotals,
   model,
+  provider,
+  modelPrices,
   sessionId,
   telemetryEnabled,
   telemetrySummary,
@@ -29,7 +32,10 @@ export function SessionInfoPanel({
   providerUsage: (import("../../usage").ProviderUsage & {
     timestamp: number;
   })[];
+  usageTotals: import("../../usage").ProviderUsage;
   model: string;
+  provider: string;
+  modelPrices?: Record<string, import("../../usage").ModelPrice>;
   sessionId: string;
   telemetryEnabled: boolean;
   telemetrySummary?: {
@@ -58,7 +64,7 @@ export function SessionInfoPanel({
     groups.set(tool.toolName ?? "unknown", group);
   }
   const modelName = model.split("/").at(-1) ?? model;
-  const usage = calculateUsage(providerUsage, modelName);
+  const usage = calculateUsage([usageTotals], model, modelPrices);
   const pct = contextWindow
     ? Math.round(((tokens ?? 0) / contextWindow) * 100)
     : 0;
@@ -90,9 +96,11 @@ export function SessionInfoPanel({
               Cache read: {usage.cacheReadTokens} · cache creation:{" "}
               {usage.cacheCreationTokens}
             </text>
-            <text>
-              Cost: {cost ? `US${"$"}${cost}` : "n/a (model not priced)"}
-            </text>
+            {canDisplayCost(model, provider) && (
+              <text>
+                Cost: {cost ? `US${"$"}${cost}` : "n/a (model not priced)"}
+              </text>
+            )}
             <text>
               Last turn: TTFT{" "}
               {timeToFirstTokenMs === undefined

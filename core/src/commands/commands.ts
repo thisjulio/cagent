@@ -72,6 +72,16 @@ const commands: Record<string, SlashHandler> = {
     c.bump();
   },
   "/model": (c) => c.openModelPicker(),
+  "/mode": (c, arg) => {
+    const mode = arg.trim();
+    if (!["ask", "auto", "read-only"].includes(mode)) {
+      notify(c.state, "usage: /mode ask|auto|read-only");
+      return;
+    }
+    c.state.permissionMode = mode as "ask" | "auto" | "read-only";
+    c.bump();
+    notify(c.state, `permission mode: ${mode}`);
+  },
   "/variant": (c, arg) => {
     const val = arg.trim();
     if (!val) {

@@ -212,10 +212,25 @@ export async function restoreSession(c: Controller, id: string): Promise<void> {
       c.state.inputTokens = usage.inputTokens;
     if (typeof usage.outputTokens === "number")
       c.state.outputTokens = usage.outputTokens;
+    const totals = usage.totals as Record<string, unknown> | undefined;
+    if (totals) {
+      c.state.usageTotals = {
+        inputTokens: Number(totals.inputTokens ?? 0),
+        outputTokens: Number(totals.outputTokens ?? 0),
+        cacheReadTokens: Number(totals.cacheReadTokens ?? 0),
+        cacheCreationTokens: Number(totals.cacheCreationTokens ?? 0),
+      };
+    }
   } else {
     c.state.tokens = undefined;
     c.state.inputTokens = undefined;
     c.state.outputTokens = undefined;
+    c.state.usageTotals = {
+      inputTokens: 0,
+      outputTokens: 0,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 0,
+    };
   }
   c.observability?.recordEvent("session.resumed", {
     "message.count": loaded.messages.length,

@@ -1,58 +1,14 @@
 import fs from "node:fs";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
 import type { ContentPart, Message } from "@cagent/sdk";
 import { fuzzy } from "../fuzzy";
+import { projectFiles } from "./file-index";
 
 const MENTION =
   /(^|\s)@((?:\.{0,2}\/)?[^\s:@]+(?:\/[^\s:@]+)*)(?::(\d+)(?:-(\d+))?)?/g;
 
 export function listProjectFiles(cwd = process.cwd()): string[] {
-  if (hasGitRoot(cwd))
-    return readGitFiles(cwd, [
-      "ls-files",
-      "--cached",
-      "--others",
-      "--exclude-standard",
-    ]);
-
-  const output = spawnSync("rg", ["--files", "--hidden", "-g", "!.git"], {
-    cwd,
-    encoding: "utf8",
-    maxBuffer: 8 * 1024 * 1024,
-  });
-  if (output.status !== 0) return [];
-  const ignored = fs.existsSync(path.join(cwd, ".gitignore"))
-    ? fs
-        .readFileSync(path.join(cwd, ".gitignore"), "utf8")
-        .split(/\r?\n/)
-        .map((line) => line.trim())
-        .filter((line) => line && !line.startsWith("#"))
-    : [];
-  return output.stdout
-    .split(/\r?\n/)
-    .filter(Boolean)
-    .filter((file) => !ignored.some((pattern) => file === pattern));
-}
-
-function hasGitRoot(cwd: string): boolean {
-  let directory = cwd;
-  while (true) {
-    if (fs.existsSync(path.join(directory, ".git"))) return true;
-    const parent = path.dirname(directory);
-    if (parent === directory) return false;
-    directory = parent;
-  }
-}
-
-function readGitFiles(cwd: string, args: string[]): string[] {
-  const result = spawnSync("git", ["-C", cwd, ...args], {
-    encoding: "utf8",
-    maxBuffer: 8 * 1024 * 1024,
-  });
-  return result.status === 0
-    ? result.stdout.split(/\r?\n/).filter(Boolean)
-    : [];
+  return projectFiles(cwd);
 }
 
 export function fuzzyProjectFiles(
@@ -83,9 +39,14 @@ export function parseFileMentions(
   return mentions;
 }
 
+export function fileContextCharLimit(contextWindow: number): number {
+  return Math.max(1_000, Math.floor(contextWindow * 0.2 * 4));
+}
+
 export function buildFileContext(
   text: string,
   cwd = process.cwd(),
+  maxChars = fileContextCharLimit(100_000),
 ): {
   content: string;
   filePaths: string[];
@@ -93,19 +54,39 @@ export function buildFileContext(
 } {
   const mentions = parseFileMentions(text, cwd);
   const filePaths = [...new Set(mentions.map((mention) => mention.path))];
+  let remaining = maxChars;
   const context = mentions
     .map((mention) => {
       const absolute = path.resolve(cwd, mention.path);
       if (!absolute.startsWith(`${path.resolve(cwd)}${path.sep}`)) return "";
       try {
-        const lines = fs.readFileSync(absolute, "utf8").split(/\r?\n/);
+        const bytes = fs.readFileSync(absolute);
+        if (bytes.includes(0)) {
+          const omitted = `File: ${mention.path} omitted (binary file). Use read_file if needed.`;
+          if (omitted.length > remaining) return "";
+          remaining -= omitted.length + 2;
+          return omitted;
+        }
+        const lines = bytes.toString("utf8").split(/\r?\n/);
         const start = Math.max(1, mention.start ?? 1);
         const end = Math.min(lines.length, mention.end ?? lines.length);
-        const selected = lines
+        const selectedLines = lines
           .slice(start - 1, end)
-          .map((line, index) => `${start + index}: ${line}`)
-          .join("\n");
-        return `File: ${mention.path}${mention.start ? ` (lines ${start}-${end})` : ""}\n\`\`\`\n${selected}\n\`\`\``;
+          .map((line, index) => `${start + index}: ${line}`);
+        const header = `File: ${mention.path}${mention.start ? ` (lines ${start}-${end})` : ""}`;
+        const room = Math.max(0, remaining - header.length - 96);
+        let selected = "";
+        for (const line of selectedLines) {
+          if (selected.length + line.length + 1 > room) break;
+          selected += `${selected ? "\n" : ""}${line}`;
+        }
+        const truncated = selected.length < selectedLines.join("\n").length;
+        const suffix = truncated
+          ? "\n[File context truncated. Use read_file to inspect the remaining content.]"
+          : "";
+        const block = `${header}\n\`\`\`\n${selected}${suffix}\n\`\`\``;
+        remaining -= block.length + 2;
+        return block;
       } catch {
         return "";
       }
@@ -138,6 +119,14 @@ export function withFileContext(
   if (index < 0) return messages;
   const result = [...messages];
   const message = result[index];
+  const existingText =
+    typeof message.content === "string"
+      ? message.content
+      : message.content
+          .filter((part) => part.type === "text")
+          .map((part) => part.text)
+          .join("\n");
+  if (existingText.includes("Referenced file context:")) return messages;
   result[index] = {
     ...message,
     content:

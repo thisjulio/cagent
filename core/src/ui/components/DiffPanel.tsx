@@ -11,6 +11,13 @@ export function DiffPanel({
   const changes = tools.filter(
     (item) => item.kind === "tool" && item.display?.kind === "diff",
   );
+  const changedPaths = new Set(
+    changes.flatMap((item) =>
+      item.display?.kind === "diff"
+        ? [item.display.path ?? item.cmd ?? item.toolName ?? "unknown"]
+        : [],
+    ),
+  );
   const selected = changes[index];
   return (
     <box
@@ -24,7 +31,8 @@ export function DiffPanel({
       flexShrink={0}
     >
       <text fg="#d97757">
-        File changes · {changes.length} files
+        File changes · {changedPaths.size}{" "}
+        {changedPaths.size === 1 ? "file" : "files"}
         {changes.length ? ` · ${index + 1}/${changes.length}` : ""}
       </text>
       <scrollbox flexGrow={1} flexShrink={1} minHeight={0} height="100%">

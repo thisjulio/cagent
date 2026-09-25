@@ -5,7 +5,7 @@ describe("interactive help catalog", () => {
   test("documents the requested commands and canonical key bindings", () => {
     for (const command of ["/usage", "/telemetry", "/lsp", "/help"])
       expect(helpCommands.some((item) => item.name === command)).toBe(true);
-    for (const key of ["Esc", "Ctrl+O", "Ctrl+M", "Ctrl+W"])
+    for (const key of ["Esc", "Ctrl+O", "Shift+Tab", "Ctrl+W"])
       expect(helpKeys.some((item) => item.name === key)).toBe(true);
   });
 
