@@ -23,7 +23,12 @@ import {
   rename,
   resumeSession,
 } from "./session-actions";
-import { openModelPicker, pickModel } from "./models";
+import {
+  moveModelPicker,
+  openModelPicker,
+  pickModel,
+  selectModelPickerEntry,
+} from "./models";
 import { toolDenied, toolPost, toolPre, toolStream } from "./tool-events";
 import { onKey } from "./keys";
 import { loadHistory, searchHistory } from "../session/history";
@@ -302,6 +307,9 @@ export class Controller {
       outputTokens: undefined,
       cacheReadTokens: 0,
       cacheCreationTokens: 0,
+      lastTurnTokensPerSecond: undefined,
+      lastTurnTimeToFirstTokenMs: undefined,
+      lastTurnPromptTokensCached: undefined,
       providerUsage: [],
       contextWindow,
       threshold,
@@ -383,30 +391,50 @@ export class Controller {
     this.bump();
   }
 
-  openToolViewer(direction: "forward" | "backward" = "forward"): boolean {
-    const tools = this.state.chat.filter(
-      (item) =>
-        item.kind === "tool" && !item.running && item.changesWorkspace === true,
-    );
+  openToolViewer(
+    direction: "forward" | "backward" = "forward",
+    turnId?: string,
+  ): boolean {
+    const tools = this.state.chat
+      .map((item, chatIndex) => ({ item, chatIndex }))
+      .filter(
+        ({ item }) =>
+          item.kind === "tool" &&
+          !item.running &&
+          item.changesWorkspace === true &&
+          (!turnId || item.turnId === turnId),
+      );
     if (!tools.length) {
       notify(this.state, "no file changes yet");
       return false;
     }
-    const index =
-      this.state.toolViewerIndex === null
+    const currentIndex = tools.findIndex(
+      ({ chatIndex }) => chatIndex === this.state.toolViewerChatIndex,
+    );
+    const selectedIndex =
+      currentIndex < 0
         ? tools.length - 1
         : direction === "forward"
-          ? (this.state.toolViewerIndex - 1 + tools.length) % tools.length
-          : (this.state.toolViewerIndex + 1) % tools.length;
-    this.state.toolViewerIndex = index;
-    const item = tools[index];
+          ? (currentIndex - 1 + tools.length) % tools.length
+          : (currentIndex + 1) % tools.length;
+    this.state.toolViewerIndex = selectedIndex;
+    this.state.toolViewerTurnId = turnId;
+    const selected = tools[selectedIndex];
+    this.state.toolViewerChatIndex = selected.chatIndex;
     this.observability?.recordEvent("tool.diff_viewed", {
-      index,
-      "tool.name": item.toolName ?? "unknown",
+      index: selectedIndex,
+      "tool.name": selected.item.toolName ?? "unknown",
       session_id: this.state.sessionId,
     });
     this.bump();
     return true;
+  }
+
+  closeToolViewer(): void {
+    this.state.toolViewerIndex = null;
+    this.state.toolViewerTurnId = undefined;
+    this.state.toolViewerChatIndex = undefined;
+    this.bump();
   }
 
   getTelemetrySummary(): NonNullable<UIState["telemetrySummary"]> | undefined {
@@ -597,6 +625,14 @@ export class Controller {
 
   pickModel(route: string): Promise<void> {
     return pickModel(this, route);
+  }
+
+  moveModelPicker(direction: "up" | "down"): void {
+    moveModelPicker(this, direction);
+  }
+
+  selectModelPickerEntry(): Promise<void> {
+    return selectModelPickerEntry(this);
   }
 
   handleKey(key: InputKey, input: string): void {

@@ -24,6 +24,13 @@ const commands: Record<string, SlashHandler> = {
     c.bump();
   },
   "/lsp": (c) => c.openLspDoctor(),
+  "/diff": (c) => {
+    if (!c.state.currentTurnId) {
+      notify(c.state, "no file changes in the current turn");
+      return;
+    }
+    c.openToolViewer("forward", c.state.currentTurnId);
+  },
   "/compact": (c, arg) => {
     appendChat(c.state, {
       kind: "user",

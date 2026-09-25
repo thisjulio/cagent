@@ -67,6 +67,15 @@ export async function streamOnce(opts: StreamOpts): Promise<{
             outputTokens: chunk.usage?.output_tokens,
             cacheReadTokens: chunk.usage?.cache_read_tokens,
             cacheCreationTokens: chunk.usage?.cache_creation_tokens,
+            timeToFirstTokenMs:
+              chunk.usage?.time_to_first_token_ms ?? chunk.usage?.prompt_ms,
+            tokensPerSecond:
+              chunk.usage?.tokens_per_second ??
+              (chunk.usage?.predicted_ms && chunk.usage?.predicted_n
+                ? (chunk.usage.predicted_n / chunk.usage.predicted_ms) * 1000
+                : undefined),
+            promptTokensCached:
+              chunk.usage?.prompt_tokens_cached ?? chunk.usage?.cache_n,
           });
         }
         if (opts.interrupted?.()) break;

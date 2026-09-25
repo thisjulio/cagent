@@ -97,6 +97,7 @@ async function* streamChatCompletions(
         calls.set(index, current);
       }
       const usage = json.usage;
+      const timings = json.timings;
       const inputTokens =
         typeof usage?.prompt_tokens === "number"
           ? usage.prompt_tokens
@@ -123,6 +124,21 @@ async function* streamChatCompletions(
                     "number"
                       ? usage.prompt_tokens_details.cached_tokens
                       : 0,
+                  ...(typeof timings?.prompt_ms === "number"
+                    ? { prompt_ms: timings.prompt_ms }
+                    : {}),
+                  ...(typeof timings?.predicted_ms === "number"
+                    ? { predicted_ms: timings.predicted_ms }
+                    : {}),
+                  ...(typeof timings?.prompt_n === "number"
+                    ? { prompt_n: timings.prompt_n }
+                    : {}),
+                  ...(typeof timings?.predicted_n === "number"
+                    ? { predicted_n: timings.predicted_n }
+                    : {}),
+                  ...(typeof timings?.cache_n === "number"
+                    ? { cache_n: timings.cache_n }
+                    : {}),
                 },
               }
             : {}),

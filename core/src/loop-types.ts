@@ -24,6 +24,9 @@ export interface StreamOpts {
     outputTokens?: number;
     cacheReadTokens?: number;
     cacheCreationTokens?: number;
+    timeToFirstTokenMs?: number;
+    tokensPerSecond?: number;
+    promptTokensCached?: number;
   }) => void;
   interrupted?: () => boolean;
   attempts?: number;

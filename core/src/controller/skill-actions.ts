@@ -28,7 +28,7 @@ function appendSkillActivation(
   name: string,
   activation: SkillActivation,
 ): void {
-  const turnId = crypto.randomUUID();
+  const turnId = controller.state.currentTurnId ?? crypto.randomUUID();
   const id = `skill-${controller.session.id}-${controller.nextSkillCallId()}`;
   const toolCall = { id, name: "skill", arguments: JSON.stringify({ name }) };
   const output = formatSkillToolOutput(

@@ -88,4 +88,19 @@ describe("unified diff", () => {
     expect(patch).toContain("@@ -0,0 +1,2 @@");
     expectValidHunkCounts(patch);
   });
+
+  it("creates valid hunks when changed lines are empty", () => {
+    const patch = unifiedPatch(["before"], ["", "after"], "empty-lines.ts");
+
+    expectValidHunkCounts(patch);
+    expect(patch).toContain("+");
+  });
+
+  it("creates valid hunks when files end with a newline", () => {
+    const before = ["alpha", "beta", ""];
+    const after = ["alpha", "changed", ""];
+    const patch = unifiedPatch(before, after, "trailing-newline.ts");
+
+    expectValidHunkCounts(patch);
+  });
 });

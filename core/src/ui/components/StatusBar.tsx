@@ -2,6 +2,7 @@ export function StatusBar({
   model,
   variant,
   tokens,
+  tokensPerSecond,
   inputTokens,
   outputTokens,
   contextWindow,
@@ -14,6 +15,7 @@ export function StatusBar({
   model: string;
   variant?: string;
   tokens?: number;
+  tokensPerSecond?: number;
   inputTokens?: number;
   outputTokens?: number;
   contextWindow: number;
@@ -29,14 +31,22 @@ export function StatusBar({
   if (modelLabel.length > MAX_MODEL_LABEL) {
     modelLabel = `${modelLabel.slice(0, MAX_MODEL_LABEL - 3)}…`;
   }
-  const pct =
-    tokens !== undefined && contextWindow
-      ? Math.round((tokens / contextWindow) * 100)
-      : 0;
-  const filled = Math.min(20, Math.round((pct / 100) * 20));
+  const usagePct =
+    tokens !== undefined && contextWindow ? (tokens / contextWindow) * 100 : 0;
+  const thresholdPct = contextWindow ? (threshold / contextWindow) * 100 : 0;
+  const pct = Math.round(usagePct);
+  const filled = Math.min(20, Math.round((usagePct / 100) * 20));
   const meter = `${"█".repeat(filled)}${"-".repeat(20 - filled)}`;
   const tokenInfo =
-    tokens !== undefined ? `${tokens}/${contextWindow}` : "no usage yet";
+    tokens !== undefined
+      ? `${formatTokens(tokens)}/${formatTokens(contextWindow)}`
+      : "no usage yet";
+  const usageColor =
+    usagePct >= thresholdPct
+      ? "#ef4444"
+      : usagePct >= thresholdPct * 0.85
+        ? "#eab308"
+        : "#666666";
   const modeLabel = permissionsEnabled
     ? `mode: ${permissionMode}`
     : "mode: auto (permissions disabled)";
@@ -58,10 +68,20 @@ export function StatusBar({
         {variant && <text fg="#666666"> ({variant})</text>}
       </box>
       <box flexDirection="row">
-        <text fg="#666666">
-          {tokenInfo} [{meter}] {pct}% context · /help
+        <text fg={usageColor}>
+          {tokenInfo} [{meter}] {pct}% context
+          {tokensPerSecond !== undefined
+            ? ` · ${tokensPerSecond.toFixed(1)} tok/s`
+            : ""}{" "}
+          · /help
         </text>
       </box>
     </box>
   );
+}
+
+function formatTokens(tokens: number): string {
+  if (tokens < 1000) return String(tokens);
+  const value = tokens / 1000;
+  return `${Number.isInteger(value) ? value : value.toFixed(1)}k`;
 }

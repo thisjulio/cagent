@@ -16,7 +16,7 @@ import { ProjectContext } from "./ProjectContext";
 import { WelcomePanel } from "./WelcomePanel";
 import { SessionInfoPanel } from "./SessionInfoPanel";
 import { LspPanel } from "./LspPanel";
-import { ToolViewer } from "./ToolViewer";
+import { DiffPanel } from "./DiffPanel";
 import { formatHeaderTitle } from "../render/title";
 import { getHelpCatalog } from "../help-catalog";
 import { CommandPalette } from "./CommandPalette";
@@ -160,17 +160,19 @@ export function App({ c }: { c: Controller }) {
     }
     if (key.ctrl && key.name === "o") {
       if (key.shift) {
-        if (s.toolViewerIndex !== null) c.openToolViewer("backward");
+        if (s.toolViewerIndex !== null)
+          c.openToolViewer("backward", s.toolViewerTurnId);
       } else if (s.toolViewerIndex !== null) {
-        c.openToolViewer("forward");
+        c.openToolViewer("forward", s.toolViewerTurnId);
       } else {
         const tools = s.chat.filter(
           (item) =>
             item.kind === "tool" &&
             !item.running &&
-            item.changesWorkspace === true,
+            item.changesWorkspace === true &&
+            (!s.toolViewerTurnId || item.turnId === s.toolViewerTurnId),
         );
-        if (tools.length) c.openToolViewer();
+        if (tools.length) c.openToolViewer("forward", s.currentTurnId);
         else c.handleKey({ ctrl: true }, "o");
       }
       key.preventDefault();
@@ -237,8 +239,19 @@ export function App({ c }: { c: Controller }) {
       key.preventDefault();
       return;
     }
-    if (s.modelPicker && isPrintable(input) && !key.ctrl && !key.meta) {
-      c.handleKey({}, input);
+    if (s.modelPicker) {
+      c.handleKey(
+        {
+          escape: key.name === "escape",
+          upArrow: key.name === "up",
+          downArrow: key.name === "down",
+          return: key.name === "return",
+          backspace: key.name === "backspace",
+        },
+        isPrintable(input) && !key.ctrl && !key.meta ? input : "",
+      );
+      key.preventDefault();
+      return;
     }
   });
   const s = c.state;
@@ -321,24 +334,22 @@ export function App({ c }: { c: Controller }) {
           telemetryEnabled={Boolean(c.observability)}
           telemetrySummary={s.telemetrySummary}
           contextWindow={s.contextWindow}
+          timeToFirstTokenMs={s.lastTurnTimeToFirstTokenMs}
+          tokensPerSecond={s.lastTurnTokensPerSecond}
+          promptTokensCached={s.lastTurnPromptTokensCached}
         />
       ) : s.lspPanel ? (
         <LspPanel servers={s.lspServers} />
       ) : s.toolViewerIndex !== null ? (
-        <ToolViewer
+        <DiffPanel
           tools={s.chat.filter(
             (item) =>
               item.kind === "tool" &&
               !item.running &&
-              item.changesWorkspace === true,
+              item.changesWorkspace === true &&
+              (!s.toolViewerTurnId || item.turnId === s.toolViewerTurnId),
           )}
           index={s.toolViewerIndex}
-        />
-      ) : s.modelPicker ? (
-        <ModelPicker
-          routes={filterModels(s.modelPicker.entries, s.modelPicker.query)}
-          query={s.modelPicker.query}
-          onSelect={(r) => c.pickModel(r)}
         />
       ) : s.sessionList ? (
         <SessionList
@@ -346,6 +357,20 @@ export function App({ c }: { c: Controller }) {
           scope={s.sessionScope}
           query={s.sessionQuery}
           onSelect={(id) => c.resumeSession(id)}
+        />
+      ) : s.modelPicker ? (
+        <ModelPicker
+          routes={filterModels(s.modelPicker.entries, s.modelPicker.query)}
+          query={s.modelPicker.query}
+          selectedIndex={Math.min(
+            s.modelPicker.selectedIndex ?? 0,
+            Math.max(
+              0,
+              filterModels(s.modelPicker.entries, s.modelPicker.query).length -
+                1,
+            ),
+          )}
+          onSelect={(route) => void c.pickModel(route)}
         />
       ) : s.questionRequest ? (
         <QuestionPanel
@@ -385,6 +410,7 @@ export function App({ c }: { c: Controller }) {
         model={s.model}
         variant={s.variant}
         tokens={s.tokens}
+        tokensPerSecond={s.lastTurnTokensPerSecond}
         inputTokens={s.inputTokens}
         outputTokens={s.outputTokens}
         contextWindow={s.contextWindow ?? s.threshold}

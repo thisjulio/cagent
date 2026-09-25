@@ -1,10 +1,12 @@
 export function ModelPicker({
   routes,
   query,
+  selectedIndex,
   onSelect,
 }: {
   routes: string[];
   query: string;
+  selectedIndex: number;
   onSelect: (route: string) => void;
 }) {
   return (
@@ -23,6 +25,7 @@ export function ModelPicker({
       ) : null}
       <select
         focused
+        selectedIndex={selectedIndex}
         height={Math.min(8, Math.max(1, routes.length))}
         options={routes.map((route) => ({
           name: route,

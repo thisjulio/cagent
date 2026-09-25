@@ -13,8 +13,8 @@ export function filterModels(
   entries: { route: string; models: string[] }[],
   query: string,
 ): string[] {
-  const routes: string[] = [];
-  for (const e of entries)
-    for (const m of e.models) routes.push(`${e.route}/${m}`);
+  const routes = entries.flatMap((entry) =>
+    entry.models.map((model) => `${entry.route}/${model}`),
+  );
   return fuzzy(routes, query);
 }

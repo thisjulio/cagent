@@ -20,6 +20,8 @@ Terminal coding agent written in Bun/TypeScript. cagent combines a terminal UI, 
 - [Choosing a model](#choosing-a-model)
 - [Using cagent](#using-cagent)
 - [Included plugins](#included-plugins)
+- [Extensibility](#extensibility)
+- [Headless mode](#headless-mode)
 - [Development](#development)
 - [Architecture](#architecture)
 - [Security](#security)
@@ -79,8 +81,7 @@ If the command is not found immediately after installation, run the binary direc
 
 ### Install the latest release
 
-The installer supports Linux and macOS, including musl-based Linux distributions
-such as Alpine. To install a specific version:
+The installer supports Linux and macOS, including musl-based Linux distributions such as Alpine. To install a specific version:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/thisjulio/cagent/main/install.sh | bash -s -- --version 0.1.4
@@ -155,7 +156,7 @@ model: openai/gpt-4o-mini
 
 Keep configuration files free of credentials whenever possible. Use environment variables for secrets and add local configuration files to your global Git exclude file if they must remain untracked.
 
-cagent also loads the Codex-compatible `AGENTS.md` hierarchy and Markdown rules below `.cagent/rules/` or Claude-compatible `.claude/rules/`. Claude rule files may use YAML frontmatter to scope them to paths:
+cagent also loads the Codex-compatible `AGENTS.md` hierarchy and Markdown rules below `.cagent/rules/` or `.claude/rules/`. Claude rule files may use YAML frontmatter to scope them to paths:
 
 ```markdown
 ---
@@ -208,12 +209,68 @@ Keyboard shortcuts: `Esc` closes a panel, clears idle input, or interrupts a run
 
 ## Included plugins
 
-- `openai`: OpenAI and Codex provider.
-- `llama.cpp`: provider compatible with `llama-server`.
-- `bash`: workspace command execution.
-- `code-tools`: reading, searching, editing, and AST structural search.
+The repository includes the plugins below. Enable plugins explicitly in the `plugins` section of `cagent.yml` or `~/.cagent/config.yml`; the list in your active configuration determines what is loaded.
+
+| Plugin | Purpose |
+| --- | --- |
+| `openai` | OpenAI/Codex-compatible model provider and authentication. |
+| `llama.cpp` | Provider compatible with a local `llama-server`. |
+| `bash` | Shell command execution. |
+| `code-tools` | File reading, search, editing, and AST structural search. |
+| `lsp` | Language-server integration. |
+| `mcp` | MCP server discovery and tools. |
+| `claude-agents` | Load Claude-compatible subagent definitions. |
+| `codex-agents` | Load Codex-compatible subagent definitions. |
+| `claude-commands` | Load Claude-compatible custom commands. |
+| `codex-prompts` | Load Codex-compatible prompts. |
+| `claude-skills` | Discover Claude-compatible skills. |
+| `claude-hooks` | Import supported Claude hooks. |
+| `claude-plugins` | Import supported Claude plugin components. |
+| `stub` | Minimal provider for development and tests. |
 
 `search_ast` uses `@ast-grep/napi` in-process, without running `bun x` or an external CLI. Supported languages are JavaScript, TypeScript, TSX, HTML, and CSS.
+
+## Extensibility
+
+### Subagents
+
+Use `/agent <name> [task]` to invoke a loaded subagent. The Claude and Codex agent plugins discover definitions from their compatible agent-file locations. A subagent performs the supplied task and returns its result to the current conversation.
+
+### Skills
+
+Skills are reusable instruction sets. Use `/skill <name>` to activate one and `/reload-skills` to discover newly added or changed skills without restarting. Skills can be supplied by plugins or configured skill roots.
+
+### Hooks
+
+Hooks allow plugins to participate in supported lifecycle events and return structured responses. The `claude-hooks` plugin imports supported Claude hook configurations. Review hook commands before enabling them.
+
+### MCP servers
+
+The `mcp` plugin connects to Model Context Protocol servers using supported transports. Configure the servers in the MCP configuration file and enable the plugin in cagent configuration. MCP tools execute external code, so review them as you would any other integration.
+
+### Tasks
+
+Use `/tasks` to inspect the task list and `/task` commands to manage work. Tasks can record ordered steps and progress during a session.
+
+### Preferences
+
+Use `/preference` to inspect or change supported local preferences. Keep secrets in environment variables rather than preference files.
+
+## Headless mode
+
+Run cagent without the interactive terminal UI for scripts and automation:
+
+```bash
+cagent "Summarize the changes in this repository"
+```
+
+Provide a prompt as an argument or on standard input. For predictable automation, pass `--non-interactive` and choose an appropriate permission mode:
+
+```bash
+cagent --non-interactive --permission-mode read-only --output jsonl "Summarize this repository"
+```
+
+Headless mode supports model, variant, session, timeout, turn-limit, output-format, and permission options. Use non-interactive authentication such as `OPENAI_API_KEY`; do not rely on an OAuth browser flow in automation. Run `cagent --help` for the complete command-line reference.
 
 ## Architecture
 

@@ -9,8 +9,9 @@ import { findLatestModelSelection } from "./sessions";
 export async function openModelPicker(c: Controller): Promise<void> {
   const entries = await discoverModels(c);
   c.state.modelPicker = {
-    entries: entries.filter((e) => e !== null),
+    entries,
     query: "",
+    selectedIndex: 0,
   };
   c.observability?.recordEvent("model_picker.opened", {
     "provider.count": [...c.registry.providers()].length,
@@ -20,6 +21,31 @@ export async function openModelPicker(c: Controller): Promise<void> {
     ),
   });
   c.bump();
+}
+
+export function moveModelPicker(c: Controller, direction: "up" | "down"): void {
+  const picker = c.state.modelPicker;
+  if (!picker) return;
+  const models = picker.entries.reduce(
+    (count, entry) => count + entry.models.length,
+    0,
+  );
+  if (!models) return;
+  const selectedIndex = picker.selectedIndex ?? 0;
+  picker.selectedIndex =
+    direction === "down"
+      ? (selectedIndex + 1) % models
+      : (selectedIndex + models - 1) % models;
+  c.bump();
+}
+
+export function selectModelPickerEntry(c: Controller): Promise<void> {
+  const picker = c.state.modelPicker;
+  if (!picker) return Promise.resolve();
+  const route = picker.entries.flatMap((entry) =>
+    entry.models.map((model) => `${entry.route}/${model}`),
+  )[picker.selectedIndex ?? 0];
+  return route ? pickModel(c, route) : Promise.resolve();
 }
 
 export async function initializeModel(
@@ -71,16 +97,44 @@ export async function initializeModel(
 
 async function discoverModels(
   c: Controller,
-): Promise<{ route: string; models: string[] }[]> {
+): Promise<
+  { route: string; models: string[]; details: Record<string, string> }[]
+> {
   const providers = [...c.registry.providers()];
   const results = await Promise.all(
     providers.map(async ([route, a]) => {
       for (let attempt = 0; attempt < 3; attempt++) {
+        let models: string[] = [];
         try {
-          const models = await a.list_models();
-          if (models.length > 0) return { route, models };
+          models = await a.list_models();
         } catch {
           // retry
+        }
+        if (models.length > 0) {
+          const details: Record<string, string> = {};
+          await Promise.all(
+            models.map(async (model) => {
+              let window: number | undefined;
+              let variants: string[] | undefined;
+              try {
+                [window, variants] = await Promise.all([
+                  a.context_window?.(model),
+                  a.supported_variants?.(model),
+                ]);
+              } catch {
+                // Metadata is optional; keep the model available in the picker.
+              }
+              details[model] = [
+                window
+                  ? `${new Intl.NumberFormat().format(window)} context`
+                  : "",
+                variants?.length ? `variants: ${variants.join(", ")}` : "",
+              ]
+                .filter(Boolean)
+                .join(" · ");
+            }),
+          );
+          return { route, models, details };
         }
         if (attempt < 2) {
           // ponytail: wait before retrying; slow providers (llama.cpp loading) need time
@@ -90,9 +144,7 @@ async function discoverModels(
       return null;
     }),
   );
-  return results.filter(
-    (entry): entry is { route: string; models: string[] } => entry !== null,
-  );
+  return results.filter((entry) => entry !== null);
 }
 
 export async function pickModel(c: Controller, route: string): Promise<void> {

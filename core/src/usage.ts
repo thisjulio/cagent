@@ -3,6 +3,9 @@ export type ProviderUsage = {
   outputTokens: number;
   cacheReadTokens: number;
   cacheCreationTokens: number;
+  timeToFirstTokenMs?: number;
+  tokensPerSecond?: number;
+  promptTokensCached?: number;
 };
 
 export type UsageTotals = ProviderUsage & {

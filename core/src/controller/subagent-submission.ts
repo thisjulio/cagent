@@ -14,8 +14,9 @@ export async function submitSubagent(
     "task.length": task.length,
   });
   const s = controller.state;
+  s.currentTurnId = turnId;
   s.input = "";
-  appendChat(s, { kind: "user", content: original });
+  appendChat(s, { kind: "user", content: original, turnId });
   controller.session.append({
     ts: Date.now(),
     turnId,
@@ -32,6 +33,7 @@ export async function submitSubagent(
     content: "",
     subagent: name,
     subagentHeader: true,
+    turnId,
   });
   await controller.registry.hooks.run({
     phase: "subagent_start",
@@ -57,7 +59,12 @@ export async function submitSubagent(
       { role: "user", content: original },
       { role: "assistant", content: result },
     );
-    appendChat(s, { kind: "assistant", content: result, subagent: name });
+    appendChat(s, {
+      kind: "assistant",
+      content: result,
+      subagent: name,
+      turnId,
+    });
     controller.session.append({
       ts: Date.now(),
       turnId,

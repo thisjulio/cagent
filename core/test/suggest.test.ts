@@ -15,6 +15,7 @@ describe("slashSuggestions", () => {
     expect(slashSuggestions("/").sort()).toEqual(
       [
         "/compact",
+        "/diff",
         "/help",
         "/init",
         "/lsp",

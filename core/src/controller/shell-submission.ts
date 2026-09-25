@@ -8,6 +8,7 @@ export async function submitShell(
   command: string,
 ): Promise<void> {
   const turnId = crypto.randomUUID();
+  controller.state.currentTurnId = turnId;
   controller.observability?.recordEvent("shell.started", {
     "command.length": command.length,
   });
@@ -19,7 +20,7 @@ export async function submitShell(
   const callId = `input-bash-${Date.now()}-${controller.nextSkillCallId()}`;
   const args = { command };
   const s = controller.state;
-  appendChat(s, { kind: "user", content: `$${command}` });
+  appendChat(s, { kind: "user", content: `$${command}`, turnId });
   s.busy = true;
   s.turnStartedAt = Date.now();
   controller.resetTurn();

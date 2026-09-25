@@ -39,6 +39,7 @@ export type ChatItem = {
   startedAt?: number;
   durationMs?: number;
   changesWorkspace?: boolean;
+  changedPaths?: string[];
   display?: ToolDisplay;
 };
 
@@ -63,6 +64,9 @@ export type UIState = {
   outputTokens?: number;
   cacheReadTokens: number;
   cacheCreationTokens: number;
+  lastTurnTokensPerSecond?: number;
+  lastTurnTimeToFirstTokenMs?: number;
+  lastTurnPromptTokensCached?: number;
   providerUsage: (ProviderUsage & { timestamp: number })[];
   contextWindow: number;
   threshold: number;
@@ -79,8 +83,13 @@ export type UIState = {
   questionAnswers: string[];
   questionSelectedOptions: number[];
   modelPicker: {
-    entries: { route: string; models: string[] }[];
+    entries: {
+      route: string;
+      models: string[];
+      details?: Record<string, string>;
+    }[];
     query: string;
+    selectedIndex?: number;
   } | null;
   sessionList:
     | {
@@ -123,6 +132,8 @@ export type UIState = {
   lspPanel: boolean;
   lspServers: LspServer[];
   toolViewerIndex: number | null;
+  toolViewerTurnId?: string;
+  toolViewerChatIndex?: number;
   permissionMode: "ask" | "auto" | "read-only";
   title: string;
   sessionId: string;

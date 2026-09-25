@@ -4,50 +4,11 @@ import type { Controller } from "../../controller/controller";
 import { categoryLabel } from "../../tool-category";
 import { formatTime } from "../render/time";
 import { ToolDisplayComponent } from "./ToolDisplay";
-import type { ToolDisplay } from "@cagent/sdk";
 import { redactCommand } from "../../tool-preview";
 
 const MAX_THINKING_LINES = 12;
 const MAX_THINKING_CHARS = 2400;
 const markdownSyntaxStyle = SyntaxStyle.create();
-
-function displayLineCount(display: ToolDisplay): number {
-  if (display.kind === "terminal") {
-    const stdout = display.stdout.trimEnd();
-    const stderr = (display.stderr ?? "").trimEnd();
-    const outputLines = [
-      ...(stdout ? stdout.split("\n") : []),
-      ...(stderr ? stderr.split("\n") : []),
-    ].slice(0, 12);
-    const statusLine =
-      display.timedOut ||
-      (display.exitCode !== undefined && display.exitCode !== 0)
-        ? 1
-        : 0;
-    return Math.max(1, outputLines.length + statusLine);
-  }
-
-  if (display.kind === "diff") {
-    const lines = display.content
-      .replace(/\r\n/g, "\n")
-      .trimEnd()
-      .split("\n")
-      .filter(
-        (line) =>
-          line.length > 0 &&
-          !line.startsWith("---") &&
-          !line.startsWith("+++") &&
-          !line.startsWith("@@"),
-      );
-    return Math.max(1, Math.min(lines.length, 14));
-  }
-
-  const maximum = 12;
-  return Math.max(
-    1,
-    display.content.trimEnd().split("\n").slice(0, maximum).length,
-  );
-}
 
 function lspOutput(content: string | undefined): string[] {
   if (!content) return [];
@@ -190,18 +151,10 @@ function ToolItemComponent({
             width="100%"
             minWidth={0}
             overflow="hidden"
-            paddingLeft={0}
+            border={["left"]}
+            borderColor="#d97757"
+            paddingLeft={1}
           >
-            <box flexDirection="column" width={3} flexShrink={0}>
-              {Array.from(
-                { length: displayLineCount(item.display) },
-                (_, index) => (
-                  <text key={`display-line-${index}`} fg="#d97757">
-                    │{" "}
-                  </text>
-                ),
-              )}
-            </box>
             <box flexGrow={1} flexBasis={0} minWidth={0} flexShrink={1}>
               <ToolDisplayComponent display={item.display} />
             </box>
@@ -287,6 +240,33 @@ export function AgentTurnBlockComponent({
   streaming: boolean;
   controller: Controller;
 }) {
+  const changes = block.items.filter(
+    (item): item is Extract<AgentItem, { type: "TOOL" }> =>
+      item.type === "TOOL" && item.changesWorkspace === true,
+  );
+  const additions = changes.reduce((sum, item) => {
+    const diff = item.display?.kind === "diff" ? item.display.content : "";
+    return (
+      sum +
+      diff
+        .split("\n")
+        .filter((line) => line.startsWith("+") && !line.startsWith("+++"))
+        .length
+    );
+  }, 0);
+  const deletions = changes.reduce((sum, item) => {
+    const diff = item.display?.kind === "diff" ? item.display.content : "";
+    return (
+      sum +
+      diff
+        .split("\n")
+        .filter((line) => line.startsWith("-") && !line.startsWith("---"))
+        .length
+    );
+  }, 0);
+  const files = new Set(changes.flatMap((item) => item.changedPaths ?? []));
+  const fileCount = files.size || changes.length;
+
   return (
     <box paddingX={2} width="100%" flexDirection="column" flexShrink={0}>
       <text fg="#d97757">
@@ -319,6 +299,16 @@ export function AgentTurnBlockComponent({
           />
         );
       })}
+      {changes.length ? (
+        <text fg="#888888">
+          └─ {fileCount} file{fileCount === 1 ? "" : "s"}
+          {changes.some((item) => item.display?.kind === "diff")
+            ? ` · +${additions} −${deletions}`
+            : ""}
+          {" · "}
+          <span fg="#d97757">/diff</span>
+        </text>
+      ) : null}
     </box>
   );
 }

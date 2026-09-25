@@ -53,6 +53,11 @@ export function toolPost(state: UIState, p: unknown): void {
       isError?: boolean;
       display?: import("@cagent/sdk").ToolDisplay;
       changesWorkspace?: boolean;
+      changedRanges?: Array<{
+        path: string;
+        startLine: number;
+        endLine: number;
+      }>;
     };
     error?: string;
   };
@@ -62,6 +67,14 @@ export function toolPost(state: UIState, p: unknown): void {
     if (e.startedAt) e.durationMs = Date.now() - e.startedAt;
     e.isError = !!error || result?.isError === true;
     e.changesWorkspace = result?.changesWorkspace === true;
+    e.changedPaths = result?.changedRanges?.map((range) => range.path);
+    if (
+      !e.changedPaths?.length &&
+      result?.display?.kind === "diff" &&
+      result.display.path
+    ) {
+      e.changedPaths = [result.display.path];
+    }
     e.display = result?.display;
     if (!e.content) e.content = error ?? result?.output ?? "";
   }

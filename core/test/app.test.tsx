@@ -58,7 +58,7 @@ describe("OpenTUI render", () => {
     const out = setup.captureCharFrame();
     expect(out).toContain("m1");
     expect(out).toContain("openai");
-    expect(out).toContain("100/100000");
+    expect(out).toContain("100k");
     expect(out).toContain("%");
     act(() => setup.renderer.destroy());
   });

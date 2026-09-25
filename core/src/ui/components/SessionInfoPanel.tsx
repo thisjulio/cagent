@@ -15,6 +15,9 @@ export function SessionInfoPanel({
   telemetryEnabled,
   telemetrySummary,
   contextWindow,
+  timeToFirstTokenMs,
+  tokensPerSecond,
+  promptTokensCached,
 }: {
   kind: "usage" | "telemetry";
   chat: ChatItem[];
@@ -39,6 +42,9 @@ export function SessionInfoPanel({
     agentTurns: number;
   };
   contextWindow: number;
+  timeToFirstTokenMs?: number;
+  tokensPerSecond?: number;
+  promptTokensCached?: number;
 }) {
   const tools = chat.filter((item) => item.kind === "tool" && !item.running);
   const groups = new Map<string, { count: number; duration: number }>();
@@ -57,7 +63,6 @@ export function SessionInfoPanel({
     ? Math.round(((tokens ?? 0) / contextWindow) * 100)
     : 0;
   const filled = Math.min(20, Math.round((pct / 100) * 20));
-  const lastTurns = chat.filter((item) => item.kind === "assistant").slice(-5);
   const cost = usage.costUsd === null ? undefined : usage.costUsd.toFixed(4);
   return (
     <box
@@ -85,7 +90,23 @@ export function SessionInfoPanel({
               Cache read: {usage.cacheReadTokens} · cache creation:{" "}
               {usage.cacheCreationTokens}
             </text>
-            <text>Cost: {cost ? `US$${cost}` : "n/a (model not priced)"}</text>
+            <text>
+              Cost: {cost ? `US${"$"}${cost}` : "n/a (model not priced)"}
+            </text>
+            <text>
+              Last turn: TTFT{" "}
+              {timeToFirstTokenMs === undefined
+                ? "n/a"
+                : `${timeToFirstTokenMs.toFixed(0)} ms`}{" "}
+              · throughput{" "}
+              {tokensPerSecond === undefined
+                ? "n/a"
+                : `${tokensPerSecond.toFixed(1)} tok/s`}
+            </text>
+            <text>
+              Prompt tokens reused:{" "}
+              {promptTokensCached ?? usage.cacheReadTokens}
+            </text>
             <text>
               Context: {tokens ?? 0} / {contextWindow} tokens
             </text>

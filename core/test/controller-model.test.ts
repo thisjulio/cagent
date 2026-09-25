@@ -56,6 +56,33 @@ describe("controller model and commands", () => {
     expect(c.state.modelPicker).toBeNull();
   });
 
+  it("model picker search accepts numeric characters", () => {
+    const c = new Controller(deps());
+    c.state.modelPicker = {
+      entries: [{ route: "r1", models: ["model-2"] }],
+      query: "",
+    };
+
+    c.handleKey({}, "2");
+
+    expect(c.state.modelPicker?.query).toBe("2");
+  });
+
+  it("model picker includes context window and available variants", async () => {
+    const d = deps();
+    d.adapter.context_window = async () => 128_000;
+    d.adapter.supported_variants = async () => ["high", "low"];
+    d.registry.registerProvider("openai", d.adapter);
+    const c = new Controller(d);
+
+    await c.submit("/model");
+
+    expect(
+      c.state.modelPicker?.entries.find((entry) => entry.route === "openai")
+        ?.details?.["model-a"],
+    ).toBe("128,000 context · variants: high, low");
+  });
+
   it("restores each session's model variant when switching sessions", async () => {
     const d = deps();
     d.registry.registerProvider("openai", d.adapter);

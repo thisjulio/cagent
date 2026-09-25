@@ -95,6 +95,17 @@ export async function executeTurn(host: TurnHost): Promise<void> {
     ? Date.now() - host.state.turnStartedAt
     : 0;
   host.state.turnStartedAt = null;
+  if (
+    !process.env.CAGENT_DISABLE_NOTIFICATIONS &&
+    process.env.TERM &&
+    process.stdout.isTTY
+  ) {
+    try {
+      process.stdout.write("\u0007");
+    } catch {
+      // Notifications are best-effort and must not affect turn completion.
+    }
+  }
   host.bump();
 }
 
@@ -196,11 +207,20 @@ async function runAgentTurn(
         host.state.cacheReadTokens += usage.cacheReadTokens;
       if (usage.cacheCreationTokens !== undefined)
         host.state.cacheCreationTokens += usage.cacheCreationTokens;
+      if (usage.tokensPerSecond !== undefined)
+        host.state.lastTurnTokensPerSecond = usage.tokensPerSecond;
+      if (usage.timeToFirstTokenMs !== undefined)
+        host.state.lastTurnTimeToFirstTokenMs = usage.timeToFirstTokenMs;
+      if (usage.promptTokensCached !== undefined)
+        host.state.lastTurnPromptTokensCached = usage.promptTokensCached;
       host.state.providerUsage.push({
         inputTokens: usage.inputTokens ?? 0,
         outputTokens: usage.outputTokens ?? 0,
         cacheReadTokens: usage.cacheReadTokens ?? 0,
         cacheCreationTokens: usage.cacheCreationTokens ?? 0,
+        timeToFirstTokenMs: usage.timeToFirstTokenMs,
+        tokensPerSecond: usage.tokensPerSecond,
+        promptTokensCached: usage.promptTokensCached,
         timestamp: Date.now(),
       });
       host.state.providerUsage = host.state.providerUsage.slice(-5);

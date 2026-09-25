@@ -21,6 +21,14 @@ export type LlmChunk =
         output_tokens: number;
         cache_read_tokens?: number;
         cache_creation_tokens?: number;
+        time_to_first_token_ms?: number;
+        tokens_per_second?: number;
+        prompt_tokens_cached?: number;
+        prompt_ms?: number;
+        predicted_ms?: number;
+        prompt_n?: number;
+        predicted_n?: number;
+        cache_n?: number;
       };
     };
 

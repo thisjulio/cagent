@@ -39,6 +39,8 @@ export type ToolItem = {
   expanded?: boolean;
   durationMs?: number;
   display?: ToolDisplay;
+  changesWorkspace?: boolean;
+  changedPaths?: string[];
   timestamp?: number;
   chatIndex: number;
 };
@@ -154,6 +156,8 @@ export function chatToBlocks(chat: ChatItem[]): Block[] {
           expanded: item.expanded,
           durationMs: item.durationMs,
           display: item.display,
+          changesWorkspace: item.changesWorkspace,
+          changedPaths: item.changedPaths,
           timestamp: item.timestamp,
           chatIndex: i,
         });

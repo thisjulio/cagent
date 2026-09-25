@@ -16,6 +16,7 @@ const commandInfo: Record<string, CommandInfo> = {
       "/preference [add <text>|list|edit <id> <text>|toggle <id>|remove <id>]",
   },
   "/lsp": { description: "inspect and install language servers" },
+  "/diff": { description: "view file changes from the current turn" },
   "/compact": { description: "summarize the conversation to free context" },
   "/sessions": { description: "resume a previous session" },
   "/session": { description: "resume a previous session" },

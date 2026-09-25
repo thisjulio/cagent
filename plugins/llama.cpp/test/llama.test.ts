@@ -37,6 +37,41 @@ describe("llama.cpp adapter", () => {
     expect(withoutTools).toBeGreaterThan(1);
   });
 
+  test("forwards llama-server timings and prompt cache counts", async () => {
+    const orig = globalThis.fetch;
+    globalThis.fetch = (async () =>
+      new Response(
+        'data: {"choices":[{"delta":{},"finish_reason":"stop"}],"usage":{"prompt_tokens":100,"completion_tokens":10},"timings":{"prompt_ms":120,"predicted_ms":500,"prompt_n":100,"predicted_n":10,"cache_n":40}}\n\n',
+        { headers: { "Content-Type": "text/event-stream" } },
+      )) as typeof fetch;
+    try {
+      const adapter = createAdapter();
+      const chunks = [];
+      for await (const chunk of adapter.stream({
+        model: "qwen",
+        messages: [],
+        tools: [],
+      }))
+        chunks.push(chunk);
+      expect(chunks).toContainEqual({
+        type: "finish",
+        finish_reason: "stop",
+        usage: {
+          input_tokens: 100,
+          output_tokens: 10,
+          cache_read_tokens: 0,
+          prompt_ms: 120,
+          predicted_ms: 500,
+          prompt_n: 100,
+          predicted_n: 10,
+          cache_n: 40,
+        },
+      });
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+
   test("replaces unrecoverable streamed tool arguments with valid JSON", async () => {
     const orig = globalThis.fetch;
     const event = {

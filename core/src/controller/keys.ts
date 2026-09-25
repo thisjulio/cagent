@@ -94,8 +94,8 @@ export function onKey(c: Controller, key: InputKey, input: string): void {
     return;
   }
   if (s.toolViewerIndex != null) {
-    if (key.escape) s.toolViewerIndex = null;
-    c.bump();
+    if (key.escape) c.closeToolViewer();
+    else c.bump();
     return;
   }
   if (s.lspPanel) {
@@ -112,13 +112,21 @@ export function onKey(c: Controller, key: InputKey, input: string): void {
     if (key.escape) {
       c.observability?.recordEvent("model_picker.cancelled");
       s.modelPicker = null;
+    } else if (key.upArrow) {
+      c.moveModelPicker("up");
+    } else if (key.downArrow) {
+      c.moveModelPicker("down");
+    } else if (key.return) {
+      void c.selectModelPickerEntry();
     } else if (key.backspace) {
       s.modelPicker.query = s.modelPicker.query.slice(0, -1);
+      s.modelPicker.selectedIndex = 0;
       c.observability?.recordEvent("model_picker.query_changed", {
         "query.length": s.modelPicker.query.length,
       });
-    } else if (input && !/^[1-9]$/.test(input)) {
+    } else if (input) {
       s.modelPicker.query += input;
+      s.modelPicker.selectedIndex = 0;
       c.observability?.recordEvent("model_picker.query_changed", {
         "query.length": s.modelPicker.query.length,
       });

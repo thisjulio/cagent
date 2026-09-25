@@ -25,13 +25,14 @@ Rules:
 
 - `bun install --frozen-lockfile` - install the workspace exactly as CI does.
 - `bun start` - run `core/src/main.ts`.
-- `bun test` - run the full test suite. Run one test file with `bun test core/test/loop.test.ts`.
+- `bun test --timeout=15000 --max-concurrency=4` - run the full test suite with CI's limits. Run one test file with `bun test core/test/loop.test.ts`.
 - `bun run build` - build the release executable.
 - `bun run typecheck` - run `tsc --noEmit` on core, SDK, and plugin source.
 - `bun run lint` - run Biome's linter (formatting is disabled in this command).
 - `bun run verify` - locally run build, typecheck, lint, and tests.
 - `bun core/scripts/snap.tsx` - render UI snapshots at 60, 80, and 120 columns.
 - `bun run check:plugins` - validate plugin package metadata after manifest changes.
+- `bun run format` - format repository files; CI runs this check.
 - `graphify update .` - update the knowledge graph (AST, no API cost).
 
 CI (`.github/workflows/ci.yml`) installs with `bun install --frozen-lockfile`; its quality job runs `bun test --timeout=15000 --max-concurrency=4`, `bun run typecheck`, `bun run lint`, `bun run format`, and `bun run knip`. A separate Linux/macOS/Windows matrix runs `bun run build`.
@@ -46,13 +47,13 @@ core/test/            # core behavior and architecture tests
 core/scripts/         # snap.tsx - UI snapshots
 sdk/                  # plugin interfaces and shared services
 plugins/              # providers, tools, and integration adapters
+plugins/*/test/        # plugin-specific tests
 plugins/stub/         # minimal plugin registration example
 docs/adr/             # accepted and proposed architecture decisions
 ```
 
-The workspace also includes `plugins/mcp`, `plugins/lsp`, and compatibility
-adapters for Claude and Codex, in addition to `openai`, `llama.cpp`, `bash`,
-and `code-tools`.
+The workspace also includes `plugins/mcp`, `plugins/lsp`, `plugins/claude-*`,
+`plugins/codex-*`, `openai`, `llama.cpp`, `bash`, and `code-tools`.
 
 ## Project References
 
@@ -74,7 +75,7 @@ and `code-tools`.
 - Maximum 500 lines per file, 40 per function, 4 parameters (above that, use an options object).
 - If a limit is exceeded, extract **before** continuing. There is no "refactor later".
 - React component: layout and formatting only. Zero I/O, business rules, or state mutation.
-- Logic module (controller, loop, session, registry): must not import `ink`, `react`, or any UI dependency.
+- Logic module (controller, loop, session, registry): must not import `react` or any UI dependency.
 - Pure function (parsing, fuzzy matching, splitting, formatting) belongs in its own file and is tested without rendering.
 - Forbidden filenames: `utils.ts`, `helpers.ts`, `misc.ts`, `common.ts` - the filename must name the domain.
 
@@ -129,7 +130,7 @@ Only add to an existing file when the change belongs to the same concept already
 
 ## Definition of Done
 
-- [ ] `bun test` passes, including `core/test/arch.test.ts` (CI uses `--timeout=15000 --max-concurrency=4`)
+- [ ] `bun test --timeout=15000 --max-concurrency=4` passes, including `core/test/arch.test.ts`.
 - [ ] `bun run build` passes
 - [ ] `bun run typecheck` passes
 - [ ] `bun run lint` passes
