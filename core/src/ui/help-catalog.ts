@@ -1,25 +1,41 @@
 import { commandNames } from "../commands/commands";
 
-export type HelpItem = { name: string; description: string; group: string };
+export type HelpItem = {
+  name: string;
+  description: string;
+  usage?: string;
+  group: string;
+};
 
-const descriptions: Record<string, string> = {
-  "/init": "create project instructions",
-  "/preference": "manage saved preferences",
-  "/lsp": "inspect and install language servers",
-  "/compact": "summarize the conversation to free context",
-  "/sessions": "resume a previous session",
-  "/session": "resume a previous session",
-  "/new": "start a fresh session",
-  "/rename": "rename the current session",
-  "/tasks": "manage the task list",
-  "/model": "switch model",
-  "/variant": "show or set the model variant",
-  "/help": "browse commands and keyboard shortcuts",
-  "/usage": "show token and cost usage",
-  "/telemetry": "show session telemetry",
-  "/auth.openai": "manage OpenAI credentials",
-  "/skill": "load an available skill",
-  "/reload-skills": "rescan skill directories",
+type CommandInfo = { description: string; usage?: string };
+const commandInfo: Record<string, CommandInfo> = {
+  "/init": { description: "create project instructions" },
+  "/preference": {
+    description: "manage saved preferences",
+    usage:
+      "/preference [add <text>|list|edit <id> <text>|toggle <id>|remove <id>]",
+  },
+  "/lsp": { description: "inspect and install language servers" },
+  "/compact": { description: "summarize the conversation to free context" },
+  "/sessions": { description: "resume a previous session" },
+  "/session": { description: "resume a previous session" },
+  "/new": { description: "start a fresh session" },
+  "/rename": { description: "rename the current session" },
+  "/tasks": {
+    description: "manage the task list",
+    usage: "/tasks [create|add|list|next|skip|block|resume|clear]",
+  },
+  "/model": { description: "switch model" },
+  "/variant": { description: "show or set the model variant" },
+  "/help": { description: "browse commands and keyboard shortcuts" },
+  "/usage": { description: "show token and cost usage" },
+  "/telemetry": { description: "show session telemetry" },
+  "/auth.openai": { description: "manage OpenAI credentials" },
+  "/skill": {
+    description: "load an available skill",
+    usage: "/skill <name> [arguments]",
+  },
+  "/reload-skills": { description: "rescan skill directories" },
 };
 
 export function getHelpCatalog(
@@ -32,7 +48,7 @@ export function getHelpCatalog(
 ): HelpItem[] {
   const items: HelpItem[] = commandNames.map((name) => ({
     name,
-    description: descriptions[name] ?? "run command",
+    ...(commandInfo[name] ?? { description: "run command" }),
     group: "Built-in commands",
   }));
   for (const name of options.pluginNames ?? [])
@@ -59,16 +75,10 @@ export function getHelpCatalog(
       description: "delegate to subagent",
       group: "Subagents",
     });
-  items.push({
-    name: "$<command>",
-    description: "run a shell command",
-    group: "Input",
-  });
-  items.push({
-    name: "@<agent>",
-    description: "mention a subagent",
-    group: "Input",
-  });
+  items.push(
+    { name: "$<command>", description: "run a shell command", group: "Input" },
+    { name: "@<agent>", description: "mention a subagent", group: "Input" },
+  );
   return items;
 }
 

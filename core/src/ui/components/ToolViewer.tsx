@@ -1,4 +1,5 @@
 import type { ChatItem } from "../../controller/state";
+import { ToolDisplayComponent } from "./ToolDisplay";
 
 export function ToolViewer({
   tools,
@@ -9,12 +10,8 @@ export function ToolViewer({
 }) {
   const item = tools[index];
   if (!item) return null;
-  const body =
-    item.display?.kind === "diff" || item.display?.kind === "code"
-      ? item.display.content
-      : item.display?.kind === "terminal"
-        ? item.display.stdout
-        : item.content;
+  const display = item.display;
+  const body = display?.kind === "terminal" ? display.stdout : item.content;
   return (
     <box
       border
@@ -31,7 +28,11 @@ export function ToolViewer({
         {tools.length})
       </text>
       <scrollbox flexGrow={1} flexShrink={1} minHeight={0} scrollY>
-        <text>{body || "No output"}</text>
+        {display?.kind === "diff" || display?.kind === "code" ? (
+          <ToolDisplayComponent display={display} />
+        ) : (
+          <text>{body || "No output"}</text>
+        )}
       </scrollbox>
       <text fg="#666666">
         Ctrl+O next earlier · Shift+Ctrl+O previous · Esc close

@@ -21,6 +21,7 @@ export type ChatItem = {
   content: string;
   turnId?: string;
   imagePaths?: string[];
+  filePaths?: string[];
   subagent?: string;
   subagentHeader?: boolean;
   toolName?: string;

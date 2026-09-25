@@ -12,6 +12,11 @@ import { compactionEventFields } from "./compaction-events";
 import { loadPreferences } from "../preferences";
 import { taskCheckpointMessage } from "./task-continuation";
 import { appendPrompt } from "../session/history";
+import {
+  appendFileContext,
+  buildFileContext,
+  withFileContext,
+} from "../context/file-mentions";
 export async function submitMessage(
   controller: Controller,
   text: string,
@@ -25,10 +30,18 @@ export async function submitMessage(
     return;
   }
 
-  const { content, imagePaths } = imageContent;
+  const { content: imagePrompt, imagePaths } = imageContent;
+  const fileMention = buildFileContext(text);
+  const content = appendFileContext(imagePrompt, fileMention.context);
   appendPrompt(process.cwd(), text);
   resetCompletedTasks(controller);
-  appendChat(state, { kind: "user", content: text, imagePaths, turnId });
+  appendChat(state, {
+    kind: "user",
+    content: fileMention.content,
+    imagePaths,
+    filePaths: fileMention.filePaths,
+    turnId,
+  });
   state.busy = true;
   state.turnStartedAt = Date.now();
   state.elapsedMs = 0;
@@ -38,7 +51,11 @@ export async function submitMessage(
     ts: Date.now(),
     turnId,
     type: "user",
-    payload: { content: text, imagePaths },
+    payload: {
+      content: fileMention.content,
+      imagePaths,
+      filePaths: fileMention.filePaths,
+    },
   });
   controller.messages.push({ role: "user", content });
   controller.bus.emit(
@@ -140,7 +157,7 @@ export async function submitMessage(
             role: "user" as const,
             content: taskCheckpoint,
           });
-        return requestMessages;
+        return withFileContext(requestMessages, fileMention.context);
       },
       tools: taskAwareTools(controller),
       allowlist: controller.config.allowlist,

@@ -11,6 +11,7 @@ import crypto from "node:crypto";
 import { QuestionService } from "./question-service";
 import { runSlash } from "../commands/commands";
 import { inputSuggestions } from "../commands/suggest";
+import { fuzzyProjectFiles } from "../context/file-mentions";
 import { Session, type QueueMessage } from "../session/index";
 import { captureProjectMeta, projectMetaRecord } from "../session/project";
 import type { ToolAsk } from "../tools";
@@ -617,6 +618,7 @@ export class Controller {
   setInput(v: string): void {
     const s = this.state;
     s.input = v;
+    const mention = v.match(/(?:^|\s)@([^\s]*)$/);
     s.suggest = inputSuggestions(
       v,
       this.deps.skillNames?.() ?? [],
@@ -626,6 +628,7 @@ export class Controller {
       ],
       this.agentNames(),
       this.deps.pluginCommandSubcommands,
+      mention ? fuzzyProjectFiles(mention[1]) : [],
     );
     s.suggestIdx = -1;
     this.bump();
@@ -647,6 +650,10 @@ export class Controller {
       ],
       this.agentNames(),
       this.deps.pluginCommandSubcommands,
+      (() => {
+        const mention = this.state.input.match(/(?:^|\s)@([^\s]*)$/);
+        return mention ? fuzzyProjectFiles(mention[1]) : [];
+      })(),
     );
     this.state.suggestIdx = -1;
     return true;

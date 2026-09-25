@@ -6,6 +6,7 @@ import { escapeRegExp } from "../render/text";
 export function UserTurnBlockComponent({ block }: { block: UserTurnBlock }) {
   const item = block.items[0];
   const imagePaths = item.imagePaths ?? [];
+  const filePaths = item.filePaths ?? [];
   const textWithoutImages =
     imagePaths.length > 0
       ? item.content
@@ -46,6 +47,12 @@ export function UserTurnBlockComponent({ block }: { block: UserTurnBlock }) {
         <text key={`img-${path}`}>
           <span fg="#d97757"> </span>
           <span fg="#a78bfa">[Image: {path}]</span>
+        </text>
+      ))}
+      {filePaths.map((path) => (
+        <text key={`file-${path}`}>
+          <span fg="#d97757"> </span>
+          <span fg="#7dd3fc">[File: {path}]</span>
         </text>
       ))}
     </box>

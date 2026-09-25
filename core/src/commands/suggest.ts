@@ -1,4 +1,6 @@
 import { commandNames } from "./commands";
+import { getHelpCatalog } from "../ui/help-catalog";
+import { fuzzy } from "../fuzzy";
 
 // ponytail: alphabetical order (not Object.keys) keeps suggestions predictable - "/session" before "/sessions".
 const builtInSubcommands: Record<string, string[]> = {
@@ -23,9 +25,13 @@ export function slashSuggestions(
       .filter((name) => name.toLowerCase().startsWith(q))
       .sort();
   const commandMatches = [
+    ...getHelpCatalog().map((item) => item.name),
     ...commandNames,
     ...customNames.map((name) => `/${name}`),
-  ].filter((n) => n.startsWith(q));
+  ].filter(
+    (n, index, all) =>
+      all.indexOf(n) === index && n.toLowerCase().startsWith(q),
+  );
   const skillPrefix = q.startsWith("/skill ")
     ? q.slice("/skill ".length)
     : null;
@@ -49,14 +55,27 @@ export function subagentSuggestions(
     .sort();
 }
 
+export function fileSuggestions(input: string, filePaths: string[]): string[] {
+  const match = input.match(/@([^\s]*)$/);
+  if (!match) return [];
+  const query = match[1].toLowerCase();
+  return fuzzy(filePaths, query)
+    .slice(0, 8)
+    .map((path) => `@${path}`);
+}
+
 export function inputSuggestions(
   input: string,
   skillNames: string[] = [],
   customNames: string[] = [],
   agentNames: string[] = [],
   pluginSubcommands: Record<string, string[]> = {},
+  filePaths: string[] = [],
 ): string[] {
-  return input.startsWith("@")
-    ? subagentSuggestions(input, agentNames)
-    : slashSuggestions(input, skillNames, customNames, pluginSubcommands);
+  if (/(?:^|\s)@[^\s]*$/.test(input))
+    return [
+      ...subagentSuggestions(input, agentNames),
+      ...fileSuggestions(input, filePaths),
+    ].slice(0, 8);
+  return slashSuggestions(input, skillNames, customNames, pluginSubcommands);
 }

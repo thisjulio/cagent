@@ -34,6 +34,7 @@ export function HelpBox({
               .map((item) => (
                 <text key={`${group}:${item.name}`}>
                   <strong>{item.name}</strong> — {item.description}
+                  {item.usage ? ` · usage: ${item.usage}` : ""}
                 </text>
               ))}
           </box>

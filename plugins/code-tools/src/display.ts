@@ -47,18 +47,36 @@ export function unifiedPatch(
   file: string,
 ): string {
   const body = unifiedDiff(oldLines, newLines).split("\n");
-  const changed = body.flatMap((line, index) =>
-    line.startsWith("+") || line.startsWith("-") ? [index] : [],
-  );
-  const first = changed[0] ?? 0;
-  const last = changed.at(-1) ?? 0;
-  const from = Math.max(0, first - 3);
-  const to = Math.min(body.length, last + 4);
+  const changes: Array<{ start: number; end: number }> = [];
+  for (let index = 0; index < body.length; index++) {
+    if (!body[index].startsWith("+") && !body[index].startsWith("-")) continue;
+    const last = changes.at(-1);
+    if (last && index - last.end <= 7) last.end = index;
+    else changes.push({ start: index, end: index });
+  }
+  const hunks = changes.map(({ start, end }) => {
+    const from = Math.max(0, start - 3);
+    const to = Math.min(body.length, end + 4);
+    const lines = body.slice(from, to);
+    let oldLine = 0;
+    let newLine = 0;
+    for (const line of body.slice(0, from)) {
+      if (!line.startsWith("+")) newLine++;
+      if (!line.startsWith("-")) oldLine++;
+    }
+    const oldCount = lines.filter((line) => !line.startsWith("+")).length;
+    const newCount = lines.filter((line) => !line.startsWith("-")).length;
+    const oldStart = oldCount === 0 ? oldLine : oldLine + 1;
+    const newStart = newCount === 0 ? newLine : newLine + 1;
+    return [
+      `@@ -${oldStart},${oldCount} +${newStart},${newCount} @@`,
+      ...lines,
+    ];
+  });
   return [
     `diff --git a/${file} b/${file}`,
     `--- ${file}`,
     `+++ ${file}`,
-    `@@ -1,${oldLines.length} +1,${newLines.length} @@`,
-    ...body.slice(from, to),
+    ...hunks.flat(),
   ].join("\n");
 }

@@ -7,6 +7,7 @@ export type PromptItem = {
   content: string;
   queueStatus?: "queued" | "processing";
   imagePaths?: string[];
+  filePaths?: string[];
   timestamp?: number;
   chatIndex: number;
 };
@@ -97,6 +98,7 @@ export function chatToBlocks(chat: ChatItem[]): Block[] {
             content: item.content,
             queueStatus: item.queueStatus,
             imagePaths: item.imagePaths,
+            filePaths: item.filePaths,
             timestamp: item.timestamp,
             chatIndex: i,
           },

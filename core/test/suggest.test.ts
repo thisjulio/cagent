@@ -3,6 +3,7 @@ import {
   slashSuggestions,
   subagentSuggestions,
   inputSuggestions,
+  fileSuggestions,
 } from "../src/commands/suggest";
 
 describe("slashSuggestions", () => {
@@ -65,4 +66,12 @@ describe("subagent suggestions", () => {
     ).toEqual([]));
   it("routes input completion by prefix", () =>
     expect(inputSuggestions("@", [], [], ["reviewer"])).toEqual(["@reviewer"]));
+  it("suggests files with fuzzy matching after an @ in a prompt", () =>
+    expect(
+      fileSuggestions("check @src/cnt", ["src/context/file.ts", "README.md"]),
+    ).toEqual(["@src/context/file.ts"]));
+  it("combines agent and file suggestions after @", () =>
+    expect(
+      inputSuggestions("@rev", [], [], ["reviewer"], {}, ["src/review.ts"]),
+    ).toEqual(["@reviewer", "@src/review.ts"]));
 });
