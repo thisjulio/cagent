@@ -79,6 +79,11 @@ describe("prompt.assembled workflow event", () => {
         .readFileSync(controller.session.file, "utf8")
         .split("\n")
         .filter(Boolean)
+        .filter(
+          (line) =>
+            JSON.parse(line).type === "user" ||
+            JSON.parse(line).type === "assistant",
+        )
         .map((line) => JSON.parse(line).payload.content)
         .filter(Boolean),
     ).toEqual([

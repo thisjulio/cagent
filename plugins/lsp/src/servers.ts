@@ -7,6 +7,19 @@ const defaults: Record<string, LspServerConfig> = {
     command: [resolveBinary("typescript-language-server"), "--stdio"],
     extensions: [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"],
   },
+  biome: {
+    command: [resolveBinary("biome"), "lsp-proxy"],
+    extensions: [
+      ".ts",
+      ".tsx",
+      ".js",
+      ".jsx",
+      ".mjs",
+      ".cjs",
+      ".json",
+      ".jsonc",
+    ],
+  },
   python: {
     command: [resolveBinary("pyright-langserver"), "--stdio"],
     extensions: [".py", ".pyi"],

@@ -27,100 +27,90 @@ export function lspTool(ctx: PluginContext) {
     const file = path.resolve(input);
     const selected = serverForFile(servers, file);
     if (!selected || !fs.existsSync(file)) return undefined;
-    try {
-      const client = await getClient(process.cwd(), selected[1]);
-      await client.sync(file);
-      const symbols = (await client.call("documentSymbol", file)) as Array<{
+    const client = await getClient(process.cwd(), selected[1]);
+    await client.sync(file);
+    const symbols = (await client.call("documentSymbol", file)) as Array<{
+      name?: string;
+      kind?: number;
+      range?: { start?: { line?: number }; end?: { line?: number } };
+      selectionRange?: { start?: { line?: number } };
+      children?: Array<{
         name?: string;
         kind?: number;
         range?: { start?: { line?: number }; end?: { line?: number } };
         selectionRange?: { start?: { line?: number } };
-        children?: Array<{
-          name?: string;
-          kind?: number;
-          range?: { start?: { line?: number }; end?: { line?: number } };
-          selectionRange?: { start?: { line?: number } };
-        }>;
       }>;
-      const candidates = symbols
-        .flatMap((symbol) => [symbol, ...(symbol.children ?? [])])
-        .filter((symbol) => symbol.name && symbol.selectionRange?.start)
-        .filter(
-          (symbol) =>
-            (symbol.range?.end?.line ?? 0) - (symbol.range?.start?.line ?? 0) >
-            0,
-        )
-        .filter((symbol) => {
-          if (!changedRange) return true;
-          const start = (symbol.range?.start?.line ?? 0) + 1;
-          const end = (symbol.range?.end?.line ?? 0) + 1;
-          return end >= changedRange.startLine && start <= changedRange.endLine;
-        })
-        .slice(0, 12);
-      const entries: string[] = [];
-      const files = new Set<string>();
-      for (const symbol of candidates) {
-        if (files.size >= 20) break;
-        const position = {
-          line: symbol.selectionRange!.start!.line!,
-          character: 0,
-        };
-        const refs = (await client.call(
-          "references",
-          file,
-          position,
-        )) as Array<{
-          uri?: string;
-          range?: { start?: { line?: number } };
-        }>;
-        const relevant = refs
-          .filter((ref) => ref.uri && ref.uri !== `file://${file}`)
-          .slice(0, 10);
-        if (!relevant.length) continue;
-        entries.push(
-          `${symbol.name}: ${relevant
-            .map((ref) => {
-              const refFile = decodeURIComponent(
-                ref.uri!.replace(/^file:\/\//, ""),
-              );
-              return `${path.relative(process.cwd(), refFile)}:${(ref.range?.start?.line ?? 0) + 1}`;
-            })
-            .join(", ")}`,
-        );
-        for (const ref of relevant) if (ref.uri) files.add(ref.uri);
-      }
-      return entries.length
-        ? `LSP impact (${entries.length} symbols, capped):\n${entries.join("\n")}`
-        : undefined;
-    } catch {
-      return undefined;
+    }>;
+    const candidates = symbols
+      .flatMap((symbol) => [symbol, ...(symbol.children ?? [])])
+      .filter((symbol) => symbol.name && symbol.selectionRange?.start)
+      .filter(
+        (symbol) =>
+          (symbol.range?.end?.line ?? 0) - (symbol.range?.start?.line ?? 0) > 0,
+      )
+      .filter((symbol) => {
+        if (!changedRange) return true;
+        const start = (symbol.range?.start?.line ?? 0) + 1;
+        const end = (symbol.range?.end?.line ?? 0) + 1;
+        return end >= changedRange.startLine && start <= changedRange.endLine;
+      })
+      .slice(0, 12);
+    const entries: string[] = [];
+    const files = new Set<string>();
+    for (const symbol of candidates) {
+      if (files.size >= 20) break;
+      const position = {
+        line: symbol.selectionRange!.start!.line!,
+        character: 0,
+      };
+      const refs = (await client.call("references", file, position)) as Array<{
+        uri?: string;
+        range?: { start?: { line?: number } };
+      }>;
+      const relevant = refs
+        .filter((ref) => ref.uri && ref.uri !== `file://${file}`)
+        .slice(0, 10);
+      if (!relevant.length) continue;
+      entries.push(
+        `${symbol.name}: ${relevant
+          .map((ref) => {
+            const refFile = decodeURIComponent(
+              ref.uri!.replace(/^file:\/\//, ""),
+            );
+            return `${path.relative(process.cwd(), refFile)}:${(ref.range?.start?.line ?? 0) + 1}`;
+          })
+          .join(", ")}`,
+      );
+      for (const ref of relevant) if (ref.uri) files.add(ref.uri);
     }
+    return entries.length
+      ? `LSP impact (${entries.length} symbols, capped):\n${entries.join("\n")}`
+      : undefined;
   };
   const diagnosticsForPath = async (
     input: string,
-  ): Promise<string | undefined> => {
+  ): Promise<{ text?: string; count: number }> => {
     const file = path.resolve(input);
     const selected = serverForFile(servers, file);
-    if (!selected || !fs.existsSync(file)) return undefined;
-    try {
-      const client = await getClient(process.cwd(), selected[1]);
-      await client.sync(file);
-      const diagnostics = (await client.call("diagnostics", file)) as Array<{
-        range?: { start?: { line?: number; character?: number } };
-        message?: string;
-        severity?: number;
-      }>;
-      if (!diagnostics.length) return undefined;
-      return diagnostics
+    if (!selected || !fs.existsSync(file)) return { count: 0 };
+    const client = await getClient(process.cwd(), selected[1]);
+    await client.sync(file);
+    const diagnostics = (await client.call("diagnostics", file)) as Array<{
+      range?: { start?: { line?: number; character?: number } };
+      message?: string;
+      severity?: number;
+    }>;
+    if (!diagnostics.length) return { count: 0 };
+    return {
+      count: diagnostics.length,
+      text: diagnostics
         .map((diagnostic) => {
           const line = (diagnostic.range?.start?.line ?? 0) + 1;
           const character = (diagnostic.range?.start?.character ?? 0) + 1;
           return `${path.relative(process.cwd(), file)}:${line}:${character} ${diagnostic.message ?? "LSP diagnostic"}`;
         })
-        .join("\n");
-    } catch {
-      return undefined;
-    }
+        .join("\n"),
+    };
   };
   ctx.registerHook({
     name: "lsp-after-edit",
@@ -142,22 +132,106 @@ export function lspTool(ctx: PluginContext) {
           endLine: Number.MAX_SAFE_INTEGER,
         },
       ];
-      const messages = await Promise.all(
+      const results = await Promise.all(
         changes.map(async (change) => {
-          const diagnostics = await diagnosticsForPath(change.path);
-          const impact = await impactForPath(change.path, change);
-          return [
-            diagnostics ? `LSP diagnostics:\n${diagnostics}` : undefined,
-            impact,
-          ]
-            .filter((message): message is string => Boolean(message))
-            .join("\n");
+          const file = path.resolve(change.path);
+          const selected = serverForFile(servers, file);
+          if (!selected || !fs.existsSync(file)) {
+            return { path: change.path, status: "skipped" as const };
+          }
+          const startedAt = performance.now();
+          const [diagnosticsResult, impactResult] = await Promise.allSettled([
+            diagnosticsForPath(change.path),
+            impactForPath(change.path, change),
+          ]);
+          const failures = [diagnosticsResult, impactResult].filter(
+            (result): result is PromiseRejectedResult =>
+              result.status === "rejected",
+          );
+          if (failures.length) {
+            return {
+              path: change.path,
+              status: "error" as const,
+              diagnostics:
+                diagnosticsResult.status === "fulfilled"
+                  ? diagnosticsResult.value.text
+                  : undefined,
+              diagnosticCount:
+                diagnosticsResult.status === "fulfilled"
+                  ? diagnosticsResult.value.count
+                  : 0,
+              impact:
+                impactResult.status === "fulfilled"
+                  ? impactResult.value
+                  : undefined,
+              error: failures
+                .map((failure) =>
+                  failure.reason instanceof Error
+                    ? failure.reason.message
+                    : String(failure.reason),
+                )
+                .join("; "),
+              durationMs: performance.now() - startedAt,
+            };
+          }
+          return {
+            path: change.path,
+            status: "success" as const,
+            diagnostics:
+              diagnosticsResult.status === "fulfilled"
+                ? diagnosticsResult.value.text
+                : undefined,
+            diagnosticCount:
+              diagnosticsResult.status === "fulfilled"
+                ? diagnosticsResult.value.count
+                : 0,
+            impact:
+              impactResult.status === "fulfilled"
+                ? impactResult.value
+                : undefined,
+            durationMs: performance.now() - startedAt,
+          };
         }),
       );
-      const output = messages.filter(Boolean);
-      return output.length
-        ? { action: "continue" as const, message: output.join("\n") }
-        : undefined;
+      for (const result of results) {
+        ctx.observability.recordEvent("lsp.after_edit", {
+          status: result.status,
+          path: result.path,
+          ...(result.status === "success"
+            ? {
+                diagnosticsFound: result.diagnosticCount,
+                impactFound: Boolean(result.impact),
+                durationMs: result.durationMs,
+              }
+            : result.status === "error"
+              ? { error: result.error, durationMs: result.durationMs }
+              : {}),
+        });
+      }
+      const messages = results.map((result) => {
+        if (result.status === "skipped")
+          return `LSP: análise ignorada para ${result.path} (sem servidor ou arquivo indisponível).`;
+        if (result.status === "error") {
+          const findings = [
+            result.diagnostics
+              ? `LSP diagnostics:\n${result.diagnostics}`
+              : undefined,
+            result.impact,
+            `LSP: análise falhou para ${result.path}: ${result.error}`,
+          ].filter((message): message is string => Boolean(message));
+          return findings.join("\n");
+        }
+        const findings = [
+          result.diagnostics
+            ? `LSP diagnostics:\n${result.diagnostics}`
+            : undefined,
+          result.impact,
+        ].filter((message): message is string => Boolean(message));
+        return findings.length
+          ? findings.join("\n")
+          : `LSP: análise concluída para ${result.path}; nenhum diagnóstico ou impacto encontrado.`;
+      });
+      return { action: "continue" as const, message: messages.join("\n") };
     },
   });
   ctx.registerCleanup(async () => {
@@ -254,7 +328,9 @@ export function lspTool(ctx: PluginContext) {
                 character: Number(args.character) - 1,
               }
             : undefined;
-        const result = await (await getClient(process.cwd(), config)).call(
+        const client = await getClient(process.cwd(), config);
+        await client.sync(file);
+        const result = await client.call(
           String(args.operation),
           file,
           position,

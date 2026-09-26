@@ -5,9 +5,15 @@ describe("LSP server configuration", () => {
   test("enables the supported language defaults", () => {
     const servers = configuredServers(undefined);
 
-    expect(Object.keys(servers)).toEqual(["typescript", "python", "rust"]);
+    expect(Object.keys(servers)).toEqual([
+      "typescript",
+      "biome",
+      "python",
+      "rust",
+    ]);
     expect(serverForFile(servers, "/workspace/app.ts")?.[0]).toBe("typescript");
     expect(serverForFile(servers, "/workspace/app.js")?.[0]).toBe("typescript");
+    expect(serverForFile(servers, "/workspace/config.json")?.[0]).toBe("biome");
     expect(serverForFile(servers, "/workspace/app.py")?.[0]).toBe("python");
     expect(serverForFile(servers, "/workspace/app.rs")?.[0]).toBe("rust");
   });
