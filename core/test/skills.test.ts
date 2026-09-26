@@ -151,6 +151,9 @@ describe("skills", () => {
       readSkillResource(directory, "../secret.md"),
     ).resolves.toBeUndefined();
     await expect(
+      readSkillResource(directory, "references/../SKILL.md"),
+    ).resolves.toBeUndefined();
+    await expect(
       readSkillResource(directory, "secret.md"),
     ).resolves.toBeUndefined();
   });

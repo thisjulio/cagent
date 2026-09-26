@@ -21,7 +21,12 @@ export async function readSkillResource(
   directory: string,
   resource: string,
 ): Promise<string | undefined> {
-  if (!resource || path.isAbsolute(resource) || resource.includes("\\"))
+  if (
+    !resource ||
+    path.isAbsolute(resource) ||
+    resource.includes("\\") ||
+    resource.split("/").some((part) => part === "..")
+  )
     return undefined;
   try {
     const root = await fs.realpath(directory);
