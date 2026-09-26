@@ -40,7 +40,10 @@ export function globTool(ctx: PluginContext) {
         ]
           .filter((file) => notIgnored(file, gitignorePatterns(ROOT)))
           .slice(0, max);
-        return { output: files.length ? files.join("\n") : "no results" };
+        return {
+          output: files.length ? files.join("\n") : "no results",
+          summary: `${files.length} files`,
+        };
       } catch (e) {
         return {
           output: errorText(

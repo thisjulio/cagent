@@ -156,6 +156,11 @@ const register: Plugin = (ctx) => {
         : result.stdout;
       return {
         output,
+        summary: result.timedOut
+          ? "timed out"
+          : result.error
+            ? "failed"
+            : `exit ${result.code}`,
         isError,
         timedOut: result.timedOut,
         changesWorkspace: mayChangeWorkspace(String(args.command)),

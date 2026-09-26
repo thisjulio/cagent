@@ -28,6 +28,7 @@ test("bash runs a command and streams stdout", async () => {
   };
 
   expect(result.output).toBe("hi\n");
+  expect(result.summary).toBe("exit 0");
   expect(result.isError).toBe(false);
   expect(events).toContain("tools/stdout");
 });
@@ -42,6 +43,7 @@ test("bash respects the timeout", async () => {
 
   expect(result.timedOut).toBe(true);
   expect(result.isError).toBe(true);
+  expect(result.summary).toBe("timed out");
   expect(Date.now() - started).toBeLessThan(3000);
 });
 

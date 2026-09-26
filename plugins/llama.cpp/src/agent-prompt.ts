@@ -31,16 +31,23 @@ export function addAgentPrompt(
   messages: Message[],
   prompt = LLAMA_AGENT_PROMPT,
 ): Message[] {
-  const index = messages.findIndex((message) => message.role === "system");
-  if (index === -1)
-    return [
-      { role: "system", content: `${prompt}\n\n${TURN_REMINDER}` },
-      ...messages,
-    ];
-  const result = messages.map((message) => ({ ...message }));
-  result[index] = {
-    ...result[index],
-    content: `${result[index].content}\n\n${prompt}\n\n${TURN_REMINDER}`,
-  };
+  const system = messages.filter((message) => message.role === "system");
+  const content = system
+    .map((message) =>
+      typeof message.content === "string"
+        ? message.content
+        : message.content
+            .filter((part) => part.type === "text")
+            .map((part) => (part.type === "text" ? part.text : ""))
+            .join("\n"),
+    )
+    .filter(Boolean)
+    .concat(`${prompt}\n\n${TURN_REMINDER}`)
+    .join("\n\n");
+  const result = messages.filter((message) => message.role !== "system");
+  result.unshift({
+    role: "system",
+    content,
+  });
   return result;
 }

@@ -33,7 +33,10 @@ export type ToolDisplay =
 
 export interface ToolResult {
   output: string;
+  /** Short plain-text outcome for transcript rows, without newlines (24 characters maximum). */
+  summary?: string;
   isError?: boolean;
+  denied?: boolean;
   evidence?: ToolEvidence[];
   changesWorkspace?: boolean;
   changedRanges?: Array<{

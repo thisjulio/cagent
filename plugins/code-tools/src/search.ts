@@ -157,7 +157,12 @@ export function searchTool(ctx: PluginContext) {
           }
         }
         const output = chunks.join("\n") || "no results";
-        return { output, evidence: evidenceFromOutput(output) };
+        const count = chunks.length;
+        return {
+          output,
+          summary: count ? `${count} matches` : "no matches",
+          evidence: evidenceFromOutput(output),
+        };
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e);
         const separator = message.indexOf(":");

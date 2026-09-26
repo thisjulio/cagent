@@ -18,7 +18,7 @@ function parseRanges(args: ToolArgs): { ranges?: LineRange[]; error?: string } {
   if (raw === undefined)
     return {
       error:
-        'provide "edits": [{"start_line": 1, "end_line": 1, "old_content": "...", "content": "..."}]',
+        'expected one JSON object: {"path":"file.ts","edits":[{"start_line":1,"end_line":1,"old_content":"exact current line","content":"replacement"}]}; use read_file output for line numbers and old_content',
     };
 
   const items = Array.isArray(raw) ? raw : [raw];
@@ -65,6 +65,7 @@ export function replaceLinesTool(ctx: PluginContext) {
       "Replaces ranges of lines in a file you have just read with read_file.",
       "Call read_file immediately before this tool, even if the file was read earlier in the same turn.",
       "Every edit must include old_content copied exactly from the lines being replaced; line numbers alone are not safe.",
+      'Send arguments as one JSON object: {"path":"...","edits":[{"start_line":1,"end_line":1,"old_content":"...","content":"..."}]}. Do not send the edits array alone.',
       "Send one entry per region you are changing, all numbered from that same read_file output.",
       "content is the new text for those lines; an empty string deletes those lines.",
       "After any successful edit, formatter, or write, all previous line numbers are out of date: call read_file again before editing this file.",

@@ -60,8 +60,24 @@ export function extractResidency(token: string): string | undefined {
   return r && r !== "no_constraint" ? r : undefined;
 }
 
+export function toInstructions(messages: LlmCallOptions["messages"]): string {
+  return messages
+    .filter((message) => message.role === "system")
+    .map((message) =>
+      typeof message.content === "string"
+        ? message.content
+        : message.content.map((part) =>
+            part.type === "text" ? part.text : "",
+          ),
+    )
+    .flat()
+    .filter(Boolean)
+    .join("\n\n");
+}
+
 export function toInputItems(messages: LlmCallOptions["messages"]): unknown[] {
   const items: unknown[] = [];
+  const callIds = new Set<string>();
   for (const m of messages) {
     if (m.role === "assistant") {
       if (m.content)
@@ -71,6 +87,7 @@ export function toInputItems(messages: LlmCallOptions["messages"]): unknown[] {
           content: [{ type: "output_text", text: m.content }],
         });
       for (const tc of m.tool_calls ?? []) {
+        callIds.add(tc.id);
         items.push({
           type: "function_call",
           name: tc.name,
@@ -79,6 +96,7 @@ export function toInputItems(messages: LlmCallOptions["messages"]): unknown[] {
         });
       }
     } else if (m.role === "tool") {
+      if (!callIds.has(m.tool_call_id ?? "")) continue;
       items.push({
         type: "function_call_output",
         call_id: m.tool_call_id ?? "",

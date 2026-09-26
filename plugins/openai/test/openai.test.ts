@@ -5,6 +5,47 @@ import {
   fetchCodexModelRecords,
   fetchCodexModels,
 } from "../src/index";
+import { toInputItems, toInstructions } from "../src/codex";
+import { CODE_TOOLS_OVERRIDES } from "../src/overrides";
+
+test("Codex keeps every system instruction", () => {
+  expect(
+    toInstructions([
+      { role: "system", content: "persistent preference" },
+      { role: "system", content: "agent autonomy" },
+      { role: "user", content: "fix it" },
+    ]),
+  ).toBe("persistent preference\n\nagent autonomy");
+});
+
+test("Codex omits tool outputs whose calls are missing from restored history", () => {
+  expect(
+    toInputItems([
+      { role: "tool", tool_call_id: "call-orphan", content: "old result" },
+      {
+        role: "assistant",
+        content: "",
+        tool_calls: [{ id: "call-present", name: "read", arguments: "{}" }],
+      },
+      { role: "tool", tool_call_id: "call-present", content: "result" },
+    ]),
+  ).toEqual([
+    {
+      type: "function_call",
+      name: "read",
+      arguments: "{}",
+      call_id: "call-present",
+    },
+    { type: "function_call_output", call_id: "call-present", output: "result" },
+  ]);
+});
+
+test("Codex apply_patch override explains its freeform format", () => {
+  const description = CODE_TOOLS_OVERRIDES.edit_file.description;
+  expect(description).toContain("Do not send JSON");
+  expect(description).toContain("Do not call replace_lines");
+  expect(description).toContain("*** Update File:");
+});
 
 function fakeClient(): OpenAI {
   const chunks = [

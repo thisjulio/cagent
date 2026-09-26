@@ -35,6 +35,17 @@ function freshTools(): {
 }
 
 describe("code-tools tools", () => {
+  it("replace_lines explains the required JSON object when edits are missing", async () => {
+    const { tools } = freshTools();
+    const result = await tools
+      .get("replace_lines")!
+      .execute({ path: "missing.ts" });
+    expect(result.isError).toBe(true);
+    expect(result.output).toContain('"path":"file.ts","edits":');
+    expect(result.output).toContain(
+      "use read_file output for line numbers and old_content",
+    );
+  });
   it("write_file creates and read_file reads with offset/limit", async () => {
     const { tools } = freshTools();
     await tools
@@ -227,6 +238,7 @@ a7.ts
     });
     const r = await tools.get("search")!.execute({ pattern: "alpha" });
     expect(r.output).toContain("a9.ts:1:");
+    expect(r.summary).toBe("2 matches");
   });
 
   it("search reports a missing target instead of a parser error", async () => {
@@ -259,6 +271,7 @@ a7.ts
     expect(r.isError).toBeFalsy();
     expect(r.output).toContain("dir-a/a.ts:1:");
     expect(r.output).not.toContain("dir-b/b.ts:1:");
+    expect(r.summary).toBe("1 matches");
   });
 
   it("search_ast encontra via @ast-grep/napi", async () => {
@@ -271,12 +284,14 @@ a7.ts
       .execute({ pattern: "console.log($X)", target: "a10.ts" });
     expect(r.isError).toBeFalsy();
     expect(r.output).toContain("a10.ts");
+    expect(r.summary).toBe("1 matches");
   });
 
   it("list_files lists by glob", async () => {
     const { tools } = freshTools();
     const r = await tools.get("list_files")!.execute({ pattern: "a9.ts" });
     expect(r.output).toBe("a9.ts");
+    expect(r.summary).toBe("1 files");
   });
 
   it("shadow Git is created in a non-Git workspace", async () => {

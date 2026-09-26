@@ -132,10 +132,13 @@ export function searchAstTool(ctx: PluginContext) {
         };
       }
       try {
-        const output =
-          searchFiles(filesFor(abs), pattern, language, max).join("\n") ||
-          "no results";
-        return { output, evidence: evidenceFromOutput(output) };
+        const matches = searchFiles(filesFor(abs), pattern, language, max);
+        const output = matches.join("\n") || "no results";
+        return {
+          output,
+          summary: matches.length ? `${matches.length} matches` : "no matches",
+          evidence: evidenceFromOutput(output),
+        };
       } catch (e) {
         return {
           output: errorText(

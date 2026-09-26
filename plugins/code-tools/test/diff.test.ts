@@ -96,6 +96,17 @@ describe("unified diff", () => {
     expect(patch).toContain("+");
   });
 
+  it("creates valid hunks when changed lines begin with diff markers", () => {
+    const patch = unifiedPatch(
+      ["before"],
+      ["+added", "-removed"],
+      "markers.ts",
+    );
+
+    expectValidHunkCounts(patch);
+    expect(patch).toContain("@@ -1,1 +1,2 @@");
+  });
+
   it("creates valid hunks when files end with a newline", () => {
     const before = ["alpha", "beta", ""];
     const after = ["alpha", "changed", ""];

@@ -126,6 +126,18 @@ describe("llama.cpp adapter", () => {
     expect(messages[1]).toEqual({ role: "user", content: "Inspect this" });
   });
 
+  test("combines multiple system messages before adding coding-agent rules", () => {
+    const messages = addAgentPrompt([
+      { role: "system", content: "Persistent preference" },
+      { role: "system", content: "Project rules" },
+      { role: "user", content: "Inspect this" },
+    ]);
+    expect(messages).toHaveLength(2);
+    expect(messages[0].content).toContain("Persistent preference");
+    expect(messages[0].content).toContain("Project rules");
+    expect(messages[1]).toEqual({ role: "user", content: "Inspect this" });
+  });
+
   test("accepts nested context settings from older llama-server responses", async () => {
     const orig = globalThis.fetch;
     globalThis.fetch = (async () => ({

@@ -64,8 +64,8 @@ export function unifiedPatch(
       if (!line.startsWith("+")) newLine++;
       if (!line.startsWith("-")) oldLine++;
     }
-    const oldCount = lines.filter((line) => line[0] !== "+").length;
-    const newCount = lines.filter((line) => line[0] !== "-").length;
+    const oldCount = lines.filter((line) => !line.startsWith("+")).length;
+    const newCount = lines.filter((line) => !line.startsWith("-")).length;
     const oldStart = oldCount === 0 ? oldLine : oldLine + 1;
     const newStart = newCount === 0 ? newLine : newLine + 1;
     return [

@@ -43,6 +43,7 @@ export const LLAMA_TOOL_OVERRIDES: ToolOverrides = {
     name: "replace_lines",
     description: [
       "Replaces lines in a file. Call read_file on the file first and copy the current lines into old_content.",
+      'Return one JSON object with exactly {"path":"...","edits":[{"start_line":1,"end_line":1,"old_content":"...","content":"..."}]}; do not send the edits array alone.',
       'Example: {"path":"src/index.ts","edits":[{"start_line":12,"end_line":14,"old_content":"interface A {\\n  id: number;\\n}","content":"export interface A {\\n  id: string;\\n}"}]}',
       "The edit is rejected when old_content does not exactly match the numbered lines.",
       "After it succeeds, call read_file again before editing the same file.",
