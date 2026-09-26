@@ -32,6 +32,49 @@ describe("agent loop", () => {
   }));
   const bus = new EventBus();
 
+  it("requires every declared tool argument in the wrapped provider schema", async () => {
+    let receivedParameters: Record<string, unknown> | undefined;
+    const adapter = fakeAdapter([[{ type: "finish", finish_reason: "stop" }]]);
+    adapter.prepare_call = async (options) => {
+      receivedParameters = options.tools?.[0]?.parameters as Record<
+        string,
+        unknown
+      >;
+      return options;
+    };
+    await runTurn({
+      adapter,
+      model: "m",
+      messages: [{ role: "user", content: "load skill" }],
+      tools: [
+        defineTool(
+          "skill",
+          "Load a skill",
+          {
+            type: "object",
+            properties: {
+              name: { type: "string", enum: ["review-loop"] },
+              resource: { type: "string" },
+            },
+            required: ["name"],
+            additionalProperties: false,
+          },
+          async () => ({ output: "loaded" }),
+        ),
+      ],
+      allowlist: [],
+      ask: async () => false,
+      bus,
+    });
+
+    const args = receivedParameters?.properties as Record<string, unknown>;
+    expect(receivedParameters?.required).toEqual(["_cagent", "args"]);
+    expect((args.args as Record<string, unknown>).required).toEqual([
+      "name",
+      "resource",
+    ]);
+  });
+
   it("multi-turn with a tool call", async () => {
     const messages: Message[] = [
       { role: "system", content: "s" },

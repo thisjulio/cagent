@@ -93,6 +93,11 @@ export function applyToolOverrides(
 export function wrapToolParameters(
   parameters: Record<string, unknown>,
 ): Record<string, unknown> {
+  const args = parameters as {
+    properties?: Record<string, unknown>;
+    required?: string[];
+    [key: string]: unknown;
+  };
   return {
     type: "object",
     properties: {
@@ -110,7 +115,15 @@ export function wrapToolParameters(
         required: ["title"],
         additionalProperties: false,
       },
-      args: parameters,
+      args: {
+        ...args,
+        required: [
+          ...new Set([
+            ...(args.required ?? []),
+            ...Object.keys(args.properties ?? {}),
+          ]),
+        ],
+      },
     },
     required: [TOOL_METADATA_KEY, "args"],
     additionalProperties: false,

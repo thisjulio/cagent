@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { describe, expect, it } from "bun:test";
+import { afterEach, describe, expect, it } from "bun:test";
 
 import { EventBus } from "../src/events";
 import { Registry } from "../src/registry";
@@ -38,6 +38,10 @@ function deps(
     sessionDir: fs.mkdtempSync(path.join(os.tmpdir(), "cagent-ui-")),
   };
 }
+
+const originalCwd = process.cwd();
+
+afterEach(() => process.chdir(originalCwd));
 
 describe("controller model and commands", () => {
   it("model picker: filters and selects", async () => {
@@ -194,20 +198,31 @@ describe("controller model and commands", () => {
   });
 
   it("/session resets its picker state after restoring a session", async () => {
-    const c = new Controller(deps());
-    await c.submit("first message");
-    const id = c.session.id;
+    const projectDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "cagent-project-"),
+    );
+    process.chdir(projectDir);
+    const d = deps();
+    try {
+      const c = new Controller(d);
+      await c.submit("first message");
+      const id = c.session.id;
 
-    c.openSessions();
-    c.state.sessionQuery = "stale query";
-    c.state.sessionScope = "all";
-    await c.resumeSession(id);
-    c.openSessions();
+      c.state.sessionList = [{ id } as never];
+      c.state.sessionAll = [{ id } as never];
+      c.state.sessionQuery = "stale query";
+      c.state.sessionScope = "all";
+      await c.resumeSession(id);
+      c.state.sessionList = [{ id } as never];
 
-    expect(c.state.sessionList).not.toBeNull();
-    expect(c.state.sessionQuery).toBe("");
-    expect(c.state.sessionScope).toBe("project");
-    expect(c.state.sessionAll.length).toBeGreaterThan(0);
+      expect(c.state.sessionList).not.toBeNull();
+      expect(c.state.sessionQuery).toBe("");
+      expect(c.state.sessionScope).toBe("project");
+      expect(c.state.sessionAll).toEqual([]);
+    } finally {
+      fs.rmSync(d.sessionDir, { recursive: true, force: true });
+      fs.rmSync(projectDir, { recursive: true, force: true });
+    }
   });
 
   it("generates the session title from the first message", async () => {

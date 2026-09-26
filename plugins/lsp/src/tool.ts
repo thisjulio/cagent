@@ -151,6 +151,7 @@ export function lspTool(ctx: PluginContext) {
           if (failures.length) {
             return {
               path: change.path,
+              server: selected[0],
               status: "error" as const,
               diagnostics:
                 diagnosticsResult.status === "fulfilled"
@@ -176,6 +177,7 @@ export function lspTool(ctx: PluginContext) {
           }
           return {
             path: change.path,
+            server: selected[0],
             status: "success" as const,
             diagnostics:
               diagnosticsResult.status === "fulfilled"
@@ -210,26 +212,34 @@ export function lspTool(ctx: PluginContext) {
       }
       const messages = results.map((result) => {
         if (result.status === "skipped")
-          return `LSP: análise ignorada para ${result.path} (sem servidor ou arquivo indisponível).`;
-        if (result.status === "error") {
-          const findings = [
-            result.diagnostics
-              ? `LSP diagnostics:\n${result.diagnostics}`
-              : undefined,
-            result.impact,
-            `LSP: análise falhou para ${result.path}: ${result.error}`,
-          ].filter((message): message is string => Boolean(message));
-          return findings.join("\n");
-        }
-        const findings = [
-          result.diagnostics
-            ? `LSP diagnostics:\n${result.diagnostics}`
+          return `LSP · skipped · ${result.path}\n  no compatible server or file unavailable`;
+        const diagnostics = result.diagnostics
+          ? result.diagnostics
+              .split("\n")
+              .map((line) => `  ${line}`)
+              .join("\n")
+          : undefined;
+        const impact = result.impact
+          ? result.impact
+              .split("\n")
+              .map((line) => `  ${line}`)
+              .join("\n")
+          : undefined;
+        const status = result.status === "error" ? "failed" : "complete";
+        const details = [
+          result.status === "error" ? `  ${result.error}` : undefined,
+          diagnostics,
+          impact,
+          result.status === "success" &&
+          !result.diagnosticCount &&
+          !result.impact
+            ? "  no diagnostics or impact found"
             : undefined,
-          result.impact,
         ].filter((message): message is string => Boolean(message));
-        return findings.length
-          ? findings.join("\n")
-          : `LSP: análise concluída para ${result.path}; nenhum diagnóstico ou impacto encontrado.`;
+        return [
+          `LSP · ${result.server} · ${status}${result.status === "success" && result.diagnosticCount ? ` · ${result.diagnosticCount} findings` : ""} · ${result.path}`,
+          ...details,
+        ].join("\n");
       });
       return { action: "continue" as const, message: messages.join("\n") };
     },
@@ -241,47 +251,6 @@ export function lspTool(ctx: PluginContext) {
       ),
     );
   });
-  const sync = async (payload: unknown) => {
-    if (!payload || typeof payload !== "object") return;
-    const data = payload as { path?: unknown; paths?: unknown };
-    const paths = [
-      ...(typeof data.path === "string" ? [data.path] : []),
-      ...(Array.isArray(data.paths)
-        ? data.paths.filter((item): item is string => typeof item === "string")
-        : []),
-    ];
-    await Promise.all(
-      paths.map(async (input) => {
-        const file = path.resolve(input);
-        const selected = serverForFile(servers, file);
-        if (!selected || !fs.existsSync(file)) return;
-        try {
-          const client = await getClient(process.cwd(), selected[1]);
-          await client.sync(file);
-          const diagnostics = (await client.call(
-            "diagnostics",
-            file,
-          )) as Array<{
-            range?: { start?: { line?: number; character?: number } };
-            message?: string;
-            severity?: number;
-          }>;
-          for (const diagnostic of diagnostics) {
-            const line = (diagnostic.range?.start?.line ?? 0) + 1;
-            const character = (diagnostic.range?.start?.character ?? 0) + 1;
-            ctx.activity(
-              `${path.relative(process.cwd(), file)}:${line}:${character} ${diagnostic.message ?? "LSP diagnostic"}`,
-              { source: "lsp", severity: diagnostic.severity ?? 1 },
-            );
-          }
-        } catch {
-          // Diagnostics are best-effort; explicit queries report unavailable servers.
-        }
-      }),
-    );
-  };
-  ctx.on("code-tools/write", sync);
-  ctx.on("code-tools/edit", sync);
   return defineTool(
     "lsp",
     "Queries TypeScript, JavaScript, Python, and Rust language servers.",

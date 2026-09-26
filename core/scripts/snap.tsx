@@ -83,7 +83,8 @@ function multilineToolScenarios(): ChatItem[] {
       toolCategory: "write",
       title: "Multiply price by quantity",
       cmd: "src/orders/total.ts",
-      content: "edited",
+      content:
+        "edited\nLSP · TypeScript · complete · 1 finding · src/orders/total.ts\n  src/orders/total.ts:2:28 Parameter 'qty' implicitly has an 'any' type.",
       running: false,
       changesWorkspace: true,
       changedPaths: ["src/orders/total.ts"],
@@ -132,6 +133,7 @@ function largeDiffScenario(): ChatItem {
       toolCategory: "write",
       title: "Edit attribution.ts",
       cmd: "plugins/anthropic/src/attribution.ts",
+      content: "edited",
       running: false,
       changesWorkspace: true,
       changedPaths: ["plugins/anthropic/src/attribution.ts"],

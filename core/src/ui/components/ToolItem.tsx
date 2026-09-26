@@ -9,6 +9,12 @@ import { redactCommand } from "../../tool-preview";
 const TURN_INSET = 5;
 const MAX_EXPANDED_ERROR_LINES = 8;
 
+function lspOutput(content: string | undefined): string[] {
+  const lines = content?.split("\n") ?? [];
+  const start = lines.findIndex((line) => line.startsWith("LSP · "));
+  return start < 0 ? [] : lines.slice(start);
+}
+
 function rowTitle(item: ToolItemData): string {
   const title = item.title ?? item.toolName ?? "tool";
   return item.running && !item.title && item.cmd
@@ -85,6 +91,7 @@ export function ToolItemComponent({
   const visibleBody = item.isError
     ? body.slice(-MAX_EXPANDED_ERROR_LINES)
     : body;
+  const lspLines = lspOutput(item.content);
 
   return (
     <box flexDirection="column">
@@ -141,6 +148,22 @@ export function ToolItemComponent({
             view="unified"
             maxRows={item.expanded === true ? undefined : 12}
           />
+          {lspLines.length ? (
+            <box
+              flexDirection="column"
+              border={["top"]}
+              borderColor="#6366f1"
+              paddingTop={1}
+            >
+              {lspLines.map((line, index) => (
+                <text key={`lsp-${index}`} wrapMode="word">
+                  <span fg={index === 0 ? "#a5b4fc" : "#c9d1d9"}>
+                    {line || " "}
+                  </span>
+                </text>
+              ))}
+            </box>
+          ) : null}
         </box>
       ) : expanded ? (
         visibleBody.map((line, index) => (

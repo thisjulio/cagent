@@ -42,6 +42,29 @@ describe("tool pipeline", () => {
     expect(res.isError).toBeUndefined();
   });
 
+  it("publishes the tool result after after-tool messages are appended", async () => {
+    const eventBus = new EventBus();
+    let postedOutput = "";
+    eventBus.on("tools/post", (event) => {
+      postedOutput = (event as { result: { output: string } }).result.output;
+    });
+    const result = await runToolPipeline(
+      tool,
+      { command: "git status" },
+      ["git status"],
+      async () => false,
+      eventBus,
+      {
+        run: async () => [
+          { action: "continue", message: "LSP · TypeScript · clean" },
+        ],
+      },
+    );
+
+    expect(postedOutput).toBe("ok\nLSP · TypeScript · clean");
+    expect(result.output).toBe(postedOutput);
+  });
+
   it("outside the allowlist asks for approval and denies", async () => {
     const res = await runToolPipeline(
       tool,

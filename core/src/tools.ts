@@ -127,7 +127,6 @@ export async function runToolPipeline(
       () => tool.execute({ ...args, signal }),
       { "tool.name": tool.name },
     );
-    bus.emit("tools/post", { tool: tool.name, result });
     const afterResponses =
       (await hooks?.run({
         phase: "after_tool",
@@ -138,7 +137,7 @@ export async function runToolPipeline(
     const hookMessages = afterResponses
       .map((response) => response.message)
       .filter((message): message is string => Boolean(message));
-    return {
+    const completed = {
       ...result,
       output: appendCapped(
         "",
@@ -146,6 +145,8 @@ export async function runToolPipeline(
         MAX_TOOL_OUTPUT_CHARS,
       ),
     };
+    bus.emit("tools/post", { tool: tool.name, result: completed });
+    return completed;
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     bus.emit("tools/post", { tool: tool.name, error: msg });
