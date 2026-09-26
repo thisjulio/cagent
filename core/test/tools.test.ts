@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { defineTool } from "@cagent/sdk";
+import { defineTool, InMemoryObservability } from "@cagent/sdk";
 import { EventBus } from "../src/events";
 import {
   hasShellControlSyntax,
@@ -40,6 +40,29 @@ describe("tool pipeline", () => {
     );
     expect(res.output).toBe("ok");
     expect(res.isError).toBeUndefined();
+  });
+
+  it("records bounded tool argument metadata without argument values", async () => {
+    const observability = new InMemoryObservability();
+    await runToolPipeline(
+      tool,
+      { command: "secret command", resource: "" },
+      [],
+      async () => true,
+      bus,
+      undefined,
+      undefined,
+      observability,
+    );
+
+    const span = observability.spans[0];
+    expect(span?.name).toBe("tool.execute");
+    expect(span?.attributes).toMatchObject({
+      "tool.args.keys": "command,resource",
+      "tool.args.empty_strings": "resource",
+      "tool.error": false,
+    });
+    expect(JSON.stringify(span?.attributes)).not.toContain("secret command");
   });
 
   it("publishes the tool result after after-tool messages are appended", async () => {

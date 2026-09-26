@@ -74,7 +74,9 @@ async function readSkillTool(
       isError: true,
     };
   const resource =
-    typeof args.resource === "string" ? args.resource : "SKILL.md";
+    typeof args.resource === "string" && args.resource.trim()
+      ? args.resource
+      : "SKILL.md";
   if (resource === "SKILL.md") {
     const content = await readSkill(catalog, skill.metadata.name);
     if (content !== undefined) {

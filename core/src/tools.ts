@@ -124,8 +124,20 @@ export async function runToolPipeline(
     const result = await trace(
       observability,
       "tool.execute",
-      () => tool.execute({ ...args, signal }),
-      { "tool.name": tool.name },
+      async (span) => {
+        const result = await tool.execute({ ...args, signal });
+        span.setAttribute("tool.error", Boolean(result.isError));
+        return result;
+      },
+      {
+        "tool.name": tool.name,
+        "tool.args.keys": Object.keys(args).slice(0, 20).join(","),
+        "tool.args.empty_strings": Object.entries(args)
+          .filter(([, value]) => value === "")
+          .map(([key]) => key)
+          .slice(0, 20)
+          .join(","),
+      },
     );
     const afterResponses =
       (await hooks?.run({

@@ -134,6 +134,8 @@ describe("skills", () => {
 
     const main = await tool.execute({ name: "guided" });
     expect(main.output).toContain("<file>references/guide.md</file>");
+    const emptyResource = await tool.execute({ name: "guided", resource: "" });
+    expect(emptyResource.output).toContain('<skill_content name="guided">');
     const resource = await tool.execute({
       name: "guided",
       resource: "references/guide.md",
