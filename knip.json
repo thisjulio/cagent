@@ -6,5 +6,9 @@
     "plugins/mcp/src/transport-http.ts"
   ],
   "ignoreBinaries": ["graphify", "rg"],
-  "ignoreDependencies": ["pyright", "typescript-language-server"]
+  "ignoreDependencies": [
+    "@biomejs/biome",
+    "pyright",
+    "typescript-language-server"
+  ]
 }
