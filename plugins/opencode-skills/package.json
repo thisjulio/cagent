@@ -1,0 +1,9 @@
+{
+  "name": "@cagent/opencode-skills",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "dependencies": {
+    "@cagent/sdk": "workspace:*"
+  }
+}

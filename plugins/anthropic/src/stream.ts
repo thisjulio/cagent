@@ -14,6 +14,7 @@ interface StreamOptions {
   beta?: string;
   metadata?: { user_id: string };
   observability?: Observability;
+  signal?: AbortSignal;
 }
 
 function isEffortVariant(
@@ -180,6 +181,7 @@ export async function* streamMessages(
   try {
     stream = await client.beta.messages.create(requestBody, {
       headers: options.beta ? { "anthropic-beta": options.beta } : undefined,
+      signal: options.signal,
     });
   } catch (error) {
     recordRequestError(observability, span, shape, error);

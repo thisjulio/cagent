@@ -180,8 +180,12 @@ const register: Plugin = async (ctx) => {
         tool.inputSchema,
         async (args) => {
           try {
-            const { signal: _signal, ...mcpArgs } = args;
-            const result = await server.client.callTool(tool.name, mcpArgs);
+            const { signal, ...mcpArgs } = args;
+            const result = await server.client.callTool(
+              tool.name,
+              mcpArgs,
+              signal as AbortSignal | undefined,
+            );
             const text = result.content
               .filter((c) => c.type === "text")
               .map((c) => c.text)
@@ -207,10 +211,8 @@ const register: Plugin = async (ctx) => {
     }
   });
 
-  // Emit event for UI/logging
   ctx.emit("mcp:servers_connected", {
-    connected: connected.map((s) => s.name),
-    total_tools: connected.reduce((acc, s) => acc + s.tools.length, 0),
+    connected: connected.map((server) => server.name),
   });
 };
 

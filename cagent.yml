@@ -25,6 +25,10 @@ plugins:
     path: ./plugins/claude-agents
   - name: codex-agents
     path: ./plugins/codex-agents
+  - name: codex-skills
+    path: ./plugins/codex-skills
+  - name: opencode-skills
+    path: ./plugins/opencode-skills
   - name: claude-commands
     path: ./plugins/claude-commands
   - name: claude-skills

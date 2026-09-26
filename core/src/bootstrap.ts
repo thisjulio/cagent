@@ -13,7 +13,11 @@ import { Controller } from "./controller/controller";
 import { appendChat, notify } from "./controller/chat-buffer";
 import { App } from "./ui/components/App";
 import { discoverSkills } from "./skills/discovery";
-import { createReadSkillTool, readSkill } from "./skills/read-tool";
+import {
+  createReadSkillTool,
+  readSkill,
+  refreshReadSkillTool,
+} from "./skills/read-tool";
 import { addBuiltinSkills } from "./skills/builtin";
 import { applySkillArguments } from "./skills/arguments";
 import { createTaskTool } from "./tasks/task-tool";
@@ -68,6 +72,11 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
   }
   const registry = new Registry();
   const bus = new EventBus();
+  let mcpServerCount = 0;
+  bus.on("mcp:servers_connected", (payload) => {
+    const names = (payload as { connected?: unknown }).connected;
+    if (Array.isArray(names)) mcpServerCount = names.length;
+  });
   const verification = createVerificationRunner(process.cwd());
   const loadedPlugins = await loadPlugins(config, registry, bus, {
     loaders: options.pluginLoaders,
@@ -102,6 +111,7 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
       : addBuiltinSkills(
           discoverSkills(process.cwd(), config.skills?.roots, pluginSkillRoots),
         );
+  const skillTool = skills ? createReadSkillTool(skills) : undefined;
   const commands = discoverCommands(process.cwd(), [
     createCommandSource(),
     ...loadedPlugins.commandSources,
@@ -113,9 +123,10 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
         );
         skills.skills = refreshed.skills;
         skills.byName = refreshed.byName;
+        if (skillTool) refreshReadSkillTool(skillTool, skills);
       }
     : undefined;
-  if (skills) registry.registerTool(createReadSkillTool(skills));
+  if (skillTool) registry.registerTool(skillTool);
   let route = await resolveRoute(config, registry);
   let adapter = registry.provider(splitRoute(route)[0]);
   if (!adapter) throw new Error("(no provider - nothing to do)");
@@ -240,7 +251,8 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
     return;
   }
   const renderer = await createCliRenderer({ exitOnCtrlC: false });
-  createRoot(renderer).render(React.createElement(App, { c }));
+  process.once("exit", () => renderer.destroy());
+  createRoot(renderer).render(React.createElement(App, { c, mcpServerCount }));
   if (options.cli?.resume) c.openSessions();
   void c.detectLspStatus().catch(() => {});
   void initializeModel(c, config.model).catch((error) => {

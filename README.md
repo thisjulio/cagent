@@ -206,7 +206,7 @@ Run `cagent --interactive` to start a terminal session without submitting a prom
 | `/usage`, `/telemetry`, `/lsp` | Inspect token usage, local telemetry, or language-server status. |
 | `/tasks`, `/preference`, `/variant`, `/init` | Manage tasks, preferences, model variant, or project instructions. |
 
-Keyboard shortcuts: `Esc` closes a panel, clears idle input, or interrupts a running turn; `Ctrl+C` clears input, cancels a turn, or exits with status 130; `Shift+Tab` cycles ask/auto/read-only permissions; `Ctrl+O` opens tool output and `Shift+Ctrl+O` moves to the previous tool call; `Tab` completes commands. Edit input with `Ctrl+U`, `Ctrl+W`, `Ctrl+A`, `Ctrl+E`, `Ctrl+Left/Right`, or `Home`/`End`.
+Keyboard shortcuts: `Esc` closes a panel, clears idle input, or interrupts a running turn; `Ctrl+C` clears input, cancels a turn, or exits with status 130; `Shift+Tab` cycles ask/auto/read-only permissions; `Ctrl+O` expands or collapses the latest tool or reasoning item; `/diff` opens the file changes viewer; `Tab` completes commands. Edit input with `Ctrl+U`, `Ctrl+W`, `Ctrl+A`, `Ctrl+E`, `Ctrl+Left/Right`, or `Home`/`End`.
 
 ## Included plugins
 
@@ -225,6 +225,8 @@ The repository includes the plugins below. If no plugins are listed in the activ
 | `claude-commands` | Load Claude-compatible custom commands. |
 | `codex-prompts` | Load Codex-compatible prompts. |
 | `claude-skills` | Discover Claude-compatible skills. |
+| `codex-skills` | Discover Codex-compatible skills. |
+| `opencode-skills` | Discover OpenCode-compatible skills. |
 | `claude-hooks` | Import supported Claude hooks. |
 | `claude-plugins` | Import supported Claude plugin components. |
 | `stub` | Minimal provider for development and tests. |
@@ -239,7 +241,7 @@ Mention a loaded subagent with `@<name> [task]`. The Claude and Codex agent plug
 
 ### Skills
 
-Skills are reusable instruction sets. Use `/skill <name>` to activate one and `/reload-skills` to discover newly added or changed skills without restarting. Skills can be supplied by plugins or configured skill roots.
+Skills are reusable `SKILL.md` instruction sets. cagent discovers project and user skills in `.cagent/skills/` and `.agents/skills/`, including nested skill directories. Enable `claude-skills` for Claude, `codex-skills` for Codex, or `opencode-skills` for OpenCode locations. Use `/skill <name>` to activate one and `/reload-skills` after adding or changing skills. Skills can include `references/` and other supporting files; the skill tool lists available files and reads them by relative path.
 
 ### Hooks
 
@@ -251,7 +253,7 @@ The `mcp` plugin connects to Model Context Protocol servers using supported tran
 
 ### Tasks
 
-Use `/tasks` to inspect and manage work. Available operations include `create`, `add`, `list`, `next`, `skip`, `block`, `resume`, and `clear`.
+Use `/tasks` to inspect and manage work. Available operations include `create`, `add`, `list`, `next`, `skip`, `block`, `resume`, `activate`, and `clear`. Use `activate` when there is no active or blocked task and a pending task needs to start.
 
 ### Preferences
 

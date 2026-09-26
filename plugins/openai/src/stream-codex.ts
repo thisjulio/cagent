@@ -1,5 +1,5 @@
 import type { LlmCallOptions, LlmChunk } from "@cagent/sdk";
-import { extractResidency, toInputItems } from "./codex";
+import { extractResidency, toInputItems, toInstructions } from "./codex";
 import { APPLY_PATCH_GRAMMAR } from "./apply-patch-grammar";
 
 const CODEX_RESPONSES_URL = "https://chatgpt.com/backend-api/codex/responses";
@@ -8,6 +8,7 @@ export async function* streamCodex(
   request: LlmCallOptions,
   access: string,
   accountId?: string,
+  signal?: AbortSignal,
 ): AsyncGenerator<LlmChunk> {
   const headers: Record<string, string> = {
     authorization: `Bearer ${access}`,
@@ -17,13 +18,13 @@ export async function* streamCodex(
   const residency = extractResidency(access);
   if (residency) headers["x-openai-internal-codex-residency"] = residency;
 
-  const systemMsg = request.messages.find((m) => m.role === "system");
   const res = await fetch(CODEX_RESPONSES_URL, {
     method: "POST",
+    signal,
     headers,
     body: JSON.stringify({
       model: request.model,
-      instructions: systemMsg?.content ?? "",
+      instructions: toInstructions(request.messages),
       input: toInputItems(request.messages.filter((m) => m.role !== "system")),
       tool_choice: "auto",
       stream: true,

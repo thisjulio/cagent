@@ -22,11 +22,16 @@ import { LLAMA_TOOL_OVERRIDES } from "./tools";
 async function* streamChatCompletions(
   request: LlmCallOptions,
   config: LlamaConfig,
+  signal?: AbortSignal,
 ): AsyncGenerator<LlmChunk> {
   const root = baseUrl(config);
-  const fetchOptions = config.timeout_ms
-    ? { signal: AbortSignal.timeout(config.timeout_ms) }
-    : {};
+  const requestSignal =
+    config.timeout_ms && signal
+      ? AbortSignal.any([signal, AbortSignal.timeout(config.timeout_ms)])
+      : (signal ??
+        (config.timeout_ms
+          ? AbortSignal.timeout(config.timeout_ms)
+          : undefined));
   const tools = toolPayload(request);
   const body = {
     model: request.model,
@@ -42,7 +47,7 @@ async function* streamChatCompletions(
     method: "POST",
     headers: headers(config),
     body: JSON.stringify(body),
-    ...fetchOptions,
+    signal: requestSignal,
   });
   if (!response.ok) {
     const error = await response.text();
@@ -242,8 +247,11 @@ export function createAdapter(config: LlamaConfig = {}): ProviderAdapter {
       };
     },
 
-    async *stream(request: LlmCallOptions): AsyncGenerator<LlmChunk> {
-      yield* streamChatCompletions(request, config);
+    async *stream(
+      request: LlmCallOptions,
+      signal?: AbortSignal,
+    ): AsyncGenerator<LlmChunk> {
+      yield* streamChatCompletions(request, config, signal);
     },
   };
 }

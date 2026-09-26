@@ -59,11 +59,16 @@ export class McpClient {
   async callTool(
     name: string,
     arguments_: Record<string, unknown>,
+    signal?: AbortSignal,
   ): Promise<McpToolCallResult> {
-    return (await this.client.callTool({
-      name,
-      arguments: arguments_,
-    })) as McpToolCallResult;
+    return (await this.client.callTool(
+      {
+        name,
+        arguments: arguments_,
+      },
+      undefined,
+      { signal },
+    )) as McpToolCallResult;
   }
 
   async close(): Promise<void> {

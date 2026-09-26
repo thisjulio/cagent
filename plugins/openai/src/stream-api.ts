@@ -8,23 +8,27 @@ import {
 export async function* streamApi(
   client: OpenAI,
   request: LlmCallOptions,
+  signal?: AbortSignal,
 ): AsyncGenerator<LlmChunk> {
-  const res = await client.chat.completions.create({
-    model: request.model,
-    messages: toChatMessages(request.messages) as any,
-    tools: request.tools.length
-      ? request.tools.map((t) => ({
-          type: "function",
-          function: {
-            name: t.name,
-            description: t.description,
-            parameters: t.parameters,
-          },
-        }))
-      : undefined,
-    stream: true,
-    stream_options: { include_usage: true },
-  });
+  const res = await client.chat.completions.create(
+    {
+      model: request.model,
+      messages: toChatMessages(request.messages) as any,
+      tools: request.tools.length
+        ? request.tools.map((t) => ({
+            type: "function",
+            function: {
+              name: t.name,
+              description: t.description,
+              parameters: t.parameters,
+            },
+          }))
+        : undefined,
+      stream: true,
+      stream_options: { include_usage: true },
+    },
+    { signal },
+  );
   let finish = "stop";
   let usage:
     | {

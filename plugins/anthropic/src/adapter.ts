@@ -144,7 +144,10 @@ export function createAdapter(opts: AdapterOptions): ProviderAdapter {
       return { ...options, model };
     },
 
-    async *stream(request: LlmCallOptions): AsyncGenerator<LlmChunk> {
+    async *stream(
+      request: LlmCallOptions,
+      signal?: AbortSignal,
+    ): AsyncGenerator<LlmChunk> {
       const auth = await getAuth();
       const client = makeClient(auth);
       const userId =
@@ -159,6 +162,7 @@ export function createAdapter(opts: AdapterOptions): ProviderAdapter {
         max_tokens: maxTokensFrom(opts.config),
         metadata: userId ? { user_id: userId } : undefined,
         observability,
+        signal,
       });
     },
   };

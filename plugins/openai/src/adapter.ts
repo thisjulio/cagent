@@ -147,13 +147,16 @@ export function createAdapter(opts: AdapterOptions): ProviderAdapter {
       return { ...options, model };
     },
 
-    async *stream(request: LlmCallOptions): AsyncGenerator<LlmChunk> {
+    async *stream(
+      request: LlmCallOptions,
+      signal?: AbortSignal,
+    ): AsyncGenerator<LlmChunk> {
       const auth = await getAuth();
       if (auth.kind === "api") {
-        yield* streamApi(await getClient(), request);
+        yield* streamApi(await getClient(), request, signal);
         return;
       }
-      yield* streamCodex(request, auth.access!, auth.account_id);
+      yield* streamCodex(request, auth.access!, auth.account_id, signal);
     },
   };
 }

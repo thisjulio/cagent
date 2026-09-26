@@ -45,6 +45,9 @@ export interface ProviderAdapter {
   supported_variants?(model: string): Promise<string[]>;
   tool_overrides?(): ToolOverrides;
   prepare_call(options: LlmCallOptions): Promise<LlmCallOptions>;
-  stream(request: LlmCallOptions): AsyncGenerator<LlmChunk>;
+  stream(
+    request: LlmCallOptions,
+    signal?: AbortSignal,
+  ): AsyncGenerator<LlmChunk>;
   estimate_tokens?(model: string, messages: Message[]): number | undefined;
 }

@@ -39,4 +39,18 @@ describe("MCP client", () => {
 
     await client.close();
   });
+
+  it("cancels an in-flight tool call", async () => {
+    const transport = new StdioTransport("bun", ["run", MOCK_SERVER], {});
+    const client = new McpClient(transport);
+    const controller = new AbortController();
+
+    await client.initialize({ name: "test-client", version: "1.0.0" });
+    controller.abort();
+
+    await expect(
+      client.callTool("add", { a: 5, b: 3 }, controller.signal),
+    ).rejects.toThrow("abort");
+    await client.close();
+  });
 });

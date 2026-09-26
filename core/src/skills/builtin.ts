@@ -10,7 +10,8 @@ const INSTRUCTIONS =
   "rendering.\n\n" +
   "## Creating a new skill\n\n" +
   "Skills teach cagent specialized workflows. Create them in .cagent/skills/<name>/SKILL.md\n" +
-  "(project-local) or share them across projects.\n\n" +
+  "or .agents/skills/<name>/SKILL.md (project-local), or in the matching directory under\n" +
+  "~/.cagent/skills/ or ~/.agents/skills/ to share them across projects.\n\n" +
   "### Interactive skill creation workflow\n\n" +
   "When the user wants to create a new skill, guide them through these steps interactively.\n" +
   "Ask questions, don't just generate files.\n\n" +

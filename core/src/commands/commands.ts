@@ -37,7 +37,12 @@ const commands: Record<string, SlashHandler> = {
       content: `/compact${arg.trim() ? ` ${arg.trim()}` : ""}`,
     });
     c.bump();
-    return c.compact(arg.trim() || undefined);
+    return c.compact(arg.trim() || undefined).then(() => {
+      c.state.tokens = undefined;
+      c.state.inputTokens = undefined;
+      c.state.outputTokens = undefined;
+      c.bump();
+    });
   },
   "/sessions": (c) => c.openSessions(),
   "/session": (c) => c.openSessions(),
@@ -57,11 +62,11 @@ const commands: Record<string, SlashHandler> = {
       result = c.updateTasks(operation, { title: parts.slice(1).join(" ") });
     } else if (["next", "skip", "block"].includes(operation)) {
       result = c.updateTasks(operation, { details: parts.slice(1).join(" ") });
-    } else if (["list", "clear", "resume"].includes(operation)) {
+    } else if (["list", "clear", "resume", "activate"].includes(operation)) {
       result = c.updateTasks(operation, {});
     } else {
       result =
-        "usage: /tasks [create <title>|add <title>|list|next|skip|block <request>|resume|clear]";
+        "usage: /tasks [create <title>|add <title>|list|next|skip|block <request>|resume|activate|clear]";
     }
     appendChat(c.state, {
       kind: "assistant",
