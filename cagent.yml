@@ -17,6 +17,8 @@ plugins:
       url: http://localhost:8080
   - name: openai
     path: ./plugins/openai
+  - name: anthropic
+    path: ./plugins/anthropic
   - name: code-tools
     path: ./plugins/code-tools
   - name: claude-agents

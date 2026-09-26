@@ -186,6 +186,13 @@ describe("controller model and commands", () => {
     expect(c.state.modelPicker).not.toBeNull();
   });
 
+  it("/models opens the picker", async () => {
+    const c = new Controller(deps());
+    c.setInput("/models");
+    await c.submit("/models");
+    expect(c.state.modelPicker).not.toBeNull();
+  });
+
   it("/session opens the session list", async () => {
     const c = new Controller(deps());
     await c.submit("/session");

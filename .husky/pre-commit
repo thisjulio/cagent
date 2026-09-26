@@ -19,5 +19,6 @@ if ! command -v bun >/dev/null 2>&1; then
 fi
 
 bunx biome check --staged --no-errors-on-unmatched --linter-enabled=true --formatter-enabled=true
+bun run check:module-limits
 bun run typecheck
 bun test

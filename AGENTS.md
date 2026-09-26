@@ -53,7 +53,7 @@ docs/adr/             # accepted and proposed architecture decisions
 ```
 
 The workspace also includes `plugins/mcp`, `plugins/lsp`, `plugins/claude-*`,
-`plugins/codex-*`, `openai`, `llama.cpp`, `bash`, and `code-tools`.
+`plugins/codex-*`, `openai`, `anthropic`, `llama.cpp`, `bash`, and `code-tools`.
 
 ## Project References
 
@@ -127,6 +127,7 @@ Only add to an existing file when the change belongs to the same concept already
 ## Conventions
 
 - The comment `// ponytail:` marks a non-obvious decision or known trap - explain *why*, never *what*. If the line only restates the code, delete it.
+- Husky hooks run automatically: `pre-commit` runs `biome check --staged`, `bun run typecheck`, and `bun test` on every commit; `post-merge` and `post-checkout` run `bun run graph:update`. A slow or failing commit is usually one of these, not a stuck terminal.
 
 ## Definition of Done
 

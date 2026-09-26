@@ -72,6 +72,7 @@ const commands: Record<string, SlashHandler> = {
     c.bump();
   },
   "/model": (c) => c.openModelPicker(),
+  "/models": (c) => c.openModelPicker(),
   "/mode": (c, arg) => {
     const mode = arg.trim();
     if (!["ask", "auto", "read-only"].includes(mode)) {

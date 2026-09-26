@@ -21,6 +21,7 @@ describe("slashSuggestions", () => {
         "/lsp",
         "/mode",
         "/model",
+        "/models",
         "/new",
         "/preference",
         "/reload-skills",

@@ -27,6 +27,7 @@ const commandInfo: Record<string, CommandInfo> = {
     usage: "/tasks [create|add|list|next|skip|block|resume|clear]",
   },
   "/model": { description: "switch model" },
+  "/models": { description: "switch model" },
   "/mode": {
     description: "set permission mode",
     usage: "/mode ask|auto|read-only",
