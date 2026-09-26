@@ -69,8 +69,7 @@ describe("agent loop", () => {
       {
         id: "t1",
         name: "bash",
-        arguments:
-          '{"_cagent":{"title":"Executing bash"},"args":{"command":"ls"}}',
+        arguments: '{"_cagent":{"title":"Run ls"},"args":{"command":"ls"}}',
       },
     ]);
     expect(messages[messages.length - 2].role).toBe("tool");
@@ -161,6 +160,46 @@ describe("agent loop", () => {
     );
   });
 
+  it("passes the abort signal to the provider stream", async () => {
+    const signal = new AbortController().signal;
+    let received: AbortSignal | undefined;
+    const adapter = fakeAdapter([[{ type: "finish", finish_reason: "stop" }]]);
+    const stream = adapter.stream.bind(adapter);
+    adapter.stream = (request, receivedSignal) => {
+      received = receivedSignal;
+      return stream(request, receivedSignal);
+    };
+    await streamOnce({
+      adapter,
+      model: "m",
+      messages: [],
+      tools: [],
+      signal,
+    });
+    expect(received).toBe(signal);
+  });
+
+  it("does not retry a provider stream after cancellation", async () => {
+    const controller = new AbortController();
+    let calls = 0;
+    const adapter = fakeAdapter([[]]);
+    adapter.stream = () => {
+      calls++;
+      controller.abort();
+      throw new Error("cancelled");
+    };
+    await expect(
+      streamOnce({
+        adapter,
+        model: "m",
+        messages: [],
+        tools: [],
+        signal: controller.signal,
+      }),
+    ).rejects.toThrow("cancelled");
+    expect(calls).toBe(1);
+  });
+
   it("streamOnce passes reasoning to the callback", async () => {
     const seen: string[] = [];
     const r = await streamOnce({
@@ -178,6 +217,24 @@ describe("agent loop", () => {
     });
     expect(r.text).toBe("ok");
     expect(seen).toEqual(["r1"]);
+  });
+
+  it("persists the cumulative assistant snapshot as text streams", async () => {
+    const snapshots: string[] = [];
+    await streamOnce({
+      adapter: fakeAdapter([
+        [
+          { type: "text", text: "partial" },
+          { type: "text", text: " response" },
+          { type: "finish", finish_reason: "stop" },
+        ],
+      ]),
+      model: "m",
+      messages: [],
+      tools: [],
+      onAssistantSnapshot: (content) => snapshots.push(content),
+    });
+    expect(snapshots).toEqual(["partial", "partial response"]);
   });
 
   it("retries with backoff until success", async () => {

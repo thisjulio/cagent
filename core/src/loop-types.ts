@@ -16,8 +16,10 @@ export interface StreamOpts {
   messages: Message[];
   messagesForRequest?: (messages: Message[]) => Message[];
   tools: ToolDefinition[];
+  signal?: AbortSignal;
   onText?: (text: string) => void;
   onReasoning?: (text: string) => void;
+  onAssistantSnapshot?: (content: string) => void;
   onToolOutput?: (content: string) => void;
   onUsage?: (usage: {
     inputTokens?: number;
@@ -45,8 +47,11 @@ export interface TurnRecord {
   title?: string;
   args?: ToolArgs;
   isError?: boolean;
+  denied?: boolean;
   changesWorkspace?: boolean;
   display?: import("@cagent/sdk").ToolDisplay;
+  summary?: string;
+  expanded?: boolean;
 }
 
 export interface TurnOpts extends StreamOpts {

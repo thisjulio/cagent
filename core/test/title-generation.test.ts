@@ -36,7 +36,11 @@ describe("ensureToolTitle", () => {
   });
 
   it("generates a title when metadata is absent or blank", () => {
-    expect(ensureToolTitle(undefined, "bash")).toBe("Executing bash");
-    expect(ensureToolTitle("   ", "read_file")).toBe("Executing read_file");
+    expect(
+      ensureToolTitle(undefined, "bash", "shell", { command: "bun test" }),
+    ).toBe("Run bun");
+    expect(
+      ensureToolTitle("   ", "read_file", "read", { path: "src/total.ts" }),
+    ).toBe("Read total.ts");
   });
 });

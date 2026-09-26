@@ -15,7 +15,7 @@ Stack: Bun/TypeScript (ADR-0004/ADR-0006). UI: OpenTUI.
 - **Cross-cutting observability (ADR-0010).** Vendor-neutral `Observability` contract in the SDK; default no-op; opt-in local file exporter (`local-telemetry.ts`); instrumentation across loop, controller, subagents, tools, sessions, and UI.
 - **Hooks.** Native hook API through the SDK (`before_tool`, `after_tool`, `session_start`, `user_prompt_submit`, `subagent_start`); optional Claude hooks adapter (`plugins/claude-hooks`).
 - **Persistent user preferences.** `/preference` command (add/edit/list/remove/toggle); enabled preferences injected into the system prompt on every submission. This replaced the original local-memory plugin direction (ADR-0009/0011) with a simpler, text-only mechanism.
-- **Task workflows.** `tasks` tool with create/add/list/next/skip/block/resume/clear operations; controller integration and observability events.
+- **Task workflows.** `tasks` tool with create/add/list/next/skip/block/resume/activate/clear operations; controller integration and observability events.
 - **MCP tools.** `plugins/mcp` plugin with stdio and HTTP transports; MCP tools registered in the registry and classified as `mcptool`.
 - **LSP plugin.** `plugins/lsp` plugin with server management and LSP tool registration.
 - **Release packaging.** Linux and macOS binaries (`x64`/`arm64`), `install.sh` with SHA-256 verification, `cagent upgrade`, and GitHub release workflow.

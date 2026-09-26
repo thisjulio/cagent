@@ -12,7 +12,6 @@ import { StatusBar } from "./StatusBar";
 import { InputArea } from "./InputArea";
 import { TaskPanel, type TaskPanelHandle } from "./TaskPanel";
 import { QuestionPanel } from "./QuestionPanel";
-import { ProjectContext } from "./ProjectContext";
 import { WelcomePanel } from "./WelcomePanel";
 import { SessionInfoPanel } from "./SessionInfoPanel";
 import { LspPanel } from "./LspPanel";
@@ -20,7 +19,13 @@ import { DiffPanel } from "./DiffPanel";
 import { formatHeaderTitle } from "../render/title";
 import { getHelpCatalog } from "../help-catalog";
 import { CommandPalette } from "./CommandPalette";
-export function App({ c }: { c: Controller }) {
+export function App({
+  c,
+  mcpServerCount = 0,
+}: {
+  c: Controller;
+  mcpServerCount?: number;
+}) {
   const [, setV] = useState(0);
   const renderer = useRenderer();
   const taskPanelRef = useRef<TaskPanelHandle>(null);
@@ -100,6 +105,11 @@ export function App({ c }: { c: Controller }) {
     }
     if (key.ctrl && key.name === "p") {
       c.openCommandPalette();
+      key.preventDefault();
+      return;
+    }
+    if (key.ctrl && key.name === "o") {
+      c.toggleToolExpand();
       key.preventDefault();
       return;
     }
@@ -184,22 +194,7 @@ export function App({ c }: { c: Controller }) {
       return;
     }
     if (key.ctrl && key.name === "o") {
-      if (key.shift) {
-        if (s.toolViewerIndex !== null)
-          c.openToolViewer("backward", s.toolViewerTurnId);
-      } else if (s.toolViewerIndex !== null) {
-        c.openToolViewer("forward", s.toolViewerTurnId);
-      } else {
-        const tools = s.chat.filter(
-          (item) =>
-            item.kind === "tool" &&
-            !item.running &&
-            item.changesWorkspace === true &&
-            (!s.toolViewerTurnId || item.turnId === s.toolViewerTurnId),
-        );
-        if (tools.length) c.openToolViewer("forward", s.currentTurnId);
-        else c.handleKey({ ctrl: true }, "o");
-      }
+      c.toggleToolExpand();
       key.preventDefault();
       return;
     }
@@ -332,7 +327,7 @@ export function App({ c }: { c: Controller }) {
           permissionMode={s.permissionMode}
           skillCount={c.skillCommandNames().length}
           agentCount={c.subagentNames().length}
-          mcpCount={c.registry.providers().size}
+          mcpCount={mcpServerCount}
         />
       ) : (
         <ChatViewport chat={s.chat} busy={s.busy} controller={c} />
@@ -435,7 +430,6 @@ export function App({ c }: { c: Controller }) {
           }}
         />
       )}
-      <ProjectContext cwd={process.cwd()} />
       <StatusBar
         cwd={process.cwd()}
         model={s.model}

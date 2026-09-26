@@ -1,5 +1,7 @@
 import type { ChatItem } from "../../controller/state";
+import { useTerminalDimensions } from "@opentui/react";
 import { ToolDisplayComponent } from "./ToolDisplay";
+import { diffViewForWidth } from "../render/diff-view";
 
 export function DiffPanel({
   tools,
@@ -8,6 +10,7 @@ export function DiffPanel({
   tools: ChatItem[];
   index: number;
 }) {
+  const dimensions = useTerminalDimensions();
   const changes = tools.filter(
     (item) => item.kind === "tool" && item.display?.kind === "diff",
   );
@@ -46,7 +49,10 @@ export function DiffPanel({
                 : selected.toolName}
             </text>
             {selected.display?.kind === "diff" ? (
-              <ToolDisplayComponent display={selected.display} />
+              <ToolDisplayComponent
+                display={selected.display}
+                view={diffViewForWidth(dimensions.width)}
+              />
             ) : null}
           </box>
         )}

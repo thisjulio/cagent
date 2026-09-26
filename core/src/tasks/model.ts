@@ -55,11 +55,21 @@ export function skipTask(tasks: Task[], reason?: string): Task[] {
   return advanceTask(tasks, "skipped", reason);
 }
 
+function validateActiveState(tasks: Task[]): void {
+  const activeCount = tasks.filter(
+    (task) => task.status === "in_progress",
+  ).length;
+  if (activeCount > 1) throw new Error("multiple tasks are in progress");
+  if (tasks.some((task) => task.status === "blocked") && activeCount > 0)
+    throw new Error("a task is blocked; resume it first");
+}
+
 function advanceTask(
   tasks: Task[],
   status: "completed" | "skipped",
   details?: string,
 ): Task[] {
+  validateActiveState(tasks);
   const activeIndex = tasks.findIndex((task) => task.status === "in_progress");
   if (activeIndex < 0) throw new Error("no task is in progress");
   const updated = tasks.map((task, index) =>
@@ -77,6 +87,7 @@ function advanceTask(
 
 export function blockTask(tasks: Task[], request: string): Task[] {
   if (!request.trim()) throw new Error("block requires a request to the user");
+  validateActiveState(tasks);
   const activeIndex = tasks.findIndex((task) => task.status === "in_progress");
   if (activeIndex < 0) throw new Error("no task is in progress");
   return tasks.map((task, index) =>
@@ -86,9 +97,15 @@ export function blockTask(tasks: Task[], request: string): Task[] {
   );
 }
 
+export function clearTasks(): Task[] {
+  return [];
+}
+
 export function resumeTask(tasks: Task[]): Task[] {
   const blockedIndex = tasks.findIndex((task) => task.status === "blocked");
   if (blockedIndex < 0) throw new Error("no task is blocked");
+  if (tasks.filter((task) => task.status === "in_progress").length > 0)
+    throw new Error("a task is already in progress");
   return tasks.map((task, index) =>
     index === blockedIndex
       ? { ...task, status: "in_progress", reason: undefined }
@@ -96,6 +113,15 @@ export function resumeTask(tasks: Task[]): Task[] {
   );
 }
 
-export function clearTasks(): Task[] {
-  return [];
+export function activateTask(tasks: Task[]): Task[] {
+  validateActiveState(tasks);
+  if (tasks.some((task) => task.status === "in_progress"))
+    throw new Error("a task is already in progress");
+  if (tasks.some((task) => task.status === "blocked"))
+    throw new Error("a task is blocked; resume it first");
+  const pendingIndex = tasks.findIndex((task) => task.status === "pending");
+  if (pendingIndex < 0) throw new Error("no pending task to activate");
+  return tasks.map((task, index) =>
+    index === pendingIndex ? { ...task, status: "in_progress" } : task,
+  );
 }

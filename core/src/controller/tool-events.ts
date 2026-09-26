@@ -4,6 +4,7 @@ import { appendCapped, MAX_VISIBLE_STREAM_CHARS } from "../stream-buffer";
 import { classifyTool } from "../tool-category";
 import { ensureToolTitle } from "../tool-title";
 import { toolCommandLabel } from "./tool-label";
+import { deriveSummary } from "./tool-summary";
 
 function lastRunningChat(chat: ChatItem[], tool: string): ChatItem | undefined {
   for (let i = chat.length - 1; i >= 0; i--) {
@@ -20,12 +21,13 @@ export function toolPre(state: UIState, p: unknown): void {
     title?: string;
   };
   const cmd = toolCommandLabel(tool, args);
-  const toolTitle = ensureToolTitle(title, tool);
+  const category = classifyTool(tool);
+  const toolTitle = ensureToolTitle(title, tool, category, args);
   appendChat(state, {
     kind: "tool",
     toolName: tool,
     title: toolTitle,
-    toolCategory: classifyTool(tool),
+    toolCategory: category,
     cmd,
     running: true,
     startedAt: Date.now(),
@@ -50,8 +52,13 @@ export function toolPost(state: UIState, p: unknown): void {
     tool: string;
     result?: {
       output: string;
+      summary?: string;
       isError?: boolean;
       display?: import("@cagent/sdk").ToolDisplay;
+      denied?: boolean;
+      expanded?: boolean;
+      title?: string;
+      args?: Record<string, unknown>;
       changesWorkspace?: boolean;
       changedRanges?: Array<{
         path: string;
@@ -63,9 +70,16 @@ export function toolPost(state: UIState, p: unknown): void {
   };
   const e = lastRunningChat(state.chat, tool);
   if (e) {
+    if (result?.title) e.title = result.title;
+    if (result?.args && !e.cmd) {
+      e.cmd = toolCommandLabel(tool, result.args);
+      e.title = ensureToolTitle(e.title, tool, e.toolCategory, result.args);
+    }
     e.running = false;
     if (e.startedAt) e.durationMs = Date.now() - e.startedAt;
     e.isError = !!error || result?.isError === true;
+    e.denied = result?.denied === true;
+    if (typeof result?.expanded === "boolean") e.expanded = result.expanded;
     e.changesWorkspace = result?.changesWorkspace === true;
     e.changedPaths = result?.changedRanges?.map((range) => range.path);
     if (
@@ -76,6 +90,7 @@ export function toolPost(state: UIState, p: unknown): void {
       e.changedPaths = [result.display.path];
     }
     e.display = result?.display;
+    e.summary = result?.summary ?? deriveSummary(e);
     if (!e.content) e.content = error ?? result?.output ?? "";
   }
 }
@@ -87,12 +102,13 @@ export function toolDenied(state: UIState, p: unknown): void {
     title?: string;
   };
   const cmd = toolCommandLabel(tool, args);
-  const toolTitle = ensureToolTitle(title, tool);
+  const category = classifyTool(tool);
+  const toolTitle = ensureToolTitle(title, tool, category, args);
   appendChat(state, {
     kind: "tool",
     toolName: tool,
     title: toolTitle,
-    toolCategory: classifyTool(tool),
+    toolCategory: category,
     cmd,
     denied: true,
     isError: true,

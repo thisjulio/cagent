@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import {
+  activateTask,
   addTask,
   blockTask,
   clearTasks,
@@ -85,5 +86,56 @@ describe("task domain", () => {
     const initial = createTasks([], ["Plan"]);
     expect(listTasks(initial)).toEqual(initial);
     expect(clearTasks()).toEqual([]);
+  });
+
+  it("activates the first pending task when none is active or blocked", () => {
+    const completed = nextTask(createTasks([], ["Plan", "Verify"]), "done");
+    const stalled = skipTask(completed, "n/a");
+    expect(stalled.map((task) => task.status)).toEqual([
+      "completed",
+      "skipped",
+    ]);
+    const tasks = activateTask(
+      createTasks([], ["Plan"]).map((task) => ({
+        ...task,
+        status: "pending",
+      })),
+    );
+    expect(tasks[0]?.status).toBe("in_progress");
+  });
+
+  it("refuses to activate when a task is already in progress or blocked", () => {
+    const active = createTasks([], ["Plan", "Verify"]);
+    expect(() => activateTask(active)).toThrow("a task is already in progress");
+    const blocked = blockTask(active, "Ask the user");
+    expect(() => activateTask(blocked)).toThrow("a task is blocked");
+    expect(() =>
+      resumeTask([...blocked, { ...blocked[1]!, status: "in_progress" }]),
+    ).toThrow("a task is already in progress");
+  });
+
+  it("rejects transitions against inconsistent active or blocked state", () => {
+    const activeAndBlocked = [
+      ...createTasks([], ["Plan", "Verify"]),
+      { id: "blocked", title: "Blocked", status: "blocked" as const },
+    ];
+    expect(() => nextTask(activeAndBlocked, "done")).toThrow(
+      "a task is blocked",
+    );
+    expect(() => blockTask(activeAndBlocked, "Ask the user")).toThrow(
+      "a task is blocked",
+    );
+    const multipleActive = [
+      ...createTasks([], ["Plan"]),
+      { id: "another", title: "Another", status: "in_progress" as const },
+    ];
+    expect(() => skipTask(multipleActive)).toThrow(
+      "multiple tasks are in progress",
+    );
+  });
+
+  it("refuses to activate when there is no pending task left", () => {
+    const done = nextTask(createTasks([], ["Plan"]), "done");
+    expect(() => activateTask(done)).toThrow("no pending task to activate");
   });
 });

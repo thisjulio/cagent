@@ -36,6 +36,44 @@ function deps(): ControllerDeps {
 }
 
 describe("OpenTUI render", () => {
+  it("Ctrl+O expands the latest Bash item without opening the diff viewer", async () => {
+    const c = new Controller(deps());
+    c.state.chat.push(
+      { kind: "user", content: "edit files", turnId: "turn-1" },
+      {
+        kind: "tool",
+        toolName: "edit_file",
+        content: "diff",
+        expanded: false,
+        display: { kind: "diff", content: "+change" },
+        turnId: "turn-1",
+      },
+      {
+        kind: "tool",
+        toolName: "bash",
+        content: "terminal output",
+        expanded: false,
+        display: { kind: "terminal", stdout: "terminal output", exitCode: 0 },
+        turnId: "turn-1",
+      },
+    );
+    const setup = await testRender(React.createElement(App, { c }), {
+      width: 80,
+      height: 30,
+    });
+
+    await act(async () => {
+      setup.mockInput.pressKey("o", { ctrl: true });
+      await setup.flush();
+    });
+
+    expect(c.state.chat[2]?.expanded).toBe(true);
+    expect(c.state.chat[1]?.expanded).toBe(false);
+    expect(c.state.diffPanel).toBeUndefined();
+    expect(setup.captureCharFrame()).not.toContain("File changes");
+    act(() => setup.renderer.destroy());
+  });
+
   it("renders panes and the status bar", async () => {
     const c = new Controller(deps());
     c.state.tokens = 100;
@@ -60,6 +98,19 @@ describe("OpenTUI render", () => {
     expect(out).toContain("openai");
     expect(out).toContain("100k");
     expect(out).toContain("%");
+    act(() => setup.renderer.destroy());
+  });
+
+  it("renders the MCP server count passed from bootstrap", async () => {
+    const c = new Controller(deps());
+    const setup = await testRender(
+      React.createElement(App, { c, mcpServerCount: 2 }),
+      { width: 80, height: 24 },
+    );
+    await act(async () => {
+      await setup.flush();
+    });
+    expect(setup.captureCharFrame()).toContain("2 MCP");
     act(() => setup.renderer.destroy());
   });
 
@@ -160,7 +211,7 @@ describe("OpenTUI render", () => {
       await setup.flush();
     });
     const collapsed = setup.captureCharFrame();
-    expect(collapsed).toContain("Executing write_file");
+    expect(collapsed).toContain("Write cagent-opentui-test.ts");
     expect(collapsed).not.toContain("\\nline two");
     act(() => setup.renderer.destroy());
   });
@@ -229,7 +280,7 @@ describe("OpenTUI render", () => {
     }
   });
 
-  it("keeps edit_file displays collapsed after completion", async () => {
+  it("shows edit_file diffs expanded after completion", async () => {
     const c = new Controller(deps());
     c.onToolPre({
       tool: "edit_file",
@@ -259,9 +310,9 @@ describe("OpenTUI render", () => {
       await setup.flush();
     });
     const out = setup.captureCharFrame();
-    expect(out).toContain("Executing edit_file");
-    expect(out).not.toContain("1 - old");
-    expect(out).not.toContain("1 + new");
+    expect(out).toContain("Edit cagent-opentui-test.ts");
+    expect(out).toContain("1 - old");
+    expect(out).toContain("1 + new");
     act(() => setup.renderer.destroy());
   });
 
@@ -349,10 +400,7 @@ describe("OpenTUI render", () => {
       await setup.flush();
     });
     const out = setup.captureCharFrame();
-    expect(out).toContain("thinking");
-    expect(out).toContain("├─");
-    expect(out).toContain("│");
-    expect(out).toContain("▸ thinking");
+    expect(out).toContain("▸ reasoning · 1 line");
     expect(out).not.toContain("private reasoning");
     act(() => setup.renderer.destroy());
   });
@@ -422,6 +470,7 @@ describe("OpenTUI render", () => {
       {
         kind: "assistant",
         content: "# title\n\n- item 1\n- item 2\n",
+        turnId: "markdown-test",
       },
     ];
     const setup = await testRender(React.createElement(App, { c }), {
@@ -460,7 +509,7 @@ describe("OpenTUI render", () => {
     act(() => setup.renderer.destroy());
   });
 
-  it("renders a tool item with its command and expand hint", async () => {
+  it("renders a tool item with its command and status", async () => {
     const c = new Controller(deps());
     c.onToolPre({ tool: "bash", args: { command: "git status" } });
     c.onToolPost({ tool: "bash", result: { output: "lines\na\nb" } });
@@ -472,9 +521,8 @@ describe("OpenTUI render", () => {
       await setup.flush();
     });
     const out = setup.captureCharFrame();
-    expect(out).toContain("bash");
-    expect(out).toContain("git status");
-    expect(out).toContain("ctrl+o");
+    expect(out).toContain("✓ Run git");
+    expect(out).toContain("$ git status");
     act(() => setup.renderer.destroy());
   });
 
@@ -489,7 +537,8 @@ describe("OpenTUI render", () => {
       await setup.flush();
     });
     const out = setup.captureCharFrame();
-    expect(out).toContain("│  └─ $ pwd");
+    expect(out).toContain("Run pwd");
+    expect(out).toContain("│ $ pwd");
     act(() => setup.renderer.destroy());
   });
 

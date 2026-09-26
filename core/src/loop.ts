@@ -57,7 +57,8 @@ export async function streamOnce(opts: StreamOpts): Promise<{
         "provider.model": opts.model,
         ...opts.traceAttributes,
       });
-      for await (const chunk of opts.adapter.stream(request)) {
+      opts.signal?.throwIfAborted();
+      for await (const chunk of opts.adapter.stream(request, opts.signal)) {
         chunks++;
         firstTokenAt ??= performance.now();
         if (chunk.type === "finish") {
@@ -86,6 +87,7 @@ export async function streamOnce(opts: StreamOpts): Promise<{
           text += chunk.text;
           outputChars += chunk.text.length;
           opts.onText?.(chunk.text);
+          opts.onAssistantSnapshot?.(text);
         } else if (chunk.type === "reasoning") {
           opts.onReasoning?.(chunk.text);
         } else if (chunk.type === "tool-call") {
@@ -106,8 +108,8 @@ export async function streamOnce(opts: StreamOpts): Promise<{
         "provider.model": opts.model,
       });
       lastErr = e;
-      if (i < attempts - 1)
-        await new Promise((r) => setTimeout(r, 1000 * 2 ** i));
+      if (opts.signal?.aborted || i === attempts - 1) break;
+      await new Promise((r) => setTimeout(r, 1000 * 2 ** i));
     }
   }
   throw lastErr;

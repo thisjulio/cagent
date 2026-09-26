@@ -44,13 +44,54 @@ describe("JSONL sessions", () => {
     s.append({
       ts: 3,
       type: "tool",
-      payload: { tool_call_id: "t1", content: "ok" },
+      payload: {
+        tool_call_id: "t1",
+        content: "ok",
+        toolName: "search",
+        summary: "3 matches",
+        expanded: false,
+      },
     });
     const loaded = new Session(s.id, dir).load();
     expect(loaded.messages).toEqual([
       { role: "user", content: "hi" },
       { role: "assistant", content: "hello" },
       { role: "tool", tool_call_id: "t1", content: "ok" },
+    ]);
+    expect(toChatItems(loaded.records).at(-1)).toMatchObject({
+      kind: "tool",
+      toolName: "search",
+      summary: "3 matches",
+      expanded: false,
+    });
+  });
+
+  it("restores explicit tool expansion and derives legacy summaries", () => {
+    const records = [
+      {
+        ts: 1,
+        type: "tool" as const,
+        payload: {
+          toolName: "bash",
+          content: "failed output",
+          summary: "exit 1",
+          expanded: false,
+        },
+      },
+      {
+        ts: 2,
+        type: "tool" as const,
+        payload: {
+          toolName: "bash",
+          content: "legacy output",
+          display: { kind: "terminal" as const, stdout: "", exitCode: 0 },
+        },
+      },
+    ];
+
+    expect(toChatItems(records)).toMatchObject([
+      { kind: "tool", summary: "exit 1", expanded: false },
+      { kind: "tool", summary: "exit 0" },
     ]);
   });
 

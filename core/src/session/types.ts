@@ -20,6 +20,10 @@ export type SessionRecord = {
   payload: Record<string, unknown>;
 };
 
+export type SessionSnapshotRecord = Omit<SessionRecord, "type"> & {
+  type: "snapshot";
+};
+
 export type SessionModelSelection = {
   model: string;
   variant?: string;

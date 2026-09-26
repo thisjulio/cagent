@@ -14,6 +14,7 @@ import type {
   SessionLoad,
   SessionModelSelection,
   SessionRecord,
+  SessionSnapshotRecord,
   SessionSummary,
 } from "./types";
 
@@ -62,17 +63,66 @@ export class Session {
     fs.appendFileSync(this.file, `${JSON.stringify(record)}\n`);
   }
 
+  replaceAssistantSnapshot(turnId: string | undefined, content: string): void {
+    const records = fs.existsSync(this.file)
+      ? readSessionRecords(this.file)
+      : [];
+    const snapshotIndex = records.findLastIndex(
+      (record) =>
+        String(record.type) === "snapshot" && record.turnId === turnId,
+    );
+    const record: SessionSnapshotRecord = {
+      ts: Date.now(),
+      turnId,
+      type: "snapshot",
+      payload: { content },
+    };
+    if (snapshotIndex === -1) records.push(record as unknown as SessionRecord);
+    else records[snapshotIndex] = record as unknown as SessionRecord;
+    fs.writeFileSync(
+      this.file,
+      `${records.map((entry) => JSON.stringify(entry)).join("\n")}\n`,
+    );
+  }
+
   load(): SessionLoad {
     if (!fs.existsSync(this.file))
       return { records: [], messages: [], queuedMessages: [] };
     const records = effectiveSessionRecords(
       normalizeSessionRecords(readSessionRecords(this.file)),
     );
+    const rawRecords = records as unknown as (SessionRecord & {
+      type: string;
+    })[];
+    const latestSnapshots = new Map<string | undefined, SessionRecord>();
+    for (const record of rawRecords)
+      if (String(record.type) === "snapshot")
+        latestSnapshots.set(record.turnId, record);
+    const visibleRecords: SessionRecord[] = [];
+    for (const record of rawRecords) {
+      if (String(record.type) === "snapshot") continue;
+      if (record.type !== "assistant") {
+        visibleRecords.push(record as SessionRecord);
+        continue;
+      }
+      const snapshot = latestSnapshots.get(record.turnId);
+      if (snapshot) {
+        latestSnapshots.delete(record.turnId);
+        visibleRecords.push({
+          ...snapshot,
+          type: "assistant",
+        } as SessionRecord);
+      } else {
+        visibleRecords.push(record as SessionRecord);
+      }
+    }
+    for (const snapshot of latestSnapshots.values())
+      visibleRecords.push({ ...snapshot, type: "assistant" } as SessionRecord);
     return {
-      records,
-      messages: recordsToMessages(records),
-      queuedMessages: restoreQueue(records),
-      modelSelection: restoreModelSelection(records),
+      records: visibleRecords,
+      messages: recordsToMessages(visibleRecords),
+      queuedMessages: restoreQueue(visibleRecords),
+      modelSelection: restoreModelSelection(visibleRecords),
     };
   }
 

@@ -5,6 +5,7 @@ import { workflowPayload } from "./loop-utils";
 import type { TurnOpts, TurnRecord } from "./loop";
 import { parseToolCall, type IncomingToolCall } from "./tool-call";
 import { ensureToolTitle } from "./tool-title";
+import { classifyTool } from "./tool-category";
 
 export interface ToolLoopCtx {
   opts: TurnOpts;
@@ -20,10 +21,16 @@ export async function runToolCall(
 ): Promise<void> {
   const { opts } = ctx;
   const tool = opts.tools.find(
-    (t) => t.name === (ctx.nameToCanonical[tc.name] ?? tc.name),
+    (candidate) => candidate.name === (ctx.nameToCanonical[tc.name] ?? tc.name),
   );
   const parsed = parseToolCall(tc);
-  const title = ensureToolTitle(parsed.title, tool?.name ?? tc.name);
+  const toolName = tool?.name ?? tc.name;
+  const title = ensureToolTitle(
+    parsed.title,
+    toolName,
+    classifyTool(toolName),
+    parsed.args,
+  );
   let args: ToolArgs = parsed.args;
   if (parsed.error) {
     args = {};
@@ -32,7 +39,6 @@ export async function runToolCall(
     tc.name === "apply_patch" &&
     Object.keys(args).length === 0
   ) {
-    // Custom/freeform tools return their payload directly instead of JSON.
     try {
       args = JSON.parse(tc.arguments) as ToolArgs;
     } catch {
@@ -60,17 +66,12 @@ export async function runToolCall(
     name: tc.name,
     arguments: parsed.error
       ? tc.arguments
-      : JSON.stringify({
-          _cagent: { title },
-          args,
-        }),
+      : JSON.stringify({ _cagent: { title }, args }),
   };
   const assistant = opts.messages.at(-1);
   if (assistant?.tool_calls) {
     const current = assistant.tool_calls.find((call) => call.id === tc.id);
-    if (current) {
-      Object.assign(current, normalizedCall);
-    }
+    if (current) Object.assign(current, normalizedCall);
   }
   opts.messages.push({
     role: "tool",
@@ -81,12 +82,14 @@ export async function runToolCall(
     role: "tool",
     tool_call_id: tc.id,
     content: result.output,
-    toolName: tool?.name ?? tc.name,
+    toolName,
     title,
     args,
     isError: result.isError,
+    denied: result.denied,
     changesWorkspace: result.changesWorkspace,
     display: result.display,
+    summary: result.summary,
   });
   if (result.changesWorkspace) ctx.changesWorkspace = true;
   opts.onToolOutput?.(result.output);
@@ -94,7 +97,7 @@ export async function runToolCall(
   opts.bus.emit(
     "tool.completed",
     workflowPayload(opts, {
-      tool: tool?.name ?? tc.name,
+      tool: toolName,
       content: result.output.slice(0, 4000),
       isError: result.isError === true,
       evidence: result.evidence,

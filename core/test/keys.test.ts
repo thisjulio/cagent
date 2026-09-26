@@ -36,35 +36,12 @@ describe("Escape key behavior", () => {
     expect(c.forceCancel).toHaveBeenCalledTimes(0);
   });
 
-  test("double ESC within window while busy calls forceCancel", () => {
+  test("single ESC while busy immediately aborts the turn", () => {
     const c = makeController();
     c.state.busy = true;
-    const base = Date.now();
-    Date.now = () => base;
     onKey(c, { escape: true }, "");
-    expect(c.interrupt).toHaveBeenCalledTimes(1);
-    expect(c.forceCancel).toHaveBeenCalledTimes(0);
-
-    // Second ESC within 500ms window
-    Date.now = () => base + 100;
-    onKey(c, { escape: true }, "");
-    expect(c.interrupt).toHaveBeenCalledTimes(1);
     expect(c.forceCancel).toHaveBeenCalledTimes(1);
-  });
-
-  test("double ESC outside window calls interrupt twice", () => {
-    const c = makeController();
-    c.state.busy = true;
-    const base = Date.now();
-    Date.now = () => base;
-    onKey(c, { escape: true }, "");
-    expect(c.interrupt).toHaveBeenCalledTimes(1);
-
-    // Second ESC after 600ms (outside window)
-    Date.now = () => base + 600;
-    onKey(c, { escape: true }, "");
-    expect(c.interrupt).toHaveBeenCalledTimes(2);
-    expect(c.forceCancel).toHaveBeenCalledTimes(0);
+    expect(c.interrupt).toHaveBeenCalledTimes(0);
   });
 
   test("ESC clears typed input while idle", () => {

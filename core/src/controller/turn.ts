@@ -10,7 +10,7 @@ import type { EventBus } from "../events";
 import { type Session } from "../session/index";
 import type { ToolAsk } from "../tools";
 import { appendChat, notify } from "./chat-buffer";
-import type { UIState } from "./state";
+import type { ChatItem, UIState } from "./state";
 import { appendCapped, MAX_VISIBLE_STREAM_CHARS } from "../stream-buffer";
 import type { VerificationRunner } from "../verification/runner";
 
@@ -79,13 +79,17 @@ export async function executeTurn(host: TurnHost): Promise<void> {
       host.state.notice = "";
     }
   } catch (error) {
-    host.observability?.recordEvent("agent.turn.error", {
-      "error.type": error instanceof Error ? error.name : "unknown",
-    });
-    notify(
-      host.state,
-      `error: ${error instanceof Error ? error.message : String(error)}`,
-    );
+    if (host.interrupted()) {
+      notify(host.state, "[interrupted - type to steer]");
+    } else {
+      host.observability?.recordEvent("agent.turn.error", {
+        "error.type": error instanceof Error ? error.name : "unknown",
+      });
+      notify(
+        host.state,
+        `error: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   }
   host.observability?.recordMetric(
     "agent.turn.elapsed_ms",
@@ -183,6 +187,7 @@ async function runAgentTurn(
       host.bumpStream();
       host.onText?.(text);
     },
+    onAssistantSnapshot: (content) => persistAssistantSnapshot(host, content),
     onReasoning: (text) => {
       setThinking(appendCapped(getThinking(), text, MAX_VISIBLE_STREAM_CHARS));
       appendReasoning(host, text);
@@ -261,6 +266,10 @@ async function runAgentTurn(
   });
 }
 
+function persistAssistantSnapshot(host: TurnHost, content: string): void {
+  host.session.replaceAssistantSnapshot(host.turnId, content);
+}
+
 function appendText(host: TurnHost, text: string): void {
   const last = host.state.chat[host.state.chat.length - 1];
   if (last.kind === "assistant")
@@ -298,6 +307,12 @@ function persistTurn(
       type: "thinking",
       payload: { content: thinking },
     });
+  const toolQueue = new Map<string, ChatItem[]>();
+  for (const item of host.state.chat) {
+    if (item.kind !== "tool" || item.turnId !== host.turnId) continue;
+    const key = `${item.toolName}:${item.title}`;
+    toolQueue.set(key, [...(toolQueue.get(key) ?? []), item]);
+  }
   for (const record of records) {
     if (record.role === "assistant") {
       host.session.append({
@@ -310,6 +325,7 @@ function persistTurn(
         },
       });
     } else {
+      const item = toolQueue.get(`${record.toolName}:${record.title}`)?.shift();
       host.session.append({
         ts: Date.now(),
         turnId: host.turnId,
@@ -322,6 +338,9 @@ function persistTurn(
           title: record.title,
           args: record.args,
           display: record.display,
+          denied: record.denied,
+          ...(item?.summary ? { summary: item.summary } : {}),
+          ...(item?.expanded !== undefined ? { expanded: item.expanded } : {}),
         },
       });
     }

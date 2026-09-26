@@ -70,7 +70,7 @@ export async function submitMessage(
     controller.messages,
     controller.envStamp,
   );
-  await compactBeforeSubmission(controller);
+  if (state.tokens !== undefined) await compactBeforeSubmission(controller);
   const contextContributions = await controller.contextContributions(text);
   controller.bump();
   const titlePromise = state.title

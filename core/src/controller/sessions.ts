@@ -11,6 +11,7 @@ import { MAX_CHAT_ITEMS, notify } from "./chat-buffer";
 import { mergeSystemMessages } from "../message-context";
 import { classifyTool } from "../tool-category";
 import { toolCommandLabel } from "./tool-label";
+import { deriveSummary } from "./tool-summary";
 import { restoreTasks } from "../tasks";
 import { filterExistingImagePaths } from "./image-processor";
 import { restoreModelSelection } from "./models";
@@ -62,18 +63,24 @@ export function toChatItems(records: LoadedRecord[]): ChatItem[] {
     } else if (r.type === "thinking") {
       const content = String(p.content ?? "");
       if (content) {
-        result.push({ kind: "thinking", content, timestamp: r.ts });
+        result.push({
+          kind: "thinking",
+          content,
+          timestamp: r.ts,
+          ...(typeof p.expanded === "boolean" ? { expanded: p.expanded } : {}),
+        });
       }
     } else if (r.type === "tool") {
       const toolName = p.toolName
         ? String(p.toolName)
         : String(p.tool_call_id ?? "");
-      result.push({
+      const item: ChatItem = {
         kind: "tool",
         content: String(p.content ?? ""),
         toolName,
         toolCategory: classifyTool(toolName),
         ...(typeof p.title === "string" ? { title: p.title } : {}),
+        ...(typeof p.expanded === "boolean" ? { expanded: p.expanded } : {}),
         ...(p.args && typeof p.args === "object"
           ? {
               cmd: toolCommandLabel(
@@ -83,10 +90,13 @@ export function toChatItems(records: LoadedRecord[]): ChatItem[] {
             }
           : {}),
         ...(p.isError === true ? { isError: true } : {}),
+        ...(typeof p.summary === "string" ? { summary: p.summary } : {}),
         ...(p.display && typeof p.display === "object"
           ? { display: p.display as ChatItem["display"] }
           : {}),
-      });
+      };
+      item.summary ??= deriveSummary(item);
+      result.push(item);
     } else if (p.kind === "subagent-start") {
       result.push({
         kind: "assistant",
@@ -174,6 +184,9 @@ export function startNewSession(c: Controller): void {
   s.pendingAsk = null;
   s.modelPicker = null;
   s.sessionList = null;
+  s.sessionAll = [];
+  s.sessionScope = "project";
+  s.sessionQuery = "";
   s.tokens = undefined;
   c.bump();
 }
@@ -194,18 +207,28 @@ export async function restoreSession(c: Controller, id: string): Promise<void> {
   c.state.title = toTitle(loaded.records);
   notify(c.state, `restored session ${id}`);
   c.state.sessionList = null;
+  c.state.sessionAll = [];
+  c.state.sessionScope = "project";
+  c.state.sessionQuery = "";
   c.state.input = "";
   c.state.inputKey += 1;
   c.state.suggest = [];
   c.state.suggestIdx = -1;
-  const usage = loaded.records
+  const lastUsageRecord = loaded.records
     .slice()
     .reverse()
     .find(
-      (r) =>
-        r.type === "meta" &&
-        (r.payload as Record<string, unknown>).kind === "usage",
-    )?.payload as Record<string, unknown> | undefined;
+      (record) =>
+        record.type === "meta" &&
+        ["usage", "usage-reset"].includes(
+          String((record.payload as Record<string, unknown>).kind),
+        ),
+    );
+  const usage =
+    lastUsageRecord?.type === "meta" &&
+    (lastUsageRecord.payload as Record<string, unknown>).kind === "usage"
+      ? (lastUsageRecord.payload as Record<string, unknown>)
+      : undefined;
   if (usage && typeof usage.tokens === "number") {
     c.state.tokens = usage.tokens;
     if (typeof usage.inputTokens === "number")
@@ -252,12 +275,13 @@ export function projectSessions<
 
 export function openSessions(c: Controller): void {
   const all = Session.list();
-  c.state.sessionAll = all;
-  c.state.sessionScope = "project";
-  c.state.sessionQuery = "";
-  c.state.sessionList = projectSessions(all, "project", "", process.cwd());
+  const s = c.state;
+  s.sessionAll = all;
+  s.sessionScope = "project";
+  s.sessionQuery = "";
+  s.sessionList = projectSessions(all, "project", "", process.cwd());
   c.observability?.recordEvent("session_picker.opened", {
-    "session.count": c.state.sessionList.length,
+    "session.count": s.sessionList?.length ?? 0,
   });
   c.bump();
 }

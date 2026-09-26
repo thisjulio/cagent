@@ -1,5 +1,6 @@
 import type { ToolDefinition } from "@cagent/sdk";
 import {
+  activateTask,
   addTask,
   blockTask,
   clearTasks,
@@ -53,8 +54,15 @@ export function updateTasks(
   } catch (error) {
     controller.observability?.recordEvent("task.failed", { operation });
     const message = error instanceof Error ? error.message : String(error);
-    return `ERROR TASK — ${message}`;
+    const summary = statusSummary(controller.state.tasks);
+    return `ERROR TASK — ${message} (${summary})`;
   }
+}
+
+function statusSummary(tasks: Controller["state"]["tasks"]): string {
+  const count = (status: (typeof tasks)[number]["status"]) =>
+    tasks.filter((task) => task.status === status).length;
+  return `${count("in_progress")} in_progress, ${count("pending")} pending, ${count("completed")} completed, ${count("blocked")} blocked, ${count("skipped")} skipped`;
 }
 
 function applyTaskOperation(
@@ -77,6 +85,7 @@ function applyTaskOperation(
   if (operation === "block")
     return blockTask(tasks, String(args.details ?? ""));
   if (operation === "clear") return clearTasks();
+  if (operation === "activate") return activateTask(tasks);
   throw new Error(`unknown task operation: ${operation}`);
 }
 

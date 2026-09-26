@@ -76,6 +76,7 @@ export async function compact(
       : "manual"
     : "threshold";
   const old = c.messages.slice(1);
+  const previousUsage = s.tokens;
   const recent = recentContext(
     old,
     c.config.compact_keep_tokens ?? 32000,
@@ -164,6 +165,15 @@ export async function compact(
     { role: "user", content: `[context checkpoint handoff]\n${bounded}` },
     ...rest,
   );
+  s.tokens = undefined;
+  s.inputTokens = undefined;
+  s.outputTokens = undefined;
+  if (previousUsage !== undefined)
+    c.session.append({
+      ts: Date.now(),
+      type: "meta",
+      payload: { kind: "usage-reset" },
+    });
   c.invalidateStableContext();
   c.session.append({
     ts: Date.now(),

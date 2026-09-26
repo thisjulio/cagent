@@ -1,12 +1,10 @@
-import type { ToolCategory } from "./tool-category";
-
 const MAX_TOOL_TITLE_LENGTH = 80;
 
 export function normalizeToolTitle(value: unknown): string | undefined {
   if (typeof value !== "string") return undefined;
   const title = value
     .replace(
-      /[\u001b\u009b][[\\]()#;?]*(?:(?:(?:[a-zA-Z\d]*(?:;[-a-zA-Z\d/#&.:=?%@~_]+)*)?\u0007)|(?:(?:\d{1,4}(?:[;:]\d{0,4})*)?[ inBTRfK]))/g,
+      /[\u001b\u009b][[\\]()#;?]*(?:(?:(?:[a-zA-Z\d]*(?:;[-a-zA-Z\d/#&.:=?%@~_]*)?)?\u0007)|(?:(?:\d{1,4}(?:[;:]\d{0,4})*)?[ inBTRfK]))/g,
       "",
     )
     .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "")
@@ -18,7 +16,7 @@ export function normalizeToolTitle(value: unknown): string | undefined {
 
 export function fallbackToolTitle(
   tool: string,
-  category: ToolCategory,
+  category: string,
   args: Record<string, unknown> = {},
 ): string {
   const path = String(
@@ -31,8 +29,10 @@ export function fallbackToolTitle(
   }
   if (category === "read")
     return basename ? `Read ${basename}` : `Read ${tool}`;
-  if (category === "search")
-    return `Search "${String(args.pattern ?? "")}"`.slice(0, 24);
+  if (category === "search") {
+    const pattern = String(args.pattern ?? "");
+    return `Search "${pattern}"`.slice(0, 24);
+  }
   if (category === "shell") {
     const command = String(args.command ?? args.cmd ?? "").trim();
     return command ? `Run ${command.split(/\s+/)[0]}` : tool;
@@ -43,26 +43,8 @@ export function fallbackToolTitle(
 export function ensureToolTitle(
   value: unknown,
   tool: string,
-  categoryOrArgs?: ToolCategory | Record<string, unknown>,
-  toolArgs: Record<string, unknown> = {},
+  category = "generic",
+  args: Record<string, unknown> = {},
 ): string {
-  const category =
-    typeof categoryOrArgs === "string" ? categoryOrArgs : undefined;
-  const args =
-    categoryOrArgs && typeof categoryOrArgs === "object"
-      ? categoryOrArgs
-      : toolArgs;
-  return (
-    normalizeToolTitle(value) ??
-    fallbackToolTitle(tool, category ?? inferCategory(tool), args)
-  );
-}
-
-function inferCategory(tool: string): ToolCategory {
-  if (tool === "write_file" || tool === "edit_file") return "write";
-  if (tool === "read_file") return "read";
-  if (tool === "search" || tool === "search_ast" || tool === "list_files")
-    return "search";
-  if (tool === "bash") return "shell";
-  return "generic";
+  return normalizeToolTitle(value) ?? fallbackToolTitle(tool, category, args);
 }

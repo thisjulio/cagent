@@ -23,6 +23,7 @@ export type ThinkingItem = {
   type: "THINKING";
   content: string;
   timestamp?: number;
+  expanded?: boolean;
   chatIndex: number;
 };
 
@@ -33,6 +34,7 @@ export type ToolItem = {
   toolCategory?: ToolCategory;
   cmd?: string;
   content?: string;
+  summary?: string;
   isError?: boolean;
   denied?: boolean;
   running?: boolean;
@@ -122,7 +124,10 @@ export function chatToBlocks(chat: ChatItem[]): Block[] {
       });
     } else {
       // assistant, thinking, tool items belong to the current agent turn
-      if (!currentAgentBlock || currentAgentBlock.turnId !== item.turnId) {
+      if (
+        !currentAgentBlock ||
+        currentAgentBlock.turnId !== (item.turnId ?? currentAgentBlock.turnId)
+      ) {
         currentAgentBlock = {
           type: "agent-turn",
           turnId: item.turnId ?? `turn-${i}`,
@@ -140,6 +145,7 @@ export function chatToBlocks(chat: ChatItem[]): Block[] {
           type: "THINKING",
           content: item.content,
           timestamp: item.timestamp,
+          expanded: item.expanded,
           chatIndex: i,
         });
       } else if (item.kind === "tool") {
@@ -150,6 +156,7 @@ export function chatToBlocks(chat: ChatItem[]): Block[] {
           toolCategory: item.toolCategory,
           cmd: item.cmd,
           content: item.content,
+          summary: item.summary,
           isError: item.isError,
           denied: item.denied,
           running: item.running,

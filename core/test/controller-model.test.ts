@@ -193,10 +193,21 @@ describe("controller model and commands", () => {
     expect(c.state.modelPicker).not.toBeNull();
   });
 
-  it("/session opens the session list", async () => {
+  it("/session resets its picker state after restoring a session", async () => {
     const c = new Controller(deps());
-    await c.submit("/session");
+    await c.submit("first message");
+    const id = c.session.id;
+
+    c.openSessions();
+    c.state.sessionQuery = "stale query";
+    c.state.sessionScope = "all";
+    await c.resumeSession(id);
+    c.openSessions();
+
     expect(c.state.sessionList).not.toBeNull();
+    expect(c.state.sessionQuery).toBe("");
+    expect(c.state.sessionScope).toBe("project");
+    expect(c.state.sessionAll.length).toBeGreaterThan(0);
   });
 
   it("generates the session title from the first message", async () => {

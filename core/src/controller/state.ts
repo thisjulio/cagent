@@ -32,6 +32,7 @@ export type ChatItem = {
   isError?: boolean;
   denied?: boolean;
   running?: boolean;
+  summary?: string;
   expanded?: boolean;
   timestamp?: number;
   queueStatus?: "queued" | "processing";

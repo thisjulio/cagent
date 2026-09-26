@@ -27,7 +27,7 @@ describe("tool pipeline", () => {
       eventBus,
     );
 
-    expect(events[0]).toMatchObject({ title: "Executing bash" });
+    expect(events[0]).toMatchObject({ title: "bash" });
   });
 
   it("allowlist permits an exact command without a prompt", async () => {

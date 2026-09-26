@@ -6,9 +6,6 @@ import { searchHistory } from "../session/history";
 // ponytail: input key orchestration (autocomplete, pickers, pendingAsk) lives
 // outside the controller to keep it under 500 lines; this is a state-rules layer.
 
-// ponytail: double-ESC within this window forces cancellation of running tools.
-const DOUBLE_ESC_WINDOW_MS = 500;
-
 export function onKey(c: Controller, key: InputKey, input: string): void {
   const s = c.state;
   if (s.sessionList) {
@@ -255,10 +252,7 @@ export function onKey(c: Controller, key: InputKey, input: string): void {
     c.toggleToolExpand();
   } else if (key.escape) {
     if (s.busy) {
-      const now = Date.now();
-      if (now - s.lastEscTime < DOUBLE_ESC_WINDOW_MS) c.forceCancel();
-      else c.interrupt();
-      s.lastEscTime = now;
+      c.forceCancel();
       return;
     }
     if (!s.input.length) return;

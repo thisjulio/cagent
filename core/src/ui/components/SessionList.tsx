@@ -18,7 +18,7 @@ export function SessionList({
     <box
       flexDirection="column"
       flexShrink={0}
-      height={9}
+      height={Math.min(18, list.length + 5)}
       border
       borderStyle="rounded"
       borderColor="#d97757"
@@ -33,7 +33,7 @@ export function SessionList({
       <select
         focused
         showDescription={false}
-        height={5}
+        height={Math.min(12, Math.max(1, list.length))}
         options={list.map((s) => ({
           name: `${s.id.slice(0, 8)}  ${relTime(s.updated)}  ${s.messageCount} msgs  ${s.title}`,
           description: "",

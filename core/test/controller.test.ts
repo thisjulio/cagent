@@ -84,7 +84,7 @@ describe("controller", () => {
 
     expect(c.state.chat.at(-1)).toMatchObject({
       toolName: "bash",
-      title: "Executing bash",
+      title: "Run pwd",
     });
   });
 
@@ -112,6 +112,20 @@ describe("controller", () => {
     expect(
       c.messages.some((message) => message.content === "old ".repeat(750)),
     ).toBe(false);
+  });
+
+  it("clears stale token usage after automatic compaction", async () => {
+    const c = new Controller(deps(false, { compact_keep_tokens: 2_000 }));
+    c.state.tokens = c.state.threshold;
+    c.messages.push(
+      { role: "user", content: "old ".repeat(750) },
+      { role: "assistant", content: "recent ".repeat(750) },
+      { role: "user", content: "latest ".repeat(750) },
+    );
+
+    await c.compact();
+
+    expect(c.state.tokens).toBeUndefined();
   });
 
   it("requests fixed handoff sections and caps the persisted checkpoint summary", async () => {
@@ -149,6 +163,35 @@ describe("controller", () => {
     expect(checkpoint?.version).toBe(1);
     expect(checkpoint?.summary.length).toBeLessThanOrEqual(50 * 4);
     expect(checkpoint?.recentMessages.length).toBeGreaterThan(0);
+    expect(c.state.tokens).toBeUndefined();
+  });
+
+  it("does not restore usage from before the last checkpoint", async () => {
+    const c = new Controller(deps(false, { compact_keep_tokens: 2_000 }));
+    c.state.title = "Existing session";
+    c.state.tokens = 81_000;
+    c.messages.push(
+      { role: "user", content: "old ".repeat(750) },
+      { role: "assistant", content: "recent ".repeat(750) },
+      { role: "user", content: "latest ".repeat(750) },
+    );
+    c.session.append({
+      ts: Date.now(),
+      type: "meta",
+      payload: {
+        kind: "usage",
+        tokens: 81_000,
+        inputTokens: 80_000,
+        outputTokens: 1_000,
+      },
+    });
+
+    await c.compact();
+    const sessionId = c.session.id;
+    c.state.sessionList = [{ id: sessionId } as never];
+    await c.resumeSession(sessionId);
+
+    expect(c.state.tokens).toBeUndefined();
   });
 
   it("compacts and retries after the provider reports a context limit", async () => {
@@ -378,6 +421,37 @@ describe("controller", () => {
     expect(done.content).toBe("a\n");
   });
 
+  it("activate starts the next pending task when none is active or blocked", () => {
+    const c = new Controller(deps());
+    // A restored session can leave a pending task with none active or
+    // blocked (for example, an interrupted /add before any task started).
+    c.updateTasks("add", { title: "Plan" });
+    expect(c.state.tasks.map((task) => task.status)).toEqual(["pending"]);
+    const result = c.updateTasks("activate", {});
+    expect(result.startsWith("ERROR TASK")).toBe(false);
+    expect(c.state.tasks.map((task) => task.status)).toEqual(["in_progress"]);
+  });
+
+  it("ERROR TASK includes a status summary so the model can self-correct", () => {
+    const c = new Controller(deps());
+    c.updateTasks("create", { titles: ["Plan", "Verify"] });
+    const result = c.updateTasks("resume", {});
+    expect(result).toContain("ERROR TASK");
+    expect(result).toContain("no task is blocked");
+    expect(result).toContain("1 in_progress, 1 pending, 0 completed");
+  });
+
+  it("rejects unknown task operations without changing task state", () => {
+    const c = new Controller(deps());
+    c.updateTasks("create", { titles: ["Plan"] });
+    const before = [...c.state.tasks];
+    const result = c.updateTasks("activte", {});
+
+    expect(result).toContain("unknown task operation: activte");
+    expect(result).toContain("1 in_progress, 0 pending, 0 completed");
+    expect(c.state.tasks).toEqual(before);
+  });
+
   it("keeps structured tool output collapsed until the user expands it", () => {
     const c = new Controller(deps());
     c.onToolPre({ tool: "bash", args: { command: "printf output" } });
@@ -403,14 +477,30 @@ describe("controller", () => {
     expect(last.isError).toBe(true);
   });
 
-  it("ctrl+o expands the last tool item", () => {
+  it("ctrl+o expands the last expandable item in the latest agent turn", () => {
     const c = new Controller(deps());
-    c.onToolPre({ tool: "bash", args: { command: "ls" } });
-    c.onToolPost({ tool: "bash", result: { output: "ok" } });
+    c.state.chat.push(
+      { kind: "user", content: "first", turnId: "one" },
+      {
+        kind: "tool",
+        content: "diff",
+        display: { kind: "diff", content: "+x" },
+        turnId: "one",
+      },
+      { kind: "user", content: "second", turnId: "two" },
+      {
+        kind: "tool",
+        toolName: "bash",
+        content: "",
+        running: false,
+        turnId: "two",
+      },
+    );
     c.handleKey({ ctrl: true }, "o");
-    expect(c.state.chat[c.state.chat.length - 1].expanded).toBe(true);
+    expect(c.state.chat[3].expanded).toBe(true);
+    expect(c.state.chat[1].expanded).toBeUndefined();
     c.handleKey({ ctrl: true }, "o");
-    expect(c.state.chat[c.state.chat.length - 1].expanded).toBe(false);
+    expect(c.state.chat[3].expanded).toBe(false);
   });
 
   it("up arrow with empty input recalls the last sent user message", async () => {
