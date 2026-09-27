@@ -100,6 +100,15 @@ export type Block = UserTurnBlock | AgentTurnBlock | SystemBlock;
 export function chatToBlocks(chat: ChatItem[]): Block[] {
   const blocks: Block[] = [];
   let currentAgentBlock: AgentTurnBlock | null = null;
+  // ponytail: pre-index skill turnIds once; the per-tool chat.some() scan
+  // made block building O(n^2) on long sessions (54ms spike at 161 items).
+  const skillTurnIds = new Set(
+    chat.flatMap((candidate) =>
+      candidate.kind === "skill" && candidate.turnId !== undefined
+        ? [candidate.turnId]
+        : [],
+    ),
+  );
 
   for (let i = 0; i < chat.length; i++) {
     const item = chat[i];
@@ -174,12 +183,8 @@ export function chatToBlocks(chat: ChatItem[]): Block[] {
         });
       } else if (item.kind === "tool") {
         if (item.toolCategory === "skill") {
-          const hasSkillProjection = chat.some(
-            (candidate) =>
-              candidate.kind === "skill" &&
-              candidate.turnId !== undefined &&
-              candidate.turnId === item.turnId,
-          );
+          const hasSkillProjection =
+            item.turnId !== undefined && skillTurnIds.has(item.turnId);
           if (!hasSkillProjection) {
             block.items.push({
               type: "SKILL",

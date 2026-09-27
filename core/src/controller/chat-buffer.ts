@@ -6,8 +6,11 @@ export function appendChat(state: UIState, item: ChatItem): void {
   if (item.timestamp === undefined) item.timestamp = Date.now();
   if (state.currentTurnId && !item.turnId) item.turnId = state.currentTurnId;
   state.chat.push(item);
-  if (state.chat.length <= MAX_CHAT_ITEMS) return;
-  state.chat.splice(0, state.chat.length - MAX_CHAT_ITEMS);
+  if (state.chat.length > MAX_CHAT_ITEMS) {
+    state.chat.splice(0, state.chat.length - MAX_CHAT_ITEMS);
+  }
+  // ponytail: chat is mutated in place, so the version is the only cheap
+  // signal the UI can memoize on; bump it on every append.
   state.chatVersion += 1;
 }
 

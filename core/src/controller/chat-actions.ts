@@ -14,6 +14,7 @@ function toggleAt(
     ...item,
     expanded,
   };
+  state.chatVersion += 1;
   if (item.kind === "skill") {
     persist?.({
       ts: Date.now(),

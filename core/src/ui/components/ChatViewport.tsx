@@ -1,10 +1,11 @@
-import { chatToBlocks } from "../render/blocks";
+import { memo } from "react";
+import { chatToBlocks, type AgentItem, type Block } from "../render/blocks";
 import { UserTurnBlockComponent } from "./UserTurnBlock";
 import { AgentTurnBlockComponent } from "./AgentTurnBlock";
 import { SystemBlockComponent } from "./SystemBlock";
 import type { Controller } from "../../controller/controller";
 import { useTerminalDimensions, useRenderer } from "@opentui/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ScrollBoxRenderable } from "@opentui/core";
 import { useTheme } from "../primitives/theme-context";
 
@@ -12,14 +13,101 @@ let renderWindowStarted = performance.now();
 let renderWindowCount = 0;
 let renderWindowBlockBuildMs = 0;
 
-export function ChatViewport({
+function sameItem(a: AgentItem, b: AgentItem): boolean {
+  if (a.type !== b.type) return false;
+  switch (a.type) {
+    case "RESPONSE":
+      return a.content === (b as typeof a).content;
+    case "THINKING":
+      return (
+        a.content === (b as typeof a).content &&
+        a.expanded === (b as typeof a).expanded
+      );
+    case "SKILL":
+      return (
+        a.name === (b as typeof a).name &&
+        a.content === (b as typeof a).content &&
+        a.expanded === (b as typeof a).expanded &&
+        a.isError === (b as typeof a).isError &&
+        a.denied === (b as typeof a).denied &&
+        a.running === (b as typeof a).running &&
+        a.chatIndex === (b as typeof a).chatIndex
+      );
+    case "TOOL":
+      return (
+        a.toolName === (b as typeof a).toolName &&
+        a.title === (b as typeof a).title &&
+        a.toolCategory === (b as typeof a).toolCategory &&
+        a.cmd === (b as typeof a).cmd &&
+        a.content === (b as typeof a).content &&
+        a.summary === (b as typeof a).summary &&
+        a.detail === (b as typeof a).detail &&
+        a.isError === (b as typeof a).isError &&
+        a.denied === (b as typeof a).denied &&
+        a.running === (b as typeof a).running &&
+        a.expanded === (b as typeof a).expanded &&
+        a.durationMs === (b as typeof a).durationMs &&
+        a.display === (b as typeof a).display &&
+        a.changesWorkspace === (b as typeof a).changesWorkspace &&
+        a.changedPaths === (b as typeof a).changedPaths &&
+        a.chatIndex === (b as typeof a).chatIndex
+      );
+  }
+}
+
+function sameBlock(a: Block, b: Block): boolean {
+  if (a.type !== b.type || a.turnId !== b.turnId) return false;
+  if (a.type === "user-turn" || b.type === "user-turn") return a === b;
+  if (a.type === "system" || b.type === "system") return a === b;
+  if (
+    a.subagent !== (b as typeof a).subagent ||
+    a.subagentStatus !== (b as typeof a).subagentStatus ||
+    a.items.length !== (b as typeof a).items.length
+  )
+    return false;
+  return a.items.every((item, index) =>
+    sameItem(item, (b as typeof a).items[index]),
+  );
+}
+
+// ponytail: reuse previous block/item refs for unchanged history so memo'd
+// leaves skip them; only new/changed tails get fresh objects.
+function reuseBlocks(previous: Block[], next: Block[]): Block[] {
+  if (previous.length !== next.length) return next;
+  return next.map((block, index) => {
+    const old = previous[index];
+    if (sameBlock(old, block)) return old;
+    if (
+      old.type === "agent-turn" &&
+      block.type === "agent-turn" &&
+      old.turnId === block.turnId &&
+      block.items.length >= old.items.length
+    ) {
+      const items = block.items.map((item, itemIndex) =>
+        itemIndex < old.items.length && sameItem(old.items[itemIndex], item)
+          ? old.items[itemIndex]
+          : item,
+      );
+      if (items.every((item, itemIndex) => item === block.items[itemIndex]))
+        return block;
+      return { ...block, items };
+    }
+    return block;
+  });
+}
+
+// ponytail: memo on props works because chat is mutated in place (stable
+// ref) and version is the invalidation key; unrelated bumps skip everything.
+export const ChatViewport = memo(function ChatViewport({
   chat,
   busy,
   controller,
+  version,
 }: {
   chat: Parameters<typeof chatToBlocks>[0];
   busy: boolean;
   controller: Controller;
+  version: number;
 }) {
   const { width } = useTerminalDimensions();
   const renderer = useRenderer();
@@ -28,9 +116,20 @@ export function ChatViewport({
   const [newLines, setNewLines] = useState(0);
   const following = useRef(true);
   const previousScrollHeight = useRef<number | undefined>(undefined);
-  const renderStarted = performance.now();
-  const blocks = chatToBlocks(chat);
-  const blockBuildMs = performance.now() - renderStarted;
+  const previousBlocks = useRef<Block[]>([]);
+  // ponytail: safety net for direct chat mutations that bypass the version
+  // bump (tests do this); production writes always bump chatVersion.
+  const lastItem = chat[chat.length - 1];
+  const tailSig = lastItem?.content?.length ?? 0;
+  const { blocks, blockBuildMs } = useMemo(() => {
+    const started = performance.now();
+    // ponytail: chat keeps its reference (in-place mutation), so version —
+    // bumped on every chat write — is the dep, not chat itself.
+    const merged = reuseBlocks(previousBlocks.current, chatToBlocks(chat));
+    previousBlocks.current = merged;
+    return { blocks: merged, blockBuildMs: performance.now() - started };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [version, chat.length, tailSig]);
   const observability = controller.observability;
   if (observability) {
     observability.recordMetric("ui.chat.blocks_ms", blockBuildMs, {
@@ -151,7 +250,7 @@ export function ChatViewport({
           const isLast = index === blocks.length - 1;
           const key =
             block.type === "agent-turn"
-              ? `${block.type}-${block.turnId ?? index}-${index}`
+              ? `${block.type}-${block.turnId ?? block.timestamp}`
               : `${block.type}-${block.turnId ?? index}`;
           if (block.type === "user-turn") {
             return <UserTurnBlockComponent key={key} block={block} />;
@@ -173,4 +272,4 @@ export function ChatViewport({
       </scrollbox>
     </box>
   );
-}
+});

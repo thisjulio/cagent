@@ -28,14 +28,8 @@ export function compactSession(
   c.state.turnStartedAt = Date.now();
   c.state.elapsedMs = 0;
   c.bump();
-  const timer = setInterval(() => {
-    if (c.state.turnStartedAt) {
-      c.state.elapsedMs = Date.now() - c.state.turnStartedAt;
-      c.bump();
-    }
-  }, 500);
+  // ponytail: no 500ms elapsed timer — see submission.ts.
   return compact(c, true, instructions).finally(() => {
-    clearInterval(timer);
     c.state.busy = false;
     c.state.elapsedMs = c.state.turnStartedAt
       ? Date.now() - c.state.turnStartedAt

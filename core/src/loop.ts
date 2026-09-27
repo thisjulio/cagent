@@ -9,8 +9,6 @@ import { lastUserMessage, workflowPayload } from "./loop-utils";
 import { runToolCall } from "./tool-loop";
 import {
   DEFAULT_MAX_INPUT_TOKENS_PER_TURN,
-  DEFAULT_MAX_TOOL_CALLS,
-  DEFAULT_MAX_TURNS,
   budgetError,
   estimateMessageTokens,
 } from "./loop-budget";
@@ -187,6 +185,19 @@ async function checkRequestBudget(
   return retryMessages;
 }
 
+// ponytail: a spent budget ends the turn with progress kept and a plain
+// note, never with a throw that discards the turn and prints "error:".
+function stopForBudget(
+  opts: TurnOpts,
+  records: TurnRecord[],
+  kind: string,
+  limit: number,
+): void {
+  const note = `Stopped after reaching the ${kind} budget (${limit}). Partial progress is kept — send a message to continue.`;
+  opts.messages.push({ role: "assistant", content: note });
+  records.push({ role: "assistant", content: note });
+}
+
 export async function runTurn(opts: TurnOpts): Promise<TurnResult> {
   const overrides = opts.adapter.tool_overrides?.() ?? {};
   const nameToCanonical = overrideNameMap(overrides);
@@ -211,16 +222,22 @@ export async function runTurn(opts: TurnOpts): Promise<TurnResult> {
   let toolCalls = 0;
   let verificationFailures = 0;
   let verifiedChanges = false;
+  let budgetExhausted = false;
   let verification: TurnResult["verification"];
   const observability = opts.observability ?? noopObservability;
   return trace(
     observability,
     "agent.turn",
     async () => {
-      for (;;) {
-        if (++turns > (opts.maxTurns ?? DEFAULT_MAX_TURNS)) {
+      turnLoop: for (;;) {
+        // ponytail: unbounded unless a cap was set explicitly — a turn
+        // runs as many steps as the task needs.
+        turns++;
+        if (opts.maxTurns !== undefined && turns > opts.maxTurns) {
           await opts.compactIfNeeded?.().catch(() => {});
-          throw budgetError("ERR_TURN_BUDGET", "turn budget exceeded");
+          stopForBudget(opts, records, "turns", opts.maxTurns);
+          budgetExhausted = true;
+          break;
         }
         await opts.compactIfNeeded?.();
         opts.bus.emit(
@@ -292,8 +309,35 @@ export async function runTurn(opts: TurnOpts): Promise<TurnResult> {
           continue;
         }
         for (const tc of streamedToolCalls) {
-          if (++toolCalls > (opts.maxToolCalls ?? DEFAULT_MAX_TOOL_CALLS))
-            throw budgetError("ERR_TOOL_BUDGET", "tool budget exceeded");
+          toolCalls++;
+          if (
+            opts.maxToolCalls !== undefined &&
+            toolCalls > opts.maxToolCalls
+          ) {
+            // ponytail: every streamed call needs an output before the next
+            // request, so skipped calls get an error output instead of
+            // aborting the turn mid-execution.
+            for (const skipped of streamedToolCalls.slice(
+              streamedToolCalls.indexOf(tc),
+            )) {
+              const output = "tool budget exceeded; call skipped";
+              opts.messages.push({
+                role: "tool",
+                tool_call_id: skipped.id,
+                content: output,
+              });
+              records.push({
+                role: "tool",
+                tool_call_id: skipped.id,
+                content: output,
+                toolName: skipped.name,
+                isError: true,
+              });
+            }
+            stopForBudget(opts, records, "tool calls", opts.maxToolCalls);
+            budgetExhausted = true;
+            break turnLoop;
+          }
           await runToolCall(ctx, tc);
           if (ctx.records.at(-1)?.changesWorkspace) {
             verifiedChanges = false;
@@ -323,6 +367,7 @@ export async function runTurn(opts: TurnOpts): Promise<TurnResult> {
       return {
         records,
         interrupted: opts.interrupted?.() ?? false,
+        budgetExhausted,
         inputTokens,
         outputTokens,
         verification,

@@ -159,8 +159,10 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
     variant: config.variant,
     contextWindow,
     sessionId: options.cli?.session ?? options.headless?.session,
-    maxTurns: options.headless?.maxTurns ?? 25,
-    maxToolCalls: options.headless?.maxToolCalls ?? 40,
+    // ponytail: no default turn/tool budget — a turn runs as many steps
+    // as needed. Caps apply only when set explicitly (e.g. headless flags).
+    maxTurns: options.headless?.maxTurns,
+    maxToolCalls: options.headless?.maxToolCalls,
     readOnly:
       (options.cli?.permissionMode ?? options.headless?.permissionMode) ===
       "read-only",

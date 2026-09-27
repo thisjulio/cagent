@@ -12,6 +12,7 @@ import { discoverSkills } from "../src/skills/discovery";
 import { listSkillResources, readSkillResource } from "../src/skills/resources";
 import type { SkillCatalog } from "../src/skills/types";
 import { applySkillArguments } from "../src/skills/arguments";
+import { resolveSkill } from "../src/skills/resolve";
 
 const temporaryDirectories: string[] = [];
 
@@ -58,7 +59,8 @@ function catalog(): SkillCatalog {
 describe("skills", () => {
   it("explains the exact name and resource contract in the catalog", () => {
     const text = renderSkillCatalog(catalog());
-    expect(text).toContain('exact skill name as the "name" argument');
+    expect(text).toContain('exact skill id as the "name" argument');
+    expect(text).toContain('"title" is free display text');
     expect(text).toContain('omit "resource" to load its SKILL.md');
     expect(text).toContain("exact relative path from the skill_files list");
     expect(text).not.toContain("- manual:");
@@ -209,5 +211,26 @@ describe("skills", () => {
       "skill already loaded this session: grilling",
     );
     expect(repeated.output).not.toContain("Ask questions about $ARGUMENTS.");
+  });
+
+  it("resolves title-like and description input to the exact skill id", async () => {
+    expect(resolveSkill(catalog(), "grilling")?.metadata.name).toBe("grilling");
+    expect(resolveSkill(catalog(), "  Grilling  ")?.metadata.name).toBe(
+      "grilling",
+    );
+    expect(resolveSkill(catalog(), "skill grilling")?.metadata.name).toBe(
+      "grilling",
+    );
+    expect(
+      resolveSkill(catalog(), "Ask design questions.")?.metadata.name,
+    ).toBe("grilling");
+    expect(resolveSkill(catalog(), "unknown")).toBeUndefined();
+  });
+
+  it("loads the skill when the model passes its description as name", async () => {
+    const tool = createReadSkillTool(catalog());
+    const result = await tool.execute({ name: "Ask design questions." });
+    expect(result.isError).not.toBe(true);
+    expect(result.output).toContain('<skill_content name="grilling">');
   });
 });

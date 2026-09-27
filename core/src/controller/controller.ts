@@ -90,6 +90,9 @@ export class Controller implements ControllerRuntime {
   set bump(callback: () => void) {
     this.bumpCallback = callback;
   }
+  setStreamBump(callback: () => void): void {
+    this.runtime.bumpStream = callback;
+  }
   private deps!: ControllerDeps;
   private runtime!: {
     state?: UIState;

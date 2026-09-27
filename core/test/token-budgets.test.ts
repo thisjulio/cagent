@@ -29,22 +29,24 @@ function endlessToolAdapter(): ProviderAdapter {
 const bash = defineTool("bash", "exec", {}, async () => ({ output: "ok" }));
 
 describe("turn and tool budgets", () => {
-  it("stops a recursive prompt with ERR_TURN_BUDGET", async () => {
-    const err = await runTurn({
+  it("ends a recursive prompt gracefully with progress kept", async () => {
+    const messages: Message[] = [{ role: "user", content: "loop forever" }];
+    const result = await runTurn({
       adapter: endlessToolAdapter(),
       model: "m",
-      messages: [{ role: "user", content: "loop forever" }],
+      messages,
       tools: [bash],
       allowlist: [],
       ask: async () => true,
       bus: new EventBus(),
       maxTurns: 3,
-    }).catch((e) => e);
-    expect(err).toBeInstanceOf(Error);
-    expect((err as Error & { code?: string }).code).toBe("ERR_TURN_BUDGET");
+    });
+    expect(result.budgetExhausted).toBe(true);
+    expect(result.records.length).toBeGreaterThan(0);
+    expect(messages.at(-1)?.content).toContain("budget");
   });
 
-  it("stops at the default 25 turns without explicit maxTurns", async () => {
+  it("runs unbounded without caps and stops at an explicit maxTurns", async () => {
     let streams = 0;
     const adapter = endlessToolAdapter();
     const inner = adapter.stream.bind(adapter);
@@ -52,7 +54,7 @@ describe("turn and tool budgets", () => {
       streams++;
       return inner(req, signal);
     };
-    const err = await runTurn({
+    const result = await runTurn({
       adapter,
       model: "m",
       messages: [{ role: "user", content: "loop forever" }],
@@ -60,8 +62,9 @@ describe("turn and tool budgets", () => {
       allowlist: [],
       ask: async () => true,
       bus: new EventBus(),
-    }).catch((e) => e);
-    expect((err as Error & { code?: string }).code).toBe("ERR_TURN_BUDGET");
+      maxTurns: 25,
+    });
+    expect(result.budgetExhausted).toBe(true);
     expect(streams).toBeLessThanOrEqual(25);
   });
 
@@ -85,17 +88,22 @@ describe("turn and tool budgets", () => {
         yield { type: "finish", finish_reason: "stop" };
       },
     };
-    const err = await runTurn({
+    const messages: Message[] = [{ role: "user", content: "fan out" }];
+    const result = await runTurn({
       adapter,
       model: "m",
-      messages: [{ role: "user", content: "fan out" }],
+      messages,
       tools: [bash],
       allowlist: [],
       ask: async () => true,
       bus: new EventBus(),
       maxToolCalls: 1,
-    }).catch((e) => e);
-    expect((err as Error & { code?: string }).code).toBe("ERR_TOOL_BUDGET");
+    });
+    expect(result.budgetExhausted).toBe(true);
+    const outputs = messages.filter((message) => message.role === "tool");
+    expect(outputs).toHaveLength(2);
+    expect(outputs.every((message) => message.tool_call_id)).toBe(true);
+    expect(messages.at(-1)?.content).toContain("budget");
   });
 
   it("blocks an over-budget turn input before streaming", async () => {

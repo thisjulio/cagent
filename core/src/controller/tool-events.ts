@@ -40,12 +40,14 @@ export function toolPre(state: UIState, p: unknown): void {
 export function toolStream(state: UIState, p: unknown, prefix = ""): void {
   const { tool, chunk } = p as { tool: string; chunk: string };
   const e = lastRunningChat(state.chat, tool);
-  if (e)
+  if (e) {
     e.content = appendCapped(
       e.content ?? "",
       prefix + chunk,
       MAX_VISIBLE_STREAM_CHARS,
     );
+    state.chatVersion += 1;
+  }
 }
 
 export function toolPost(state: UIState, p: unknown): void {
@@ -95,6 +97,7 @@ export function toolPost(state: UIState, p: unknown): void {
     e.display = result?.display;
     e.summary = result?.summary ?? deriveSummary(e);
     if (!e.content) e.content = error ?? result?.output ?? "";
+    state.chatVersion += 1;
   }
 }
 

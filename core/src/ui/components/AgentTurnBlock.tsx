@@ -1,3 +1,4 @@
+import { memo, useMemo } from "react";
 import { SyntaxStyle, TextAttributes } from "@opentui/core";
 import type { AgentTurnBlock, AgentItem } from "../render/blocks";
 import type { Controller } from "../../controller/controller";
@@ -5,13 +6,15 @@ import { formatTime } from "../render/time";
 import { ToolItemComponent } from "./ToolItem";
 import { SkillItemComponent } from "./SkillItem";
 import { ThinkingItemComponent } from "./ThinkingItem";
-import { diffStats } from "../../controller/diff-stats";
+import { cachedDiffStats } from "../../controller/diff-stats";
 import { useTheme } from "../primitives/theme-context";
 import { symbols } from "../theme/symbols";
 
 const markdownSyntaxStyle = SyntaxStyle.create();
 
-function ResponseItemComponent({
+// ponytail: memoized so historic responses skip markdown re-parse while the
+// last block streams; item refs stay stable via ChatViewport block reuse.
+const ResponseItemComponent = memo(function ResponseItemComponent({
   item,
   streaming,
 }: {
@@ -38,9 +41,9 @@ function ResponseItemComponent({
       </box>
     </box>
   );
-}
+});
 
-export function AgentTurnBlockComponent({
+export const AgentTurnBlockComponent = memo(function AgentTurnBlockComponent({
   block,
   streaming,
   latestTurn,
@@ -54,25 +57,35 @@ export function AgentTurnBlockComponent({
   terminalWidth: number;
 }) {
   const { color } = useTheme();
-  const changes = block.items.filter(
-    (item): item is Extract<AgentItem, { type: "TOOL" }> =>
-      item.type === "TOOL" && item.changesWorkspace === true,
+  const changes = useMemo(
+    () =>
+      block.items.filter(
+        (item): item is Extract<AgentItem, { type: "TOOL" }> =>
+          item.type === "TOOL" && item.changesWorkspace === true,
+      ),
+    [block.items],
   );
-  const stats = changes.reduce(
-    (total, item) => {
-      const diff =
-        item.display?.kind === "diff"
-          ? diffStats(item.display.content)
-          : { added: 0, removed: 0 };
-      return {
-        added: total.added + diff.added,
-        removed: total.removed + diff.removed,
-      };
-    },
-    { added: 0, removed: 0 },
+  const stats = useMemo(
+    () =>
+      changes.reduce(
+        (total, item) => {
+          const diff =
+            item.display?.kind === "diff"
+              ? cachedDiffStats(item.display)
+              : { added: 0, removed: 0 };
+          return {
+            added: total.added + diff.added,
+            removed: total.removed + diff.removed,
+          };
+        },
+        { added: 0, removed: 0 },
+      ),
+    [changes],
   );
-  const files = new Set(changes.flatMap((item) => item.changedPaths ?? []));
-  const fileCount = files.size || changes.length;
+  const fileCount = useMemo(() => {
+    const files = new Set(changes.flatMap((item) => item.changedPaths ?? []));
+    return files.size || changes.length;
+  }, [changes]);
   const subagentStatus =
     block.subagentStatus === "running"
       ? { icon: symbols.running, label: "working", color: color.status.warning }
@@ -110,7 +123,7 @@ export function AgentTurnBlockComponent({
         if (item.type === "THINKING") {
           return (
             <ThinkingItemComponent
-              key={`thinking-${index}`}
+              key={`thinking-${item.chatIndex}`}
               item={item}
               streaming={
                 streaming && latestTurn && index === block.items.length - 1
@@ -121,7 +134,7 @@ export function AgentTurnBlockComponent({
         if (item.type === "SKILL") {
           return (
             <SkillItemComponent
-              key={`skill-${index}`}
+              key={`skill-${item.chatIndex}`}
               item={item}
               onClick={() => controller.toggleToolExpand(item.chatIndex)}
             />
@@ -130,7 +143,7 @@ export function AgentTurnBlockComponent({
         if (item.type === "TOOL") {
           return (
             <ToolItemComponent
-              key={`tool-${index}`}
+              key={`tool-${item.chatIndex}`}
               item={item}
               onClick={() => controller.toggleToolExpand(item.chatIndex)}
               terminalWidth={terminalWidth}
@@ -139,9 +152,11 @@ export function AgentTurnBlockComponent({
         }
         return (
           <ResponseItemComponent
-            key={`response-${index}`}
+            key={`response-${item.chatIndex}`}
             item={item}
-            streaming={streaming}
+            streaming={
+              streaming && latestTurn && index === block.items.length - 1
+            }
           />
         );
       })}
@@ -162,4 +177,4 @@ export function AgentTurnBlockComponent({
       ) : null}
     </box>
   );
-}
+});

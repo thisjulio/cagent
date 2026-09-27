@@ -1,8 +1,11 @@
+import { memo } from "react";
 import { Text } from "../primitives/Text";
 import { DisclosureIndicator } from "../primitives/DisclosureIndicator";
 import type { AgentItem } from "../render/blocks";
 
-export function ThinkingItemComponent({
+// ponytail: default memo works because ChatViewport reuses item refs for
+// unchanged history; only the streaming tail re-renders.
+export const ThinkingItemComponent = memo(function ThinkingItemComponent({
   item,
   streaming = false,
 }: {
@@ -32,4 +35,4 @@ export function ThinkingItemComponent({
       ) : null}
     </box>
   );
-}
+});

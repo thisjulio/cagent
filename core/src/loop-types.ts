@@ -80,6 +80,7 @@ export interface TurnOpts extends StreamOpts {
 export type TurnResult = {
   records: TurnRecord[];
   interrupted: boolean;
+  budgetExhausted?: boolean;
   inputTokens?: number;
   outputTokens?: number;
   verification?: {

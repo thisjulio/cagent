@@ -78,12 +78,25 @@ export async function executeTurn(host: TurnHost): Promise<void> {
     }
     if (turn.interrupted) {
       notify(host.state, "[interrupted - type to steer]");
+    } else if (turn.budgetExhausted) {
+      notify(
+        host.state,
+        "[budget reached - progress kept, send a message to continue]",
+      );
     } else {
       host.state.notice = "";
     }
   } catch (error) {
     if (host.interrupted()) {
       notify(host.state, "[interrupted - type to steer]");
+    } else if (
+      error instanceof Error &&
+      (error as Error & { code?: string }).code === "ERR_TURN_BUDGET"
+    ) {
+      notify(
+        host.state,
+        "[input too large even after compaction - try /compact and a narrower request]",
+      );
     } else {
       host.observability?.recordEvent("agent.turn.error", {
         "error.type": error instanceof Error ? error.name : "unknown",
@@ -189,14 +202,12 @@ async function runAgentTurn(
     signal: host.signal,
     onText: (text) => {
       appendText(host, text);
-      host.bumpStream();
       host.onText?.(text);
     },
     onAssistantSnapshot: (content) => persistAssistantSnapshot(host, content),
     onReasoning: (text) => {
       setThinking(appendCapped(getThinking(), text, MAX_VISIBLE_STREAM_CHARS));
       appendReasoning(host, text);
-      host.bumpStream();
       host.onReasoning?.(text);
     },
     interrupted: host.interrupted,
@@ -278,13 +289,17 @@ function persistAssistantSnapshot(host: TurnHost, content: string): void {
 
 function appendText(host: TurnHost, text: string): void {
   const last = host.state.chat[host.state.chat.length - 1];
-  if (last.kind === "assistant")
+  if (last.kind === "assistant") {
     last.content = appendCapped(last.content, text, MAX_VISIBLE_STREAM_CHARS);
-  else
+    // ponytail: in-place content mutation needs an explicit version bump;
+    // appendChat only bumps when it pushes a new item.
+    host.state.chatVersion += 1;
+  } else {
     appendChat(host.state, {
       kind: "assistant",
       content: appendCapped("", text, MAX_VISIBLE_STREAM_CHARS),
     });
+  }
   host.bumpStream();
 }
 
@@ -292,6 +307,7 @@ function appendReasoning(host: TurnHost, text: string): void {
   const last = host.state.chat[host.state.chat.length - 1];
   if (last?.kind === "thinking") {
     last.content = appendCapped(last.content, text, MAX_VISIBLE_STREAM_CHARS);
+    host.state.chatVersion += 1;
   } else {
     appendChat(host.state, {
       kind: "thinking",

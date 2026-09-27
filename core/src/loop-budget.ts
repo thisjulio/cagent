@@ -1,7 +1,5 @@
 import type { Message } from "@cagent/sdk";
 
-export const DEFAULT_MAX_TURNS = 25;
-export const DEFAULT_MAX_TOOL_CALLS = 40;
 export const DEFAULT_MAX_INPUT_TOKENS_PER_TURN = 150_000;
 
 export function budgetError(code: string, message: string): Error {

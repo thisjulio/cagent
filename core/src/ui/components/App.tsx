@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRenderer } from "@opentui/react";
 import type { Controller } from "../../controller/controller";
 import { filterModels } from "../../fuzzy";
@@ -23,6 +23,7 @@ import { themeForTerminal, themes } from "../theme/themes";
 import type { ThemeMode } from "../theme/types";
 import { subscribeThemeMode } from "../theme/terminal";
 import { useAppKeyboard } from "../app-keyboard";
+import { createStreamThrottle } from "../../controller/stream-throttle";
 export function App({
   c,
   mcpServerCount = 0,
@@ -38,8 +39,10 @@ export function App({
 
   useEffect(() => {
     c.bump = () => setV((v) => v + 1);
+    c.setStreamBump(createStreamThrottle(() => c.bump()));
     return () => {
       c.bump = () => {};
+      c.setStreamBump(() => {});
     };
   }, [c]);
   useEffect(
@@ -56,12 +59,46 @@ export function App({
   );
   useAppKeyboard(c, renderer);
   const s = c.state;
-  const helpItems = getHelpCatalog({
-    customNames: c.customCommandNames(),
-    pluginNames: c.pluginCommandNames(),
-    skillNames: c.skillCommandNames(),
-    agentNames: c.subagentNames(),
-  });
+  // ponytail: the catalog is rebuilt from scratch on every bump (each
+  // keystroke); only build it when an overlay actually needs it.
+  const helpOverlay = s.helpOpen || s.commandPaletteOpen;
+  const helpItems = useMemo(
+    () =>
+      helpOverlay
+        ? getHelpCatalog({
+            customNames: c.customCommandNames(),
+            pluginNames: c.pluginCommandNames(),
+            skillNames: c.skillCommandNames(),
+            agentNames: c.subagentNames(),
+          })
+        : [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [helpOverlay],
+  );
+  const pickerEntries = s.modelPicker?.entries;
+  const pickerQuery = s.modelPicker?.query ?? "";
+  // ponytail: single filter pass per query change instead of two per render.
+  const modelRoutes = useMemo(
+    () => (pickerEntries ? filterModels(pickerEntries, pickerQuery) : []),
+    [pickerEntries, pickerQuery],
+  );
+  const toolViewerIndex = s.toolViewerIndex;
+  const toolViewerTurnId = s.toolViewerTurnId;
+  // ponytail: the chat scan only matters while the diff viewer is open.
+  const diffTools = useMemo(
+    () =>
+      toolViewerIndex === null
+        ? []
+        : s.chat.filter(
+            (item) =>
+              item.kind === "tool" &&
+              !item.running &&
+              item.changesWorkspace === true &&
+              (!toolViewerTurnId || item.turnId === toolViewerTurnId),
+          ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [toolViewerIndex, toolViewerTurnId, s.chatVersion],
+  );
   const lastLog = s.toolLog[s.toolLog.length - 1];
   const running = lastLog?.running ? lastLog.tool : undefined;
   const overlay =
@@ -112,7 +149,12 @@ export function App({
             mcpCount={mcpServerCount}
           />
         ) : (
-          <ChatViewport chat={s.chat} busy={s.busy} controller={c} />
+          <ChatViewport
+            chat={s.chat}
+            busy={s.busy}
+            controller={c}
+            version={s.chatVersion}
+          />
         )}
         <TaskPanel
           ref={taskPanelRef}
@@ -146,16 +188,7 @@ export function App({
         ) : s.lspPanel ? (
           <LspPanel servers={s.lspServers} />
         ) : s.toolViewerIndex !== null ? (
-          <DiffPanel
-            tools={s.chat.filter(
-              (item) =>
-                item.kind === "tool" &&
-                !item.running &&
-                item.changesWorkspace === true &&
-                (!s.toolViewerTurnId || item.turnId === s.toolViewerTurnId),
-            )}
-            index={s.toolViewerIndex}
-          />
+          <DiffPanel tools={diffTools} index={s.toolViewerIndex} />
         ) : s.sessionList ? (
           <SessionList
             list={s.sessionList}
@@ -165,15 +198,11 @@ export function App({
           />
         ) : s.modelPicker ? (
           <ModelPicker
-            routes={filterModels(s.modelPicker.entries, s.modelPicker.query)}
+            routes={modelRoutes}
             query={s.modelPicker.query}
             selectedIndex={Math.min(
               s.modelPicker.selectedIndex ?? 0,
-              Math.max(
-                0,
-                filterModels(s.modelPicker.entries, s.modelPicker.query)
-                  .length - 1,
-              ),
+              Math.max(0, modelRoutes.length - 1),
             )}
             onSelect={(route) => void c.pickModel(route)}
           />

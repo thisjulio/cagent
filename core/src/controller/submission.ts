@@ -90,205 +90,189 @@ export async function submitMessage(
     phase: "user_prompt_submit",
     prompt: text,
   });
-  const timer = setInterval(() => {
-    if (state.turnStartedAt) {
-      state.elapsedMs = Date.now() - state.turnStartedAt;
-      controller.bump();
-    }
-  }, 500);
-  try {
-    await executeTurn({
-      state,
-      adapter: controller.adapter,
-      model: splitRoute(state.model)[1],
-      variant: state.variant,
-      messages: controller.messages,
-      messagesForRequest: (messages) => {
-        const preferences = loadPreferences().filter((item) => item.enabled);
-        const stableParts = contextContributions.filter(
-          (entry) => entry.phase === "stable",
-        );
-        const turnParts = contextContributions.filter(
-          (entry) => entry.phase !== "stable",
-        );
-        const checkpointEarly = taskCheckpointMessage(controller.state.tasks);
-        const estimateText = (text: string): number =>
-          Math.ceil(text.length / 4);
-        const prefsText = preferences.length
-          ? [
-              "Persistent user preferences. Follow these instructions in every response. The language of the current message does not override a language preference. Change a preference only when the user explicitly asks to do so. System policies and explicit conflicting requests take precedence:",
-              ...preferences.map((item) => `- ${item.text}`),
-            ].join("\n")
-          : "";
-        const extraTokens =
-          estimateText(prefsText) +
-          stableParts.reduce(
-            (sum, entry) => sum + estimateText(entry.content),
-            0,
-          ) +
-          turnParts.reduce(
-            (sum, entry) => sum + estimateText(entry.content),
-            0,
-          ) +
-          estimateText(fileMention.context) +
-          estimateText(checkpointEarly ?? "");
-        const toolDefs = taskAwareTools(controller);
-        const toolTokens = Math.ceil(
-          toolDefs.reduce(
-            (sum, tool) =>
-              sum +
-              tool.name.length +
-              tool.description.length +
-              JSON.stringify(tool.parameters ?? {}).length,
-            0,
-          ) / 4,
-        );
-        const window = selectRequestWindow(messages, {
-          contextWindow: controller.state.contextWindow,
-          toolLimitTokens: controller.config.compact_prune_tool_tokens ?? 2000,
-          recentMessages: controller.config.context_recent_messages ?? 24,
-          reserveTokens: 8000 + extraTokens,
-          toolTokens,
+  // ponytail: no 500ms elapsed timer — elapsedMs is write-only mid-turn
+  // (nothing renders it live) and each tick re-rendered the whole tree.
+  // The final value is still computed in turn.ts when the turn ends.
+  await executeTurn({
+    state,
+    adapter: controller.adapter,
+    model: splitRoute(state.model)[1],
+    variant: state.variant,
+    messages: controller.messages,
+    messagesForRequest: (messages) => {
+      const preferences = loadPreferences().filter((item) => item.enabled);
+      const stableParts = contextContributions.filter(
+        (entry) => entry.phase === "stable",
+      );
+      const turnParts = contextContributions.filter(
+        (entry) => entry.phase !== "stable",
+      );
+      const checkpointEarly = taskCheckpointMessage(controller.state.tasks);
+      const estimateText = (text: string): number => Math.ceil(text.length / 4);
+      const prefsText = preferences.length
+        ? [
+            "Persistent user preferences. Follow these instructions in every response. The language of the current message does not override a language preference. Change a preference only when the user explicitly asks to do so. System policies and explicit conflicting requests take precedence:",
+            ...preferences.map((item) => `- ${item.text}`),
+          ].join("\n")
+        : "";
+      const extraTokens =
+        estimateText(prefsText) +
+        stableParts.reduce(
+          (sum, entry) => sum + estimateText(entry.content),
+          0,
+        ) +
+        turnParts.reduce((sum, entry) => sum + estimateText(entry.content), 0) +
+        estimateText(fileMention.context) +
+        estimateText(checkpointEarly ?? "");
+      const toolDefs = taskAwareTools(controller);
+      const toolTokens = Math.ceil(
+        toolDefs.reduce(
+          (sum, tool) =>
+            sum +
+            tool.name.length +
+            tool.description.length +
+            JSON.stringify(tool.parameters ?? {}).length,
+          0,
+        ) / 4,
+      );
+      const window = selectRequestWindow(messages, {
+        contextWindow: controller.state.contextWindow,
+        toolLimitTokens: controller.config.compact_prune_tool_tokens ?? 2000,
+        recentMessages: controller.config.context_recent_messages ?? 24,
+        reserveTokens: 8000 + extraTokens,
+        toolTokens,
+      });
+      const budgeted = window.messages;
+      const requestMessages = [];
+      if (prefsText)
+        requestMessages.push({
+          role: "system" as const,
+          content: prefsText,
         });
-        const budgeted = window.messages;
-        const requestMessages = [];
-        if (prefsText)
-          requestMessages.push({
-            role: "system" as const,
-            content: prefsText,
-          });
-        for (const contribution of stableParts)
+      for (const contribution of stableParts)
+        requestMessages.push({
+          role: "system" as const,
+          content: contribution.content,
+        });
+      if (turnParts.length) {
+        const lastUserIndex = budgeted.findLastIndex(
+          (message) => message.role === "user",
+        );
+        const insertionIndex =
+          lastUserIndex < 0 ? budgeted.length : lastUserIndex;
+        requestMessages.push(...budgeted.slice(0, insertionIndex));
+        for (const contribution of turnParts)
           requestMessages.push({
             role: "system" as const,
             content: contribution.content,
           });
-        if (turnParts.length) {
-          const lastUserIndex = budgeted.findLastIndex(
-            (message) => message.role === "user",
-          );
-          const insertionIndex =
-            lastUserIndex < 0 ? budgeted.length : lastUserIndex;
-          requestMessages.push(...budgeted.slice(0, insertionIndex));
-          for (const contribution of turnParts)
-            requestMessages.push({
-              role: "system" as const,
-              content: contribution.content,
-            });
-          requestMessages.push(...budgeted.slice(insertionIndex));
-        } else {
-          requestMessages.push(...budgeted);
-        }
-        controller.bus.emit(
-          "prompt.assembled",
-          workflowEvent(
-            {
-              "context.included": window.included,
-              "context.omitted": window.omitted,
-              "context.recent_turns": window.recentTurns,
-            },
-            { sessionId: controller.session.id },
-          ),
-        );
-        controller.observability?.recordEvent("prompt.assembled", {
-          "context.included": window.included,
-          "context.omitted": window.omitted,
-          "context.recent_turns": window.recentTurns,
+        requestMessages.push(...budgeted.slice(insertionIndex));
+      } else {
+        requestMessages.push(...budgeted);
+      }
+      controller.bus.emit(
+        "prompt.assembled",
+        workflowEvent(
+          {
+            "context.included": window.included,
+            "context.omitted": window.omitted,
+            "context.recent_turns": window.recentTurns,
+          },
+          { sessionId: controller.session.id },
+        ),
+      );
+      controller.observability?.recordEvent("prompt.assembled", {
+        "context.included": window.included,
+        "context.omitted": window.omitted,
+        "context.recent_turns": window.recentTurns,
+      });
+      if (checkpointEarly)
+        requestMessages.push({
+          role: "user" as const,
+          content: checkpointEarly,
         });
-        if (checkpointEarly)
-          requestMessages.push({
-            role: "user" as const,
-            content: checkpointEarly,
-          });
-        return withFileContext(requestMessages, fileMention.context);
-      },
-      stablePrefixMessages:
-        Number(loadPreferences().some((item) => item.enabled)) +
-        contextContributions.filter((entry) => entry.phase === "stable")
-          .length +
-        controller.messages.filter((message) => message.role === "system")
-          .length,
-      cacheKey: controller.session.id,
-      tools: taskAwareTools(controller),
-      allowlist: controller.config.allowlist,
-      ask: controller.ask,
-      bus: controller.bus,
-      readOnly: false,
-      hooks: controller.registry.hooks,
-      session: controller.session,
-      interrupted: () => controller.isInterrupted(),
-      signal: controller.signal,
-      maxTurns: controller.maxTurns,
-      maxToolCalls: controller.maxToolCalls,
-      maxInputTokensPerTurn: controller.maxInputTokensPerTurn,
-      onText: controller.onText,
-      onReasoning: controller.onReasoning,
-      bump: controller.bump,
-      bumpStream: () => controller.bumpStreamNow(),
-      observability: controller.observability,
-      turnId,
-      onContextLimit: () => {
-        if (controller.config.compact_auto === false) {
-          notify(
-            controller.state,
-            "automatic compaction disabled; use /compact",
-          );
-          return Promise.resolve();
-        }
+      return withFileContext(requestMessages, fileMention.context);
+    },
+    stablePrefixMessages:
+      Number(loadPreferences().some((item) => item.enabled)) +
+      contextContributions.filter((entry) => entry.phase === "stable").length +
+      controller.messages.filter((message) => message.role === "system").length,
+    cacheKey: controller.session.id,
+    tools: taskAwareTools(controller),
+    allowlist: controller.config.allowlist,
+    ask: controller.ask,
+    bus: controller.bus,
+    readOnly: false,
+    hooks: controller.registry.hooks,
+    session: controller.session,
+    interrupted: () => controller.isInterrupted(),
+    signal: controller.signal,
+    maxTurns: controller.maxTurns,
+    maxToolCalls: controller.maxToolCalls,
+    maxInputTokensPerTurn: controller.maxInputTokensPerTurn,
+    onText: controller.onText,
+    onReasoning: controller.onReasoning,
+    bump: controller.bump,
+    bumpStream: () => controller.bumpStreamNow(),
+    observability: controller.observability,
+    turnId,
+    onContextLimit: () => {
+      if (controller.config.compact_auto === false) {
+        notify(controller.state, "automatic compaction disabled; use /compact");
+        return Promise.resolve();
+      }
+      controller.observability?.recordEvent("compaction.requested", {
+        ...compactionEventFields(controller.state, controller.state.model),
+        reason: "provider_context_limit",
+        error: controller.state.notice,
+      });
+      return compact(controller, true);
+    },
+    compactIfNeeded: async () => {
+      if (
+        controller.config.compact_auto !== false &&
+        (controller.state.tokens ?? 0) >= controller.state.threshold
+      ) {
         controller.observability?.recordEvent("compaction.requested", {
           ...compactionEventFields(controller.state, controller.state.model),
-          reason: "provider_context_limit",
-          error: controller.state.notice,
+          reason: "threshold_during_turn",
         });
-        return compact(controller, true);
-      },
-      compactIfNeeded: async () => {
-        if (
-          controller.config.compact_auto !== false &&
-          (controller.state.tokens ?? 0) >= controller.state.threshold
-        ) {
-          controller.observability?.recordEvent("compaction.requested", {
-            ...compactionEventFields(controller.state, controller.state.model),
-            reason: "threshold_during_turn",
-          });
-          await compact(controller);
-        }
-      },
-      traceAttributes: {
-        "turn.id": turnId,
-        session_id: controller.session.id,
-      },
-      verification: controller.verification,
-      continueTurn: async () => {
-        const queued = controller.takeQueuedMessages();
-        const message = queued[0];
-        if (!message) return false;
-        controller.restoreQueuedMessages(queued.slice(1));
-        controller.removeQueuedChatMessage(message.id);
-        controller.session.append({
-          ts: Date.now(),
-          turnId,
-          type: "meta",
-          payload: { kind: "queued-message-processing", id: message.id },
-        });
-        controller.messages.push({ role: "user", content: message.content });
-        controller.session.append({
-          ts: Date.now(),
-          turnId,
-          type: "user",
-          payload: { content: message.content },
-        });
-        appendChat(state, {
-          kind: "user",
-          content: message.content,
-          turnId,
-        });
-        return true;
-      },
-      shouldYield: () => controller.queuedMessages().length > 0,
-    });
-  } finally {
-    clearInterval(timer);
-  }
+        await compact(controller);
+      }
+    },
+    traceAttributes: {
+      "turn.id": turnId,
+      session_id: controller.session.id,
+    },
+    verification: controller.verification,
+    continueTurn: async () => {
+      const queued = controller.takeQueuedMessages();
+      const message = queued[0];
+      if (!message) return false;
+      controller.restoreQueuedMessages(queued.slice(1));
+      controller.removeQueuedChatMessage(message.id);
+      controller.session.append({
+        ts: Date.now(),
+        turnId,
+        type: "meta",
+        payload: { kind: "queued-message-processing", id: message.id },
+      });
+      controller.messages.push({ role: "user", content: message.content });
+      controller.session.append({
+        ts: Date.now(),
+        turnId,
+        type: "user",
+        payload: { content: message.content },
+      });
+      appendChat(state, {
+        kind: "user",
+        content: message.content,
+        turnId,
+      });
+      return true;
+    },
+    shouldYield: () => controller.queuedMessages().length > 0,
+  });
 }
 
 async function compactBeforeSubmission(controller: Controller): Promise<void> {

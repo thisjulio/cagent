@@ -3,6 +3,7 @@ import { defineTool, type ToolDefinition } from "@cagent/sdk";
 import type { SkillCatalog } from "./types";
 import { formatSkillToolOutput } from "./tool-result";
 import { listSkillResources, readSkillResource } from "./resources";
+import { resolveSkill } from "./resolve";
 
 export async function readSkill(
   catalog: SkillCatalog,
@@ -21,13 +22,13 @@ export function createReadSkillTool(catalog: SkillCatalog): ToolDefinition {
   const loadedSkills = new Set<string>();
   const tool = defineTool(
     "skill",
-    'Load a skill by its exact name from the available skill list. Omit "resource" for SKILL.md. To load a referenced file, pass its listed relative path in "resource".',
+    'Load a skill by its exact id from the available skill list. The "name" arg must be the exact id, never the _cagent title text or the description. Omit "resource" for SKILL.md. To load a referenced file, pass its listed relative path in "resource".',
     {
       type: "object",
       properties: {
         name: {
           type: "string",
-          description: "Exact skill name from the available skills.",
+          description: "Exact skill id from the available skills.",
           enum: [],
         },
         resource: { type: "string" },
@@ -59,7 +60,7 @@ async function readSkillTool(
   loadedSkills: Set<string>,
 ) {
   const name = typeof args.name === "string" ? args.name : "";
-  const skill = catalog.byName.get(name);
+  const skill = resolveSkill(catalog, name);
   if (!skill)
     return {
       output: `skill not found: ${name || "(missing name)"}. Available skills: ${
@@ -80,14 +81,14 @@ async function readSkillTool(
       ? args.resource
       : "SKILL.md";
   if (resource === "SKILL.md") {
-    if (loadedSkills.has(name))
+    if (loadedSkills.has(skill.metadata.name))
       return {
-        output: `skill already loaded this session: ${name}. Reuse its earlier instructions instead of loading it again.`,
+        output: `skill already loaded this session: ${skill.metadata.name}. Reuse its earlier instructions instead of loading it again.`,
       };
     const content = await readSkill(catalog, skill.metadata.name);
     if (content !== undefined) {
       const files = await listSkillResources(skill.directory);
-      loadedSkills.add(name);
+      loadedSkills.add(skill.metadata.name);
       return {
         output: formatSkillToolOutput(
           skill.metadata.name,
