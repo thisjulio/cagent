@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { useTheme } from "./theme-context";
 
-const FRAME_MS = 180;
-const BAND_WIDTH = 3;
+const FRAME_MS = 150;
+const WAVE_FREQUENCY = 0.5;
+const WAVE_SPEED = 0.8;
+const MIN_BRIGHTNESS = 0.4;
 
 export function ShimmerText({
   children,
@@ -18,39 +20,55 @@ export function ShimmerText({
     ),
     ({ segment }) => segment,
   );
-  const animate =
-    active && motion !== "reduced" && segments.length > BAND_WIDTH;
-  const phase = useShimmerPhase(animate, segments.length);
+  const animate = active && motion !== "reduced";
+  const frame = useShimmerFrame(animate);
+
+  if (!animate) {
+    return (
+      <text fg={color.accent} flexGrow={1} minWidth={0}>
+        {children}
+      </text>
+    );
+  }
 
   return (
-    <text fg={color.accent} flexGrow={1} minWidth={0}>
-      {animate
-        ? segments.map((segment, index) => {
-            const distance =
-              (index - phase + segments.length) % segments.length;
-            return (
-              <span
-                key={`${index}-${segment}`}
-                fg={distance < BAND_WIDTH ? color.text.primary : color.accent}
-              >
-                {segment}
-              </span>
-            );
-          })
-        : children}
-    </text>
+    <box flexDirection="row" flexGrow={1} minWidth={0}>
+      {segments.map((segment, index) => {
+        const wave = Math.sin((index - frame * WAVE_SPEED) * WAVE_FREQUENCY);
+        const brightness =
+          MIN_BRIGHTNESS + (1 - MIN_BRIGHTNESS) * ((wave + 1) / 2);
+        return (
+          <text
+            key={`${index}-${segment}`}
+            fg={scaleColor(color.accent, brightness)}
+          >
+            {segment}
+          </text>
+        );
+      })}
+    </box>
   );
 }
 
-function useShimmerPhase(animate: boolean, segmentCount: number): number {
-  const [phase, setPhase] = useState(0);
+function useShimmerFrame(animate: boolean): number {
+  const [frame, setFrame] = useState(0);
   useEffect(() => {
     if (!animate) return;
-    const timer = setInterval(
-      () => setPhase((value) => (value + 1) % segmentCount),
-      FRAME_MS,
-    );
+    const timer = setInterval(() => setFrame((value) => value + 1), FRAME_MS);
     return () => clearInterval(timer);
-  }, [animate, segmentCount]);
-  return phase;
+  }, [animate]);
+  return frame;
+}
+
+function scaleColor(hex: string, brightness: number): string {
+  const channels = hex.match(/[0-9a-f]{2}/gi);
+  if (!channels || channels.length < 3) return hex;
+  return `#${channels
+    .slice(0, 3)
+    .map((channel) =>
+      Math.round(Number.parseInt(channel, 16) * brightness)
+        .toString(16)
+        .padStart(2, "0"),
+    )
+    .join("")}`;
 }
