@@ -39,6 +39,8 @@ export function parseFileMentions(
   return mentions;
 }
 
+export const MAX_FILE_MENTION_CHARS = 6000;
+
 export function fileContextCharLimit(contextWindow: number): number {
   return Math.max(1_000, Math.floor(contextWindow * 0.2 * 4));
 }
@@ -74,7 +76,10 @@ export function buildFileContext(
           .slice(start - 1, end)
           .map((line, index) => `${start + index}: ${line}`);
         const header = `File: ${mention.path}${mention.start ? ` (lines ${start}-${end})` : ""}`;
-        const room = Math.max(0, remaining - header.length - 96);
+        const room = Math.min(
+          Math.max(0, remaining - header.length - 96),
+          Math.max(0, MAX_FILE_MENTION_CHARS - header.length - 96),
+        );
         let selected = "";
         for (const line of selectedLines) {
           if (selected.length + line.length + 1 > room) break;

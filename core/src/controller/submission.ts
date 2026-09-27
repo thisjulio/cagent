@@ -17,6 +17,7 @@ import {
   buildFileContext,
   withFileContext,
 } from "../context/file-mentions";
+import { selectRequestWindow } from "../context/request-window";
 export async function submitMessage(
   controller: Controller,
   text: string,
@@ -104,65 +105,109 @@ export async function submitMessage(
       messages: controller.messages,
       messagesForRequest: (messages) => {
         const preferences = loadPreferences().filter((item) => item.enabled);
-        const requestMessages = [];
-        if (preferences.length)
-          requestMessages.push({
-            role: "system" as const,
-            content: [
+        const stableParts = contextContributions.filter(
+          (entry) => entry.phase === "stable",
+        );
+        const turnParts = contextContributions.filter(
+          (entry) => entry.phase !== "stable",
+        );
+        const checkpointEarly = taskCheckpointMessage(controller.state.tasks);
+        const estimateText = (text: string): number =>
+          Math.ceil(text.length / 4);
+        const prefsText = preferences.length
+          ? [
               "Persistent user preferences. Follow these instructions in every response. The language of the current message does not override a language preference. Change a preference only when the user explicitly asks to do so. System policies and explicit conflicting requests take precedence:",
               ...preferences.map((item) => `- ${item.text}`),
-            ].join("\n"),
+            ].join("\n")
+          : "";
+        const extraTokens =
+          estimateText(prefsText) +
+          stableParts.reduce(
+            (sum, entry) => sum + estimateText(entry.content),
+            0,
+          ) +
+          turnParts.reduce(
+            (sum, entry) => sum + estimateText(entry.content),
+            0,
+          ) +
+          estimateText(fileMention.context) +
+          estimateText(checkpointEarly ?? "");
+        const toolDefs = taskAwareTools(controller);
+        const toolTokens = Math.ceil(
+          toolDefs.reduce(
+            (sum, tool) =>
+              sum +
+              tool.name.length +
+              tool.description.length +
+              JSON.stringify(tool.parameters ?? {}).length,
+            0,
+          ) / 4,
+        );
+        const window = selectRequestWindow(messages, {
+          contextWindow: controller.state.contextWindow,
+          toolLimitTokens: controller.config.compact_prune_tool_tokens ?? 2000,
+          recentMessages: controller.config.context_recent_messages ?? 24,
+          reserveTokens: 8000 + extraTokens,
+          toolTokens,
+        });
+        const budgeted = window.messages;
+        const requestMessages = [];
+        if (prefsText)
+          requestMessages.push({
+            role: "system" as const,
+            content: prefsText,
           });
-        for (const contribution of contextContributions.filter(
-          (entry) => entry.phase === "stable",
-        ))
+        for (const contribution of stableParts)
           requestMessages.push({
             role: "system" as const,
             content: contribution.content,
           });
-        const turnContext = contextContributions.filter(
-          (entry) => entry.phase !== "stable",
-        );
-        if (turnContext.length) {
-          const lastUserIndex = messages.findLastIndex(
+        if (turnParts.length) {
+          const lastUserIndex = budgeted.findLastIndex(
             (message) => message.role === "user",
           );
           const insertionIndex =
-            lastUserIndex < 0 ? messages.length : lastUserIndex;
-          requestMessages.push(...messages.slice(0, insertionIndex));
-          for (const contribution of turnContext)
+            lastUserIndex < 0 ? budgeted.length : lastUserIndex;
+          requestMessages.push(...budgeted.slice(0, insertionIndex));
+          for (const contribution of turnParts)
             requestMessages.push({
               role: "system" as const,
               content: contribution.content,
             });
-          requestMessages.push(...messages.slice(insertionIndex));
+          requestMessages.push(...budgeted.slice(insertionIndex));
         } else {
-          requestMessages.push(...messages);
+          requestMessages.push(...budgeted);
         }
         controller.bus.emit(
           "prompt.assembled",
           workflowEvent(
             {
-              "context.included": messages.length,
-              "context.omitted": 0,
-              "context.recent_turns": 0,
+              "context.included": window.included,
+              "context.omitted": window.omitted,
+              "context.recent_turns": window.recentTurns,
             },
             { sessionId: controller.session.id },
           ),
         );
         controller.observability?.recordEvent("prompt.assembled", {
-          "context.included": messages.length,
-          "context.omitted": 0,
-          "context.recent_turns": 0,
+          "context.included": window.included,
+          "context.omitted": window.omitted,
+          "context.recent_turns": window.recentTurns,
         });
-        const taskCheckpoint = taskCheckpointMessage(controller.state.tasks);
-        if (taskCheckpoint)
+        if (checkpointEarly)
           requestMessages.push({
             role: "user" as const,
-            content: taskCheckpoint,
+            content: checkpointEarly,
           });
         return withFileContext(requestMessages, fileMention.context);
       },
+      stablePrefixMessages:
+        Number(loadPreferences().some((item) => item.enabled)) +
+        contextContributions.filter((entry) => entry.phase === "stable")
+          .length +
+        controller.messages.filter((message) => message.role === "system")
+          .length,
+      cacheKey: controller.session.id,
       tools: taskAwareTools(controller),
       allowlist: controller.config.allowlist,
       ask: controller.ask,
@@ -174,6 +219,7 @@ export async function submitMessage(
       signal: controller.signal,
       maxTurns: controller.maxTurns,
       maxToolCalls: controller.maxToolCalls,
+      maxInputTokensPerTurn: controller.maxInputTokensPerTurn,
       onText: controller.onText,
       onReasoning: controller.onReasoning,
       bump: controller.bump,

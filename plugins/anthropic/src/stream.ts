@@ -149,10 +149,11 @@ export async function* streamMessages(
   const { system, messages, tools } = buildRequest(
     request.messages,
     request.tools,
+    request.cache?.stablePrefixMessages,
   );
   const requestSystem = [
     { type: "text" as const, text: billingAttribution(request.messages) },
-    ...(system ? [{ type: "text" as const, text: system }] : []),
+    ...(system ?? []),
   ];
   const thinking = thinkingFor(request.model, request.variant);
   const effort = effortFor(request.model, request.variant);

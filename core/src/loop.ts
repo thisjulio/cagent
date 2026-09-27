@@ -7,6 +7,13 @@ import {
 } from "@cagent/sdk";
 import { lastUserMessage, workflowPayload } from "./loop-utils";
 import { runToolCall } from "./tool-loop";
+import {
+  DEFAULT_MAX_INPUT_TOKENS_PER_TURN,
+  DEFAULT_MAX_TOOL_CALLS,
+  DEFAULT_MAX_TURNS,
+  budgetError,
+  estimateMessageTokens,
+} from "./loop-budget";
 import type { TurnOpts, TurnRecord, TurnResult } from "./loop-types";
 import type { StreamOpts } from "./loop-types";
 
@@ -16,6 +23,33 @@ export type {
   TurnOpts,
   TurnResult,
 } from "./loop-types";
+
+function countLeadingSystem(messages: { role: string }[]): number {
+  const index = messages.findIndex((message) => message.role !== "system");
+  return index < 0 ? messages.length : index;
+}
+
+function estimateToolTokens(
+  tools: { name: string; description: string; parameters: unknown }[],
+): number {
+  if (!tools.length) return 0;
+  const chars = tools.reduce(
+    (total, tool) =>
+      total +
+      tool.name.length +
+      tool.description.length +
+      JSON.stringify(tool.parameters ?? {}).length,
+    0,
+  );
+  return Math.ceil(chars / 4);
+}
+
+export function estimateRequestTokens(
+  messages: Parameters<typeof estimateMessageTokens>[0],
+  tools: { name: string; description: string; parameters: unknown }[] = [],
+): number {
+  return estimateMessageTokens(messages) + estimateToolTokens(tools);
+}
 
 export async function streamOnce(opts: StreamOpts): Promise<{
   text: string;
@@ -27,6 +61,16 @@ export async function streamOnce(opts: StreamOpts): Promise<{
   for (let i = 0; i < attempts; i++) {
     try {
       const observability = opts.observability ?? noopObservability;
+      const requestMessages = opts.messagesForRequest
+        ? opts.messagesForRequest(opts.messages)
+        : opts.messages;
+      const effectiveStable =
+        opts.stablePrefixMessages !== undefined
+          ? Math.min(
+              opts.stablePrefixMessages,
+              countLeadingSystem(requestMessages),
+            )
+          : undefined;
       const request: any = await trace(
         observability,
         "provider.prepare_call",
@@ -34,10 +78,16 @@ export async function streamOnce(opts: StreamOpts): Promise<{
           opts.adapter.prepare_call({
             model: opts.model,
             variant: opts.variant,
-            messages: opts.messagesForRequest
-              ? opts.messagesForRequest(opts.messages)
-              : opts.messages,
+            messages: requestMessages,
             tools: opts.tools,
+            ...(effectiveStable !== undefined
+              ? {
+                  cache: {
+                    stablePrefixMessages: effectiveStable,
+                    ...(opts.cacheKey ? { key: opts.cacheKey } : {}),
+                  },
+                }
+              : {}),
           }),
         { "provider.model": opts.model, ...opts.traceAttributes },
       );
@@ -115,6 +165,28 @@ export async function streamOnce(opts: StreamOpts): Promise<{
   throw lastErr;
 }
 
+async function checkRequestBudget(
+  initial: Parameters<typeof estimateMessageTokens>[0],
+  opts: TurnOpts & { messagesForRequest?: StreamOpts["messagesForRequest"] },
+): Promise<Parameters<typeof estimateMessageTokens>[0]> {
+  const limit = opts.maxInputTokensPerTurn ?? DEFAULT_MAX_INPUT_TOKENS_PER_TURN;
+  const tools = (opts as StreamOpts).tools ?? [];
+  const estimate =
+    opts.adapter.estimate_tokens?.(opts.model, initial) ??
+    estimateRequestTokens(initial, tools);
+  if (estimate === undefined || estimate <= limit) return initial;
+  await opts.compactIfNeeded?.().catch(() => {});
+  const retryMessages = opts.messagesForRequest
+    ? opts.messagesForRequest(opts.messages)
+    : opts.messages;
+  const retry =
+    opts.adapter.estimate_tokens?.(opts.model, retryMessages) ??
+    estimateRequestTokens(retryMessages, tools);
+  if (retry !== undefined && retry > limit)
+    throw budgetError("ERR_TURN_BUDGET", "turn input budget exceeded");
+  return retryMessages;
+}
+
 export async function runTurn(opts: TurnOpts): Promise<TurnResult> {
   const overrides = opts.adapter.tool_overrides?.() ?? {};
   const nameToCanonical = overrideNameMap(overrides);
@@ -146,15 +218,28 @@ export async function runTurn(opts: TurnOpts): Promise<TurnResult> {
     "agent.turn",
     async () => {
       for (;;) {
-        if (++turns > (opts.maxTurns ?? Infinity))
-          throw new Error("maximum turns exceeded");
+        if (++turns > (opts.maxTurns ?? DEFAULT_MAX_TURNS)) {
+          await opts.compactIfNeeded?.().catch(() => {});
+          throw budgetError("ERR_TURN_BUDGET", "turn budget exceeded");
+        }
         await opts.compactIfNeeded?.();
         opts.bus.emit(
           "prompt.assembling",
           workflowPayload(opts, { query: lastUserMessage(opts.messages) }),
         );
+        let requestMessages = streamOpts.messagesForRequest
+          ? streamOpts.messagesForRequest(streamOpts.messages)
+          : streamOpts.messages;
+        requestMessages = await checkRequestBudget(requestMessages, {
+          ...opts,
+          messages: streamOpts.messages,
+          messagesForRequest: streamOpts.messagesForRequest,
+          tools: streamOpts.tools,
+        });
         const result = await streamOnce({
           ...streamOpts,
+          messages: requestMessages,
+          messagesForRequest: undefined,
           onUsage: (usage) => {
             if (usage.inputTokens !== undefined)
               inputTokens = usage.inputTokens;
@@ -197,7 +282,7 @@ export async function runTurn(opts: TurnOpts): Promise<TurnResult> {
             const message = [
               "Mandatory verification failed. Do not report completion.",
               "Fix the errors, then stop so verification can run again.",
-              result.output,
+              result.output.slice(0, 4000),
             ].join("\n\n");
             opts.messages.push({ role: "user", content: message });
             records.push({ role: "assistant", content: message });
@@ -207,8 +292,8 @@ export async function runTurn(opts: TurnOpts): Promise<TurnResult> {
           continue;
         }
         for (const tc of streamedToolCalls) {
-          if (++toolCalls > (opts.maxToolCalls ?? Infinity))
-            throw new Error("maximum tool calls exceeded");
+          if (++toolCalls > (opts.maxToolCalls ?? DEFAULT_MAX_TOOL_CALLS))
+            throw budgetError("ERR_TOOL_BUDGET", "tool budget exceeded");
           await runToolCall(ctx, tc);
           if (ctx.records.at(-1)?.changesWorkspace) {
             verifiedChanges = false;

@@ -7,6 +7,8 @@ import { parseToolCall, type IncomingToolCall } from "./tool-call";
 import { ensureToolTitle } from "./tool-title";
 import { classifyTool } from "./tool-category";
 
+export const TOOL_OUTPUT_LLM_LIMIT = 4000;
+
 export interface ToolLoopCtx {
   opts: TurnOpts;
   nameToCanonical: Record<string, string>;
@@ -73,10 +75,14 @@ export async function runToolCall(
     const current = assistant.tool_calls.find((call) => call.id === tc.id);
     if (current) Object.assign(current, normalizedCall);
   }
+  const llmOutput =
+    result.output.length > TOOL_OUTPUT_LLM_LIMIT
+      ? `${result.output.slice(0, TOOL_OUTPUT_LLM_LIMIT)}\n[tool output truncated for the model; full output retained in the transcript]`
+      : result.output;
   opts.messages.push({
     role: "tool",
     tool_call_id: tc.id,
-    content: result.output,
+    content: llmOutput,
   });
   ctx.records.push({
     role: "tool",
@@ -99,6 +105,7 @@ export async function runToolCall(
     workflowPayload(opts, {
       tool: toolName,
       content: result.output.slice(0, 4000),
+      outputLength: result.output.length,
       isError: result.isError === true,
       evidence: result.evidence,
     }),

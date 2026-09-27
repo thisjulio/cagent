@@ -72,7 +72,7 @@ describe("prompt.assembled workflow event", () => {
     expect(assembled?.attributes).toMatchObject({
       "context.included": 8,
       "context.omitted": 0,
-      "context.recent_turns": 0,
+      "context.recent_turns": 2,
     });
     expect(
       fs

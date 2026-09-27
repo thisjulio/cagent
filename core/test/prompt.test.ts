@@ -32,7 +32,7 @@ describe("buildSystemPrompt", () => {
     expect(p).toContain("once before acting");
     expect(p).toContain("Do not call `list` just to check first");
     expect(p).toContain(
-      "do not call `list` solely to prepare the final answer",
+      "Do not call `list` solely to prepare the final answer",
     );
     expect(p).not.toContain("call `list` and inspect its returned state");
   });

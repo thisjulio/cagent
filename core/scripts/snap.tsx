@@ -93,6 +93,21 @@ function multilineToolScenarios(): ChatItem[] {
     }),
     withTurn({
       kind: "tool",
+      toolName: "subagent",
+      toolCategory: "agent",
+      title: ensureToolTitle(undefined, "subagent", "agent", {
+        name: "general",
+      }),
+      cmd: "general",
+      detail: "Trace how read and search tool rows are rendered",
+      summary: "completed",
+      durationMs: 8400,
+      content:
+        "Read and search use separate fields to represent their targets.",
+      running: false,
+    }),
+    withTurn({
+      kind: "tool",
       toolName: "edit_file",
       toolCategory: "write",
       title: "Multiply price by quantity",
@@ -258,6 +273,53 @@ controller.state.chat = [
   withTurn({ kind: "assistant", content: "One test failed." }, FAILURE_TURN_ID),
 ];
 controller.state.title = "tool failure";
+await frame(80);
+
+const SUBAGENT_TURN_ID = "subagent-turn";
+controller.state.tasks = [];
+controller.state.chat = [
+  withTurn(
+    { kind: "user", content: "@general inspect the tool timeline" },
+    SUBAGENT_TURN_ID,
+  ),
+  withTurn(
+    {
+      kind: "assistant",
+      content: "",
+      subagent: "general",
+      subagentHeader: true,
+      running: true,
+    },
+    SUBAGENT_TURN_ID,
+  ),
+];
+controller.state.busy = true;
+controller.state.title = "subagent running";
+await frame(80);
+
+controller.state.chat = [
+  withTurn(
+    {
+      kind: "assistant",
+      content: "",
+      subagent: "general",
+      subagentHeader: true,
+      durationMs: 8400,
+    },
+    SUBAGENT_TURN_ID,
+  ),
+  withTurn(
+    {
+      kind: "assistant",
+      content:
+        "Read and search use separate fields to represent their targets.",
+      subagent: "general",
+    },
+    SUBAGENT_TURN_ID,
+  ),
+];
+controller.state.busy = false;
+controller.state.title = "subagent complete";
 await frame(80);
 
 controller.state.chat = [];

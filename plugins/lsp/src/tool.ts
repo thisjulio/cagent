@@ -13,6 +13,19 @@ export function lspTool(ctx: PluginContext) {
   const { getClient, closeAll } = createClientPool();
   const servers = configuredServers(ctx.config.lsp);
   ctx.registerHook({
+    name: "lsp-warmup",
+    phase: "session_start",
+    handle: async () => {
+      // ponytail: fire-and-forget; the handle returns now, servers warm
+      // in background while the first prompt is being typed/read.
+      void Promise.all(
+        Object.values(servers).map((config) =>
+          getClient(process.cwd(), config).catch(() => undefined),
+        ),
+      );
+    },
+  });
+  ctx.registerHook({
     name: "lsp-after-edit",
     phase: "after_tool",
     handle: async (event) => {
@@ -43,9 +56,11 @@ export function lspTool(ctx: PluginContext) {
           path: result.path,
           ...(result.status === "success"
             ? {
+                server: result.server,
                 diagnosticsFound: result.diagnosticCount,
                 impactFound: Boolean(result.impact),
                 durationMs: result.durationMs,
+                ...(result.warnings ? { warnings: result.warnings } : {}),
               }
             : result.status === "error"
               ? { error: result.error, durationMs: result.durationMs }
@@ -97,8 +112,11 @@ export function lspTool(ctx: PluginContext) {
       try {
         if (String(args.operation) === "diagnostics") {
           const collected = await collectDiagnostics(servers, getClient, file);
+          const partial = collected.errors.length
+            ? `\n(partial: ${collected.errors.join("; ")})`
+            : "";
           return {
-            output: `${collected.names.join("+") || "lsp"} diagnostics ${file}\n${collected.text ?? "no diagnostics"}`,
+            output: `${collected.names.join("+") || "lsp"} diagnostics ${file}\n${collected.text ?? "no diagnostics"}${partial}`,
           };
         }
         const single = preferSingleServer(selected)!;
@@ -139,6 +157,7 @@ type ChangeResult =
       server: string;
       diagnostics?: string;
       diagnosticCount: number;
+      warnings?: string;
       impact?: string;
       durationMs: number;
     }
@@ -196,6 +215,10 @@ async function checkChange(
     status: "success" as const,
     diagnostics: diagnosticsResult.value.text,
     diagnosticCount: diagnosticsResult.value.count,
+    warnings:
+      diagnosticsResult.value.errors.length > 0
+        ? diagnosticsResult.value.errors.join("; ")
+        : undefined,
     impact: impact ?? undefined,
     durationMs,
   };
@@ -215,8 +238,14 @@ function formatResult(result: ChangeResult): string {
   const status = result.status === "error" ? "failed" : "complete";
   const details = [
     result.status === "error" ? `  ${result.error}` : undefined,
+    result.status === "success" && result.warnings
+      ? `  (partial: ${result.warnings})`
+      : undefined,
     diagnostics,
     impact,
+    result.status === "success" && result.diagnosticCount
+      ? "  Fix these findings before finishing; if one is a false positive, say so."
+      : undefined,
     result.status === "success" && !result.diagnosticCount && !result.impact
       ? "  no diagnostics or impact found"
       : undefined,

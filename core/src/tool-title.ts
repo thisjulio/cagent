@@ -31,8 +31,14 @@ export function fallbackToolTitle(
   }
   if (category === "read")
     return basename ? `Read ${basename}` : `Read ${tool}`;
-  if (category === "search")
-    return `Search "${String(args.pattern ?? "")}"`.slice(0, 24);
+  if (category === "search") {
+    const pattern = String(args.pattern ?? "");
+    if (tool === "list_files") return `List files "${pattern || "**/*"}"`;
+    if (tool === "search_ast") return `Search AST "${pattern}"`;
+    return `Search "${pattern}"`;
+  }
+  if (category === "agent" && tool === "subagent")
+    return `Subagent @${String(args.name ?? "agent")}`;
   if (category === "shell") {
     const command = String(args.command ?? args.cmd ?? "").trim();
     return command ? `Run ${command.split(/\s+/)[0]}` : tool;

@@ -28,7 +28,9 @@ describe("Anthropic request wire conversion", () => {
       ],
       [],
     );
-    expect(request.system).toBe("System instructions");
+    expect(request.system).toEqual([
+      { type: "text", text: "System instructions" },
+    ]);
     expect(request.messages).toEqual([
       {
         role: "assistant",
@@ -124,5 +126,64 @@ describe("Anthropic request wire conversion", () => {
       "assistant",
       "user",
     ]);
+  });
+
+  test("includes all messages and keeps cache on system when prefix is overestimated", () => {
+    const request = buildRequest(
+      [
+        { role: "system", content: "S" },
+        { role: "user", content: "one" },
+        { role: "assistant", content: "two" },
+      ],
+      [],
+      5,
+    );
+    expect(request.system).toHaveLength(1);
+    expect(request.system?.[0]?.cache_control).toEqual({
+      type: "ephemeral",
+    });
+    expect(request.messages.map((message) => message.role)).toEqual([
+      "user",
+      "assistant",
+    ]);
+    expect(
+      request.messages.flatMap((message) => message.content),
+    ).not.toContainEqual(
+      expect.objectContaining({ cache_control: { type: "ephemeral" } }),
+    );
+  });
+
+  test("marks the final tool schema as the stable cache boundary", () => {
+    const request = buildRequest(
+      [{ role: "system", content: "Instructions" }],
+      [
+        { name: "read_file", description: "Read", parameters: {} },
+        { name: "search", description: "Search", parameters: {} },
+      ],
+    );
+    expect(request.tools?.[0]?.cache_control).toBeUndefined();
+    expect(request.tools?.[1]?.cache_control).toEqual({ type: "ephemeral" });
+  });
+
+  test("marks the latest stable system message when the prefix covers it", () => {
+    const request = buildRequest(
+      [
+        { role: "system", content: "Instructions" },
+        { role: "system", content: "Stable context" },
+        { role: "user", content: "Question" },
+      ],
+      [],
+      2,
+    );
+    expect(request.system?.[1]).toMatchObject({
+      type: "text",
+      text: "Stable context",
+      cache_control: { type: "ephemeral" },
+    });
+    expect(
+      request.messages.flatMap((message) => message.content),
+    ).not.toContainEqual(
+      expect.objectContaining({ cache_control: { type: "ephemeral" } }),
+    );
   });
 });

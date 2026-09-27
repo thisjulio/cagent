@@ -34,6 +34,7 @@ export type ChatItem = {
   denied?: boolean;
   running?: boolean;
   summary?: string;
+  detail?: string;
   expanded?: boolean;
   timestamp?: number;
   queueStatus?: "queued" | "processing";
@@ -184,6 +185,7 @@ export interface ControllerDeps {
   sessionId?: string;
   maxTurns?: number;
   maxToolCalls?: number;
+  maxInputTokensPerTurn?: number;
   readOnly?: boolean;
   permissionMode?: "ask" | "auto" | "read-only";
   onText?: (text: string) => void;

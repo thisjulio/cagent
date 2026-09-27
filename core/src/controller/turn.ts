@@ -21,6 +21,8 @@ export type TurnHost = {
   variant?: string;
   messages: Message[];
   messagesForRequest?: (messages: Message[]) => Message[];
+  stablePrefixMessages?: number;
+  cacheKey?: string;
   tools: ToolDefinition[];
   allowlist: string[];
   ask: ToolAsk;
@@ -38,6 +40,7 @@ export type TurnHost = {
   bumpStream: () => void;
   maxTurns?: number;
   maxToolCalls?: number;
+  maxInputTokensPerTurn?: number;
   onText?: (text: string) => void;
   onReasoning?: (text: string) => void;
   observability?: Observability;
@@ -173,6 +176,8 @@ async function runAgentTurn(
     variant: host.variant,
     messages: host.messages,
     messagesForRequest: host.messagesForRequest,
+    stablePrefixMessages: host.stablePrefixMessages,
+    cacheKey: host.cacheKey,
     tools: host.tools,
     allowlist: host.allowlist,
     ask: host.ask,
@@ -197,6 +202,7 @@ async function runAgentTurn(
     interrupted: host.interrupted,
     maxTurns: host.maxTurns,
     maxToolCalls: host.maxToolCalls,
+    maxInputTokensPerTurn: host.maxInputTokensPerTurn,
     observability: host.observability ?? noopObservability,
     traceAttributes: host.traceAttributes,
     verification: host.verification,

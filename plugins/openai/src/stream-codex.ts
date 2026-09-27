@@ -29,6 +29,7 @@ export async function* streamCodex(
       tool_choice: "auto",
       stream: true,
       store: false,
+      ...(request.cache?.key ? { prompt_cache_key: request.cache.key } : {}),
       reasoning: { effort: request.variant ?? "low", summary: "detailed" },
       ...(request.tools.length
         ? {

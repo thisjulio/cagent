@@ -12,17 +12,28 @@ describe("layoutToolRow", () => {
     duration: "1.4s",
   };
 
-  test("fits target widths and shortens the path to its basename", () => {
+  test("keeps paths separate from the compact title row", () => {
     for (const width of [56, 76, 116]) {
       const row = layoutToolRow(parts, width);
       expect(
         row.left.length + (row.right ? row.right.length + 2 : 0),
       ).toBeLessThanOrEqual(width);
     }
-    expect(layoutToolRow(parts, 56).right).not.toContain("plugins/");
+    const row = layoutToolRow(parts, 56);
+    expect(row.right).not.toContain("plugins/");
+    expect(row.path).toBe("plugins/anthropic/src/attribution.ts");
   });
 
-  test("drops duration, then path, then truncates the title in that order", () => {
+  test("preserves the nearest path segments when the path is too long", () => {
+    expect(
+      layoutToolRow(
+        { status: "✓", title: "Read file.ts", path: "a/long/tree/src/file.ts" },
+        20,
+      ).path,
+    ).toBe("…/src/file.ts");
+  });
+
+  test("drops duration before truncating a long title", () => {
     const row = layoutToolRow(
       {
         status: "✓",
@@ -34,7 +45,7 @@ describe("layoutToolRow", () => {
       40,
     );
     expect(row.right).not.toContain("2.0s");
-    expect(row.right).not.toContain("file.ts");
+    expect(row.path).toBe("a/long/path/file.ts");
     expect(row.left).toContain("…");
     expect(row.left).toContain("A reasonably");
   });
@@ -49,7 +60,8 @@ describe("layoutToolRow", () => {
       },
       60,
     );
-    expect(row.right).toBe("src/orders/total.ts");
+    expect(row.path).toBe("src/orders/total.ts");
+    expect(row.right).toBe("");
   });
 
   test("keeps shell summary and duration grouped together", () => {

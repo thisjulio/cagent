@@ -1,20 +1,24 @@
 import { toContentParts, type Message } from "@cagent/sdk";
 
-interface ToolUse {
-  type: "tool_use";
-  id: string;
-  name: string;
-  input: unknown;
-}
-
 type AnthropicBlock =
-  | { type: "text"; text: string }
+  | {
+      type: "text";
+      text: string;
+      cache_control?: { type: "ephemeral" };
+    }
   | {
       type: "image";
       source: { type: "base64"; media_type: string; data: string };
+      cache_control?: { type: "ephemeral" };
     }
   | { type: "tool_use"; id: string; name: string; input: unknown }
   | { type: "tool_result"; tool_use_id: string; content: unknown };
+
+type AnthropicTextBlock = {
+  type: "text";
+  text: string;
+  cache_control?: { type: "ephemeral" };
+};
 
 function toImageBlock(
   url: string,
@@ -62,17 +66,34 @@ export function buildRequest(
     description: string;
     parameters: Record<string, unknown>;
   }[],
+  stablePrefixMessages = 0,
 ): {
-  system: string | undefined;
+  system: AnthropicTextBlock[] | undefined;
   messages: { role: "user" | "assistant"; content: AnthropicBlock[] }[];
   tools:
-    | { name: string; description: string; input_schema: unknown }[]
+    | {
+        name: string;
+        description: string;
+        input_schema: unknown;
+        cache_control?: { type: "ephemeral" };
+      }[]
     | undefined;
 } {
-  const system: string[] = [];
+  const system: AnthropicTextBlock[] = [];
   const body: { role: "user" | "assistant"; content: AnthropicBlock[] }[] = [];
 
-  for (const message of messages) {
+  let cacheBoundary: { kind: "system"; index: number } | undefined;
+  let stableMessageBoundary: number | undefined;
+  const firstNonSystem = messages.findIndex(
+    (message) => message.role !== "system",
+  );
+  const maxPrefix = firstNonSystem < 0 ? messages.length : firstNonSystem;
+  const effectivePrefix = Math.min(
+    Math.max(0, stablePrefixMessages),
+    maxPrefix,
+  );
+  for (const [messageIndex, message] of messages.entries()) {
+    const inPrefix = messageIndex < effectivePrefix;
     if (message.role === "system") {
       const text =
         typeof message.content === "string"
@@ -81,7 +102,13 @@ export function buildRequest(
               .filter((part) => part.type === "text")
               .map((part) => (part.type === "text" ? part.text : ""))
               .join("\n");
-      if (text.trim()) system.push(text);
+      if (text.trim()) {
+        system.push({ type: "text", text });
+        if (inPrefix) {
+          cacheBoundary = { kind: "system", index: system.length - 1 };
+          stableMessageBoundary = undefined;
+        }
+      }
       continue;
     }
 
@@ -94,6 +121,7 @@ export function buildRequest(
       const last = body.at(-1);
       if (last?.role === "user") last.content.push(block);
       else body.push({ role: "user", content: [block] });
+      // Tool results cannot carry an Anthropic cache breakpoint.
       continue;
     }
 
@@ -114,10 +142,33 @@ export function buildRequest(
         });
       }
     }
-    if (blocks.length) body.push({ role: message.role, content: blocks });
+    if (blocks.length) {
+      body.push({ role: message.role, content: blocks });
+      if (inPrefix) {
+        cacheBoundary = undefined;
+        const cacheable = blocks.findLastIndex(
+          (block) => block.type === "text" || block.type === "image",
+        );
+        if (cacheable >= 0) {
+          const eligible = body[body.length - 1]?.content;
+          if (
+            eligible?.[cacheable]?.type === "text" ||
+            eligible?.[cacheable]?.type === "image"
+          )
+            stableMessageBoundary = body.length - 1;
+        }
+      }
+    }
   }
 
-  const toolSchemas = tools.length
+  const toolSchemas:
+    | {
+        name: string;
+        description: string;
+        input_schema: unknown;
+        cache_control?: { type: "ephemeral" };
+      }[]
+    | undefined = tools.length
     ? tools.map((tool) => ({
         name: tool.name,
         description: tool.description,
@@ -125,8 +176,21 @@ export function buildRequest(
       }))
     : undefined;
 
+  if (toolSchemas?.length) {
+    toolSchemas[toolSchemas.length - 1]!.cache_control = { type: "ephemeral" };
+  } else if (cacheBoundary?.kind === "system") {
+    system[cacheBoundary.index]!.cache_control = { type: "ephemeral" };
+  } else if (stableMessageBoundary !== undefined) {
+    const blocks = body[stableMessageBoundary]?.content;
+    const lastCacheableBlock = blocks?.findLast(
+      (block) => block.type === "text" || block.type === "image",
+    );
+    if (lastCacheableBlock)
+      lastCacheableBlock.cache_control = { type: "ephemeral" };
+  }
+
   return {
-    system: system.length ? system.join("\n\n") : undefined,
+    system: system.length ? system : undefined,
     messages: body,
     tools: toolSchemas,
   };

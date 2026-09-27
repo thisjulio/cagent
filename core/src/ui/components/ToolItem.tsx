@@ -19,6 +19,8 @@ function lspOutput(content: string | undefined): string[] {
 }
 
 function rowTitle(item: ToolItemData): string {
+  if (item.toolName === "subagent" && item.title === "subagent")
+    return `Subagent @${item.cmd ?? "agent"}`;
   const title = item.title ?? item.toolName ?? "tool";
   return item.running && !item.title && item.cmd
     ? `${title} ${item.cmd}`
@@ -113,16 +115,27 @@ export function ToolItemComponent({
         <text fg={theme.accent}>├─ </text>
         <text fg={statusColor}>{status}</text>
         <DisclosureIndicator expanded={expanded} />
-        <text wrapMode="none">
+        <text fg={theme.text.primary} wrapMode="none">
           {row.left.slice("├─ ".length + status.length)}
         </text>
         {row.right ? (
           <text attributes={TextAttributes.DIM}>
-            {"  "}
+            {" · "}
             {row.right}
           </text>
         ) : null}
       </box>
+      {row.path ? (
+        <text wrapMode="none">
+          <span fg={theme.accent}>│ ↳ </span>
+          <span fg={theme.text.muted}>{row.path}</span>
+        </text>
+      ) : item.detail ? (
+        <text wrapMode="word">
+          <span fg={theme.accent}>│ ↳ </span>
+          <span fg={theme.text.muted}>{item.detail}</span>
+        </text>
+      ) : null}
       {item.toolCategory === "shell" && item.cmd ? (
         <text wrapMode="none">
           <span fg={theme.accent}>│ $ </span>

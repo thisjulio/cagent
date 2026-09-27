@@ -26,6 +26,7 @@ export async function* streamApi(
         : undefined,
       stream: true,
       stream_options: { include_usage: true },
+      ...(request.cache?.key ? { prompt_cache_key: request.cache.key } : {}),
     },
     { signal },
   );

@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import type { Controller } from "./controller";
+import type { ChatItem } from "./state";
 import { appendChat } from "./chat-buffer";
 
 export async function submitSubagent(
@@ -28,28 +29,32 @@ export async function submitSubagent(
     type: "meta",
     payload: { kind: "subagent-start", name },
   });
-  appendChat(s, {
+  const header: ChatItem = {
     kind: "assistant",
     content: "",
     subagent: name,
     subagentHeader: true,
+    running: true,
     turnId,
-  });
-  await controller.registry.hooks.run({
-    phase: "subagent_start",
-    subagent: name,
-    task,
-  });
+  };
+  appendChat(s, header);
+  const startedAt = header.timestamp ?? Date.now();
   s.busy = true;
-  s.turnStartedAt = Date.now();
+  s.turnStartedAt = startedAt;
   controller.bump();
   try {
+    await controller.registry.hooks.run({
+      phase: "subagent_start",
+      subagent: name,
+      task,
+    });
     if (!controller.invokeSubagent)
       throw new Error("subagent runtime is unavailable");
     const result = await controller.invokeSubagent({
       name,
       task,
       context: controller.messages.slice(),
+      cacheKey: controller.session.id,
     });
     controller.observability?.recordEvent("subagent.completed", {
       "subagent.name": name,
@@ -72,12 +77,15 @@ export async function submitSubagent(
       payload: { content: result, subagent: name },
     });
   } catch (error) {
+    header.isError = true;
     controller.observability?.recordEvent("subagent.failed", {
       "subagent.name": name,
       "error.type": error instanceof Error ? error.name : "unknown",
     });
     s.notice = `error: ${error instanceof Error ? error.message : String(error)}`;
   } finally {
+    header.running = false;
+    header.durationMs = Date.now() - startedAt;
     s.busy = false;
     s.turnStartedAt = null;
     s.elapsedMs = 0;

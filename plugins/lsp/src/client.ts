@@ -19,6 +19,7 @@ type PublishDiagnostics = {
 };
 
 const REQUEST_TIMEOUT_MS = 8000;
+const DIAGNOSTICS_TIMEOUT_MS = 20000;
 const SERVER_READY_TIMEOUT_MS = 5000;
 
 function workspaceUri(root: string): string {
@@ -346,9 +347,13 @@ export class LspClient {
     if (operation === "diagnostics") {
       if (this.pushDiagnostics) return this.waitForDiagnostics(uri);
       try {
-        const result = (await this.request("textDocument/diagnostic", {
-          textDocument: { uri },
-        })) as { items?: LspDiagnostic[] } | null;
+        const result = (await this.request(
+          "textDocument/diagnostic",
+          {
+            textDocument: { uri },
+          },
+          DIAGNOSTICS_TIMEOUT_MS,
+        )) as { items?: LspDiagnostic[] } | null;
         return result?.items ?? [];
       } catch {
         return this.waitForDiagnostics(uri);

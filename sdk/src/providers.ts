@@ -37,6 +37,7 @@ export interface LlmCallOptions {
   messages: Message[];
   tools: ToolDefinition[];
   variant?: string;
+  cache?: { stablePrefixMessages: number; key?: string };
 }
 
 export interface ProviderAdapter {

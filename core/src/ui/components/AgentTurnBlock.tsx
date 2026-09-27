@@ -7,6 +7,7 @@ import { SkillItemComponent } from "./SkillItem";
 import { ThinkingItemComponent } from "./ThinkingItem";
 import { diffStats } from "../../controller/diff-stats";
 import { useTheme } from "../primitives/theme-context";
+import { symbols } from "../theme/symbols";
 
 const markdownSyntaxStyle = SyntaxStyle.create();
 
@@ -72,15 +73,38 @@ export function AgentTurnBlockComponent({
   );
   const files = new Set(changes.flatMap((item) => item.changedPaths ?? []));
   const fileCount = files.size || changes.length;
+  const subagentStatus =
+    block.subagentStatus === "running"
+      ? { icon: symbols.running, label: "working", color: color.status.warning }
+      : block.subagentStatus === "success"
+        ? {
+            icon: symbols.success,
+            label: `completed · ${((block.subagentDurationMs ?? 0) / 1000).toFixed(1)}s`,
+            color: color.status.success,
+          }
+        : block.subagentStatus === "error"
+          ? {
+              icon: symbols.error,
+              label: `failed · ${((block.subagentDurationMs ?? 0) / 1000).toFixed(1)}s`,
+              color: color.status.danger,
+            }
+          : undefined;
 
   return (
     <box paddingX={2} width="100%" flexDirection="column" flexShrink={0}>
-      <text fg={color.accent}>
-        cagent{block.subagent ? ` → @${block.subagent}` : ""}{" "}
-        <span attributes={TextAttributes.DIM}>
-          {formatTime(block.timestamp)}
-        </span>
-      </text>
+      <box flexDirection="row" justifyContent="space-between">
+        <text fg={color.accent}>
+          cagent{block.subagent ? ` → @${block.subagent}` : ""}{" "}
+          <span attributes={TextAttributes.DIM}>
+            {formatTime(block.timestamp)}
+          </span>
+        </text>
+        {subagentStatus ? (
+          <text fg={subagentStatus.color}>
+            {subagentStatus.icon} {subagentStatus.label}
+          </text>
+        ) : null}
+      </box>
       <text fg={color.accent}>│ </text>
       {block.items.map((item, index) => {
         if (item.type === "THINKING") {
@@ -121,6 +145,11 @@ export function AgentTurnBlockComponent({
           />
         );
       })}
+      {block.subagentStatus === "running" && block.items.length === 0 ? (
+        <text fg={color.text.muted}>└─ waiting for subagent result</text>
+      ) : block.subagentStatus === "error" && block.items.length === 0 ? (
+        <text fg={color.status.danger}>└─ subagent failed</text>
+      ) : null}
       {changes.length ? (
         <text fg={color.text.muted}>
           └─ {fileCount} file{fileCount === 1 ? "" : "s"}

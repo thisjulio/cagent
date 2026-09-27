@@ -17,6 +17,7 @@ export interface ControllerRuntime {
   adapter: ControllerDeps["adapter"];
   maxTurns?: number;
   maxToolCalls?: number;
+  maxInputTokensPerTurn?: number;
   readOnly: boolean;
   onText?: ControllerDeps["onText"];
   onReasoning?: ControllerDeps["onReasoning"];

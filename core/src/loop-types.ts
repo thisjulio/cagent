@@ -15,6 +15,8 @@ export interface StreamOpts {
   variant?: string;
   messages: Message[];
   messagesForRequest?: (messages: Message[]) => Message[];
+  stablePrefixMessages?: number;
+  cacheKey?: string;
   tools: ToolDefinition[];
   signal?: AbortSignal;
   onText?: (text: string) => void;
@@ -67,6 +69,7 @@ export interface TurnOpts extends StreamOpts {
   signal?: AbortSignal;
   maxTurns?: number;
   maxToolCalls?: number;
+  maxInputTokensPerTurn?: number;
   observability?: Observability;
   traceAttributes?: Record<string, string | number | boolean>;
   continueTurn?: () => Promise<boolean>;

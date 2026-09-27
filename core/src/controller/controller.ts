@@ -77,6 +77,7 @@ export class Controller implements ControllerRuntime {
   }
   maxTurns?: number;
   maxToolCalls?: number;
+  maxInputTokensPerTurn?: number;
   readOnly = false;
   onText?: (text: string) => void;
   onReasoning?: (text: string) => void;
@@ -117,6 +118,7 @@ export class Controller implements ControllerRuntime {
     this.adapter = deps.adapter;
     this.maxTurns = deps.maxTurns;
     this.maxToolCalls = deps.maxToolCalls;
+    this.maxInputTokensPerTurn = deps.maxInputTokensPerTurn;
     this.readOnly =
       deps.permissionMode === "read-only" || deps.readOnly === true;
     this.onText = deps.onText;
@@ -277,9 +279,19 @@ export class Controller implements ControllerRuntime {
   setAskResolver(resolve: (ok: boolean) => void): void {
     this.askResolver = resolve;
   }
+  private systemPromptCache?: { cwd: string; model: string; value: string };
   refreshProjectContext(): void {
+    const cwd = process.cwd();
+    const model = this.state?.model ?? "";
+    if (
+      this.systemPromptCache &&
+      this.systemPromptCache.cwd === cwd &&
+      this.systemPromptCache.model === model
+    )
+      return;
     const next = this.deps.rebuildSystemPrompt?.();
     if (!next || this.messages[0]?.role !== "system") return;
+    this.systemPromptCache = { cwd, model, value: next };
     this.deps.systemPrompt = next;
     this.messages[0] = { role: "system", content: next };
   }

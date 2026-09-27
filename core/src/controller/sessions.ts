@@ -109,6 +109,10 @@ export function toChatItems(records: LoadedRecord[]): ChatItem[] {
                 toolName,
                 p.args as Record<string, unknown>,
               ),
+              ...(toolName === "subagent" &&
+              typeof (p.args as Record<string, unknown>).task === "string"
+                ? { detail: (p.args as Record<string, string>).task }
+                : {}),
             }
           : {}),
         ...(p.isError === true ? { isError: true } : {}),

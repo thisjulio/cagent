@@ -14,10 +14,16 @@ export async function collectDiagnostics(
   servers: Record<string, LspServerConfig>,
   getClient: GetClient,
   input: string,
-): Promise<{ text?: string; count: number; names: string[] }> {
+): Promise<{
+  text?: string;
+  count: number;
+  names: string[];
+  errors: string[];
+}> {
   const file = path.resolve(input);
   const selected = serversForFile(servers, file);
-  if (!selected.length || !fs.existsSync(file)) return { count: 0, names: [] };
+  if (!selected.length || !fs.existsSync(file))
+    return { count: 0, names: [], errors: [] };
 
   const settled = await Promise.allSettled(
     selected.map(async ([name, config]) => {
@@ -43,6 +49,13 @@ export async function collectDiagnostics(
     ): result is PromiseFulfilledResult<{ name: string; lines: string[] }> =>
       result.status === "fulfilled",
   );
+  const errors = settled
+    .map((result, index) =>
+      result.status === "rejected"
+        ? `${selected[index][0]}: ${result.reason instanceof Error ? result.reason.message : String(result.reason)}`
+        : undefined,
+    )
+    .filter((message): message is string => Boolean(message));
   if (!fulfilled.length) {
     const first = settled.find(
       (result): result is PromiseRejectedResult => result.status === "rejected",
@@ -52,8 +65,8 @@ export async function collectDiagnostics(
 
   const lines = fulfilled.flatMap((result) => result.value.lines);
   const names = fulfilled.map((result) => result.value.name);
-  if (!lines.length) return { count: 0, names };
-  return { count: lines.length, text: lines.join("\n"), names };
+  if (!lines.length) return { count: 0, names, errors };
+  return { count: lines.length, text: lines.join("\n"), names, errors };
 }
 
 export function preferSingleServer(

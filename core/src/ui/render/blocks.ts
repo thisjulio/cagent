@@ -47,6 +47,7 @@ export type ToolItem = {
   cmd?: string;
   content?: string;
   summary?: string;
+  detail?: string;
   isError?: boolean;
   denied?: boolean;
   running?: boolean;
@@ -82,6 +83,8 @@ export type AgentTurnBlock = {
   turnId: string;
   author: "cagent";
   subagent?: string;
+  subagentStatus?: "running" | "success" | "error";
+  subagentDurationMs?: number;
   timestamp: number;
   items: AgentItem[];
 };
@@ -200,6 +203,7 @@ export function chatToBlocks(chat: ChatItem[]): Block[] {
             cmd: item.cmd,
             content: item.content,
             summary: item.summary,
+            detail: item.detail,
             isError: item.isError,
             denied: item.denied,
             running: item.running,
@@ -215,13 +219,23 @@ export function chatToBlocks(chat: ChatItem[]): Block[] {
       } else if (item.kind === "assistant") {
         if (item.subagentHeader) {
           block.subagent = item.subagent;
+          block.subagentStatus = item.running
+            ? "running"
+            : item.isError
+              ? "error"
+              : item.durationMs !== undefined
+                ? "success"
+                : undefined;
+          block.subagentDurationMs = item.durationMs;
         }
-        block.items.push({
-          type: "RESPONSE",
-          content: item.content,
-          timestamp: item.timestamp,
-          chatIndex: i,
-        });
+        if (!item.subagentHeader || item.content) {
+          block.items.push({
+            type: "RESPONSE",
+            content: item.content,
+            timestamp: item.timestamp,
+            chatIndex: i,
+          });
+        }
       }
     }
   }

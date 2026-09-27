@@ -3,6 +3,7 @@ import { diffStats } from "../src/controller/diff-stats";
 import { defaultExpanded } from "../src/controller/expansion";
 import { deriveSummary } from "../src/controller/tool-summary";
 import { fallbackToolTitle } from "../src/tool-title";
+import { chatToBlocks } from "../src/ui/render/blocks";
 import { layoutToolRow } from "../src/ui/render/tool-row";
 import type { ChatItem } from "../src/controller/state";
 
@@ -75,11 +76,40 @@ describe("turn hierarchy controller rules", () => {
     expect(fallbackToolTitle("search", "search", { pattern: "total\\(" })).toBe(
       'Search "total\\("',
     );
+    expect(
+      fallbackToolTitle("search", "search", { pattern: "ToolItemComponent" }),
+    ).toBe('Search "ToolItemComponent"');
     expect(fallbackToolTitle("bash", "shell", { command: "bun test" })).toBe(
       "Run bun",
     );
     expect(fallbackToolTitle("tasks", "agent", {})).toBe("tasks");
+    expect(fallbackToolTitle("subagent", "agent", { name: "general" })).toBe(
+      "Subagent @general",
+    );
+    expect(
+      fallbackToolTitle("list_files", "search", { pattern: "*.tsx" }),
+    ).toBe('List files "*.tsx"');
+    expect(
+      fallbackToolTitle("search_ast", "search", { pattern: "ToolItem" }),
+    ).toBe('Search AST "ToolItem"');
     expect(fallbackToolTitle("edit_file", "write", {})).toBe("edit_file");
+  });
+
+  test("projects direct subagent execution status without a blank response", () => {
+    const block = chatToBlocks([
+      {
+        kind: "assistant",
+        content: "",
+        subagent: "general",
+        subagentHeader: true,
+        running: true,
+        turnId: "subagent-turn",
+      },
+    ])[0];
+    expect(block.type).toBe("agent-turn");
+    if (block.type !== "agent-turn") return;
+    expect(block.subagentStatus).toBe("running");
+    expect(block.items).toHaveLength(0);
   });
 
   test("diff expansion stops above twelve changed lines", () => {

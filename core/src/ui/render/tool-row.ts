@@ -35,10 +35,12 @@ function displayWidth(value: string): number {
 export function layoutToolRow(
   parts: ToolRowParts,
   width: number,
-): { left: string; right: string } {
+): { left: string; right: string; path?: string } {
   const prefix = `├─ ${parts.status} ${parts.icon ? `${parts.icon} ` : ""}`;
   let title = parts.title;
-  let path = parts.path;
+  const path = parts.path
+    ? fitPath(parts.path, Math.max(1, width - 6))
+    : undefined;
   const stats =
     parts.added !== undefined || parts.removed !== undefined
       ? `${parts.added !== undefined ? `+${parts.added}` : ""}${parts.removed !== undefined ? ` −${parts.removed}` : ""}`.trim()
@@ -48,13 +50,17 @@ export function layoutToolRow(
 
   const rightText = () =>
     [
-      path,
       stats,
-      [parts.summary, duration && `· ${duration}`].filter(Boolean).join(" "),
+      [
+        parts.summary === stats ? undefined : parts.summary,
+        duration && `· ${duration}`,
+      ]
+        .filter(Boolean)
+        .join(" "),
     ]
       .filter(Boolean)
       .join("  ");
-  const fits = (gap = 2) => {
+  const fits = (gap = 3) => {
     const right = rightText();
     return (
       displayWidth(prefix) +
@@ -64,8 +70,6 @@ export function layoutToolRow(
     );
   };
   if (!fits()) duration = undefined;
-  if (!fits() && path) path = path.split(/[\\/]/).filter(Boolean).at(-1);
-  if (!fits() && !fits(1)) path = undefined;
   if (!fits()) {
     const right = rightText();
     const available = Math.max(
@@ -82,5 +86,26 @@ export function layoutToolRow(
     }
     title = `${fitted}…`;
   }
-  return { left: `${prefix}${title}`, right: rightText() };
+  return { left: `${prefix}${title}`, right: rightText(), path };
+}
+
+function fitPath(path: string, width: number): string {
+  if (displayWidth(path) <= width) return path;
+  const parts = path.split(/[\\/]/).filter(Boolean);
+  let suffix = parts.pop() ?? path;
+  while (parts.length) {
+    const candidate = `${parts.pop()}/${suffix}`;
+    if (displayWidth(`…/${candidate}`) > width) break;
+    suffix = candidate;
+  }
+  if (displayWidth(`…/${suffix}`) <= width) return `…/${suffix}`;
+  let fitted = "";
+  let used = 0;
+  for (const char of suffix) {
+    const cells = displayWidth(char);
+    if (used + cells > width) break;
+    fitted += char;
+    used += cells;
+  }
+  return fitted;
 }

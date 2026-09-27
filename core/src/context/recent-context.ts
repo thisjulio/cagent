@@ -34,7 +34,46 @@ export function recentContext(
     selected.length > 1
   )
     selected.shift();
-  return selected.flat();
+  const flat = selected.flat();
+  if (flat.length) return flat;
+  if (!messages.length) return flat;
+  const lastUser = [...messages].reverse().find((m) => m.role === "user");
+  const fallback = lastUser ?? messages.at(-1)!;
+  const truncated = truncateMessage(fallback, budget);
+  return truncated ? [truncated] : [];
+}
+
+function truncateMessage(
+  message: Message,
+  budgetTokens: number,
+): Message | null {
+  const budget = Math.max(1, budgetTokens);
+  if (estimateMessages([message]) <= budget) return message;
+  const maxChars = budget * CHARS_PER_TOKEN;
+  const marker = "\n[user prompt truncated to fit context budget]";
+  if (typeof message.content === "string") {
+    const keep = Math.max(0, maxChars - marker.length);
+    return { ...message, content: message.content.slice(0, keep) + marker };
+  }
+  const texts = message.content.filter((part) => part.type === "text");
+  const others = message.content.filter((part) => part.type !== "text");
+  const textLen = texts.reduce((sum, part) => sum + part.text.length, 0);
+  const otherCost = others.length * 4000;
+  if (textLen + otherCost <= maxChars) return message;
+  const keepChars = Math.max(0, maxChars - marker.length);
+  let remaining = keepChars;
+  const kept: typeof message.content = [];
+  for (const part of texts) {
+    if (remaining <= 0) break;
+    const slice = part.text.slice(0, remaining);
+    remaining -= slice.length;
+    kept.push({ type: "text", text: slice });
+  }
+  if (!kept.length) return null;
+  const last = kept.at(-1)!;
+  if (last.type === "text")
+    last.text = last.text.slice(0, Math.max(0, last.text.length)) + marker;
+  return { ...message, content: kept };
 }
 
 function boundedBlock(messages: Message[], budget: number): Message[] {
@@ -42,6 +81,10 @@ function boundedBlock(messages: Message[], budget: number): Message[] {
   const first = messages[0];
   const prompt = first?.role === "user" ? [first] : [];
   const promptCost = estimateMessages(prompt);
+  if (prompt.length && promptCost > budget) {
+    const truncated = truncateMessage(prompt[0]!, budget);
+    return truncated ? [truncated] : [];
+  }
   const keepPrompt = promptCost <= budget;
   const selected: Message[][] = [];
   let used = keepPrompt ? promptCost : 0;

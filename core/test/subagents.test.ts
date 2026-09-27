@@ -105,6 +105,46 @@ test("subagent inherits the active model route", async () => {
   expect(usedModel).toBe("active-model");
 });
 
+test("subagent turn pins its own stable cache key", async () => {
+  const registry = new Registry();
+  let captured: LlmCallOptions | undefined;
+  const provider = {
+    ...adapter("cached result"),
+    prepare_call: async (options: LlmCallOptions) => {
+      captured = options;
+      return options;
+    },
+  };
+  registry.registerProvider("mock", provider);
+  registry.registerSubagent({
+    name: "reviewer",
+    description: "Reviews",
+    instructions: "Review strictly.",
+  });
+  const execute = createSubagentExecutor({
+    find: (name) => registry.subagent(name),
+    registry,
+    model: () => "mock/model",
+    tools: [],
+    allowlist: [],
+    ask: async () => true,
+    bus: new EventBus(),
+  });
+  await execute({
+    name: "reviewer",
+    task: "Inspect this",
+    context: [
+      { role: "system", content: "Main instructions" },
+      { role: "user", content: "hello" },
+    ],
+    cacheKey: "sess",
+  });
+  expect(captured?.cache).toEqual({
+    stablePrefixMessages: 2,
+    key: "sess:subagent:reviewer",
+  });
+});
+
 test("parses a direct subagent mention", () => {
   expect(
     parseSubagentMention("@architecture-reviewer confira o projeto"),

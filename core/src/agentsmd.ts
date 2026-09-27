@@ -2,31 +2,43 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
+const PER_FILE_LIMIT = 2000;
+
+function truncatePart(content: string, source: string): string {
+  if (content.length <= PER_FILE_LIMIT) return content;
+  const omitted = content.length - PER_FILE_LIMIT;
+  return `${content.slice(0, PER_FILE_LIMIT)}\n[omitted ${omitted} chars from ${source}; use read_file for the full file]`;
+}
+
 export function loadAgentsMd(
   cwd: string,
   instructions: string[] = [],
 ): string | null {
   const parts: string[] = [];
-  for (const project of findProjectDocs(cwd)) {
-    parts.push(
-      `# ${path.basename(project.file)} (project: ${project.file})\n${project.content}`,
-    );
-  }
-  for (const rule of findScopedRules(cwd)) {
-    parts.push(`# scoped rule (${rule.file})\n${rule.content}`);
-  }
-  for (const file of [path.join(os.homedir(), ".cagent", "AGENTS.md")]) {
-    if (fs.existsSync(file)) {
-      parts.push(
-        `# ${path.basename(file)} (global: ${file})\n${fs.readFileSync(file, "utf8")}`,
-      );
-      break;
-    }
-  }
   for (const inc of instructions) {
     const file = path.isAbsolute(inc) ? inc : path.join(cwd, inc);
     if (!fs.existsSync(file)) continue;
-    parts.push(`# instructions (${file})\n${fs.readFileSync(file, "utf8")}`);
+    const content = fs.readFileSync(file, "utf8");
+    parts.push(`# instructions (${file})\n${truncatePart(content, file)}`);
+  }
+  for (const project of findProjectDocs(cwd).reverse()) {
+    parts.push(
+      `# ${path.basename(project.file)} (project: ${project.file})\n${truncatePart(project.content, project.file)}`,
+    );
+  }
+  for (const rule of findScopedRules(cwd).reverse()) {
+    parts.push(
+      `# scoped rule (${rule.file})\n${truncatePart(rule.content, rule.file)}`,
+    );
+  }
+  for (const file of [path.join(os.homedir(), ".cagent", "AGENTS.md")]) {
+    if (fs.existsSync(file)) {
+      const content = fs.readFileSync(file, "utf8");
+      parts.push(
+        `# ${path.basename(file)} (global: ${file})\n${truncatePart(content, file)}`,
+      );
+      break;
+    }
   }
   return parts.length ? parts.join("\n\n") : null;
 }

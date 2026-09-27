@@ -9,7 +9,7 @@ export type VerificationRunner = {
   run(): Promise<VerificationResult>;
 };
 
-const MAX_OUTPUT = 12_000;
+const MAX_OUTPUT = 4000;
 
 function appendOutput(current: string, chunk: Buffer): string {
   const next = current + chunk.toString("utf8");
@@ -25,9 +25,11 @@ function formatOutput(stdout: string, stderr: string): string {
     : text;
 }
 
+// ponytail: per-turn verification runs the incremental typecheck only;
+// the full `bun run verify` stays a manual pre-completion gate.
 function runVerify(cwd: string): Promise<VerificationResult> {
   return new Promise((resolve) => {
-    const child = spawn("bun", ["run", "verify"], {
+    const child = spawn("bun", ["run", "typecheck"], {
       cwd,
       env: process.env,
       stdio: ["ignore", "pipe", "pipe"],

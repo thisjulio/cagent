@@ -195,6 +195,7 @@ describe("openai adapter", () => {
         expect(parsed.model).toBe("gpt-5.5");
         expect(parsed.stream).toBe(true);
         expect(parsed.store).toBe(false);
+        expect(parsed.prompt_cache_key).toBe("session-cache-key");
         return new Response(sse, { status: 200 });
       }) as unknown as typeof fetch;
       const adapter = createAdapter({
@@ -212,6 +213,7 @@ describe("openai adapter", () => {
         model: "gpt-5.5",
         messages: [{ role: "user", content: "hi" }],
         tools: [],
+        cache: { stablePrefixMessages: 1, key: "session-cache-key" },
       })) {
         if (chunk.type === "text") parts.push(chunk.text);
         if (chunk.type === "finish") finish = chunk;

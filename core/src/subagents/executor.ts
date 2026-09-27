@@ -12,6 +12,7 @@ export type SubagentRequest = {
   name: string;
   task: string;
   context: Message[];
+  cacheKey?: string;
 };
 export type SubagentExecutor = {
   (request: SubagentRequest): Promise<string>;
@@ -36,9 +37,14 @@ export function createSubagentExecutor(
   deps: SubagentExecutionDeps,
 ): SubagentExecutor {
   return async (request: SubagentRequest | string, legacyTask?: string) => {
-    const { name, task, context } =
+    const { name, task, context, cacheKey } =
       typeof request === "string"
-        ? { name: request, task: legacyTask ?? "", context: [] }
+        ? {
+            name: request,
+            task: legacyTask ?? "",
+            context: [],
+            cacheKey: undefined,
+          }
         : request;
     const agent = deps.find(name);
     if (!agent) return `subagent not found: ${name}`;
@@ -59,6 +65,9 @@ export function createSubagentExecutor(
     const [provider, model] = splitRoute(route);
     const adapter = deps.registry.provider(provider);
     if (!adapter) return `subagent provider not found: ${provider}`;
+    const leadingSystems = messages.findIndex(
+      (message) => message.role !== "system",
+    );
     const result = await runTurn({
       adapter,
       model,
@@ -70,6 +79,11 @@ export function createSubagentExecutor(
       readOnly: deps.readOnly,
       hooks: deps.registry.hooks,
       verification: deps.verification,
+      // ponytail: subagent prefix differs from the main turn (extra
+      // instructions block), so it gets its own cache key per agent.
+      stablePrefixMessages:
+        leadingSystems < 0 ? messages.length : leadingSystems,
+      ...(cacheKey ? { cacheKey: `${cacheKey}:subagent:${name}` } : {}),
     });
     return (
       result.records

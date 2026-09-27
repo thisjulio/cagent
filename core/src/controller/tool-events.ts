@@ -29,6 +29,7 @@ export function toolPre(state: UIState, p: unknown): void {
     title: toolTitle,
     toolCategory: category,
     cmd,
+    detail: tool === "subagent" ? String(args.task ?? "") : undefined,
     running: true,
     startedAt: Date.now(),
     content: "",
@@ -75,6 +76,8 @@ export function toolPost(state: UIState, p: unknown): void {
       e.cmd = toolCommandLabel(tool, result.args);
       e.title = ensureToolTitle(e.title, tool, e.toolCategory, result.args);
     }
+    if (tool === "subagent" && result?.args?.task)
+      e.detail = String(result.args.task);
     e.running = false;
     if (e.startedAt) e.durationMs = Date.now() - e.startedAt;
     e.isError = !!error || result?.isError === true;
