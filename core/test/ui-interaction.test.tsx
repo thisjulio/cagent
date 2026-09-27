@@ -158,6 +158,9 @@ describe("focused UI keyboard behavior", () => {
       await setup.flush();
     });
     expect(controller.state.sessionScope).toBe("all");
+    await act(async () => {
+      await setup.flush();
+    });
     expect(setup.captureCharFrame()).toContain("scope: all");
     act(() => setup.renderer.destroy());
   });
