@@ -11,6 +11,10 @@ describe("LSP server configuration", () => {
       "python",
       "rust",
     ]);
+    expect(servers.typescript.command).toEqual([
+      "typescript-language-server",
+      "--stdio",
+    ]);
     expect(serverForFile(servers, "/workspace/app.ts")?.[0]).toBe("typescript");
     expect(serverForFile(servers, "/workspace/app.js")?.[0]).toBe("typescript");
     expect(serverForFile(servers, "/workspace/config.json")?.[0]).toBe("biome");

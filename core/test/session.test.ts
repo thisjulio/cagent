@@ -66,6 +66,35 @@ describe("JSONL sessions", () => {
     });
   });
 
+  it("does not let a later stream snapshot replace an earlier assistant record", () => {
+    const session = new Session("stream-snapshot", dir);
+    session.append({
+      ts: 1,
+      turnId: "turn-1",
+      type: "assistant",
+      payload: {
+        content: "Searching",
+        tool_calls: [{ id: "call-1", name: "search", arguments: "{}" }],
+      },
+    });
+    session.append({
+      ts: 2,
+      turnId: "turn-1",
+      type: "assistant",
+      payload: { content: "Found the answer" },
+    });
+    session.replaceAssistantSnapshot("turn-1", "partial later response");
+
+    expect(new Session(session.id, dir).load().messages).toEqual([
+      {
+        role: "assistant",
+        content: "Searching",
+        tool_calls: [{ id: "call-1", name: "search", arguments: "{}" }],
+      },
+      { role: "assistant", content: "Found the answer" },
+    ]);
+  });
+
   it("restores explicit tool expansion and derives legacy summaries", () => {
     const records = [
       {

@@ -41,12 +41,12 @@ function multilineToolScenarios(): ChatItem[] {
   return [
     withTurn({
       kind: "user",
-      content: "o total do pedido ignora quantidade, corrige e roda os testes",
+      content: "the order total ignores quantity; fix it and run the tests",
     }),
     withTurn({
       kind: "thinking",
       content:
-        "O usuário quer que total() multiplique price por qty. Vou ler o arquivo, editar e rodar bun test.",
+        "The user wants total() to multiply price by qty. I will read the file, edit it, and run bun test.",
       expanded: true,
     }),
     withTurn({
@@ -116,7 +116,7 @@ function multilineToolScenarios(): ChatItem[] {
     withTurn({
       kind: "assistant",
       content:
-        "Corrigi total() para multiplicar price por qty (padrão 1).\n\nOs chamadores em checkout.ts e invoice.ts já passam qty.",
+        "Updated total() to multiply price by qty (default 1).\n\nThe callers in checkout.ts and invoice.ts already pass qty.",
     }),
   ];
 }
@@ -244,4 +244,18 @@ controller.state.chat = [
   withTurn({ kind: "assistant", content: "One test failed." }, FAILURE_TURN_ID),
 ];
 controller.state.title = "tool failure";
+await frame(80);
+
+controller.state.chat = [];
+controller.state.tasks = [
+  { id: "task-1", title: "Inspect task layout", status: "completed" },
+  { id: "task-2", title: "Add TaskPanel snapshots", status: "in_progress" },
+  { id: "task-3", title: "Verify footer placement", status: "pending" },
+];
+controller.state.taskPanelExpanded = false;
+controller.state.title = "tasks collapsed";
+await frame(80);
+
+controller.state.taskPanelExpanded = true;
+controller.state.title = "tasks expanded";
 await frame(80);

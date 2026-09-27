@@ -1,5 +1,9 @@
 import type { UIState } from "../../controller/state";
 import { relTime } from "../render/reltime";
+import { useTheme } from "../primitives/theme-context";
+import { Panel } from "../primitives/Panel";
+import { responsiveSize } from "../theme/breakpoints";
+import { useTerminalDimensions } from "@opentui/react";
 
 type SessionInfo = NonNullable<UIState["sessionList"]>[number];
 
@@ -14,18 +18,12 @@ export function SessionList({
   query: string;
   onSelect: (id: string) => void;
 }) {
+  const { color } = useTheme();
+  const { width } = useTerminalDimensions();
+  const compact = responsiveSize(width) === "compact";
   return (
-    <box
-      flexDirection="column"
-      flexShrink={0}
-      height={Math.min(18, list.length + 5)}
-      border
-      borderStyle="rounded"
-      borderColor="#d97757"
-      paddingX={1}
-    >
-      <text fg="#d97757"> Resume session </text>
-      <text fg="#999999">
+    <Panel title="Resume session" tone="focused">
+      <text fg={color.text.muted}>
         {`scope: ${scope === "project" ? "this project" : "all"} · search: ${
           query || "(none)"
         }`}
@@ -35,7 +33,9 @@ export function SessionList({
         showDescription={false}
         height={Math.min(12, Math.max(1, list.length))}
         options={list.map((s) => ({
-          name: `${s.id.slice(0, 8)}  ${relTime(s.updated)}  ${s.messageCount} msgs  ${s.title}`,
+          name: compact
+            ? `${s.title} · ${relTime(s.updated)}`
+            : `${s.title}  ${relTime(s.updated)}  ${s.messageCount} msgs  ${s.id.slice(0, 8)}`,
           description: "",
           value: s.id,
         }))}
@@ -43,9 +43,9 @@ export function SessionList({
           if (option?.value) onSelect(String(option.value));
         }}
       />
-      <text fg="#666666">
+      <text fg={color.text.muted}>
         ↑↓ navigate · type: search · Tab scope · Enter resume · Esc cancel
       </text>
-    </box>
+    </Panel>
   );
 }

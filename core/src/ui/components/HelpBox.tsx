@@ -4,6 +4,9 @@ import {
   helpKeys,
   type HelpItem,
 } from "../help-catalog";
+import { useTheme } from "../primitives/theme-context";
+import { Panel } from "../primitives/Panel";
+import { Scrollable } from "../primitives/Scrollable";
 
 export function HelpBox({
   topic = "",
@@ -12,23 +15,15 @@ export function HelpBox({
   topic?: string;
   items?: HelpItem[];
 }) {
+  const { color } = useTheme();
   const details = topic ? helpDetails(topic) : [];
   const groups = [...new Set(items.map((item) => item.group))];
   return (
-    <box
-      border
-      borderStyle="single"
-      borderColor="#666666"
-      paddingX={1}
-      flexDirection="column"
-      height="100%"
-      minHeight={0}
-      flexShrink={0}
-    >
-      <scrollbox flexGrow={1} flexShrink={1}>
+    <Panel title={topic ? `Help · ${topic}` : "Help"} grow>
+      <Scrollable>
         {groups.map((group) => (
           <box key={group} flexDirection="column">
-            <text fg="#d97757">{group}</text>
+            <text fg={color.accent}>{group}</text>
             {items
               .filter((item) => item.group === group)
               .map((item) => (
@@ -39,7 +34,7 @@ export function HelpBox({
               ))}
           </box>
         ))}
-        <text fg="#d97757">Keyboard shortcuts</text>
+        <text fg={color.accent}>Keyboard shortcuts</text>
         {helpKeys.map((item) => (
           <text key={item.name}>
             <strong>{item.name}</strong> — {item.description}
@@ -48,8 +43,8 @@ export function HelpBox({
         {details.map((line) => (
           <text key={line}>{line}</text>
         ))}
-      </scrollbox>
-      <text fg="#666666">↑↓ scroll · Esc close · Ctrl+P palette</text>
-    </box>
+      </Scrollable>
+      <text fg={color.text.muted}>PgUp/PgDn scroll · Esc close</text>
+    </Panel>
   );
 }

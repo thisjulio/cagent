@@ -16,7 +16,15 @@ export function recentContext(
   for (let index = blocks.length - 1; index >= 0; index--) {
     const block = pruneToolOutputs(blocks[index]!, toolLimitTokens);
     const cost = estimateMessages(block);
-    if (selected.length > 0 && used + cost > budget) break;
+    if (cost > budget) {
+      const bounded = boundedBlock(block, budget - used);
+      if (bounded.length) {
+        selected.unshift(bounded);
+        used += estimateMessages(bounded);
+      }
+      break;
+    }
+    if (used + cost > budget) break;
     selected.unshift(block);
     used += cost;
   }
@@ -27,6 +35,95 @@ export function recentContext(
   )
     selected.shift();
   return selected.flat();
+}
+
+function boundedBlock(messages: Message[], budget: number): Message[] {
+  if (budget < 1) return [];
+  const first = messages[0];
+  const prompt = first?.role === "user" ? [first] : [];
+  const promptCost = estimateMessages(prompt);
+  const keepPrompt = promptCost <= budget;
+  const selected: Message[][] = [];
+  let used = keepPrompt ? promptCost : 0;
+  const groups = messageGroups(messages.slice(prompt.length));
+
+  for (let index = groups.length - 1; index >= 0; index--) {
+    const group = groups[index]!;
+    const cost = estimateMessages(group);
+    if (used + cost <= budget) {
+      selected.unshift(group);
+      used += cost;
+      continue;
+    }
+    if (!selected.length) {
+      const partial = fitToolGroup(group, budget - used);
+      if (partial.length) selected.unshift(partial);
+    }
+    break;
+  }
+  return [...(keepPrompt ? prompt : []), ...selected.flat()];
+}
+
+function messageGroups(messages: Message[]): Message[][] {
+  const groups: Message[][] = [];
+  for (let index = 0; index < messages.length; ) {
+    const message = messages[index]!;
+    if (message.role === "tool") {
+      index++;
+      continue;
+    }
+    const calls =
+      message.role === "assistant" ? (message.tool_calls ?? []) : [];
+    if (!calls.length) {
+      groups.push([message]);
+      index++;
+      continue;
+    }
+    let end = index + 1;
+    while (end < messages.length && messages[end]?.role === "tool") end++;
+    const outputs = messages
+      .slice(index + 1, end)
+      .filter(
+        (output) =>
+          output.role === "tool" &&
+          calls.some((call) => call.id === output.tool_call_id),
+      );
+    const completedCalls = calls.filter((call) =>
+      outputs.some((output) => output.tool_call_id === call.id),
+    );
+    if (completedCalls.length) {
+      const ids = new Set(completedCalls.map((call) => call.id));
+      groups.push([
+        { ...message, tool_calls: completedCalls },
+        ...outputs.filter((output) => ids.has(output.tool_call_id ?? "")),
+      ]);
+    }
+    index = end;
+  }
+  return groups;
+}
+
+function fitToolGroup(group: Message[], budget: number): Message[] {
+  const assistant = group[0];
+  if (assistant?.role !== "assistant" || !assistant.tool_calls?.length)
+    return [];
+  const outputs = group.slice(1).filter((message) => message.role === "tool");
+  let selected: Message[] = [];
+  let calls: typeof assistant.tool_calls = [];
+  for (const call of [...assistant.tool_calls].reverse()) {
+    const output = outputs.find((message) => message.tool_call_id === call.id);
+    if (!output) continue;
+    calls = [call, ...calls];
+    const candidate: Message[] = [
+      { ...assistant, tool_calls: calls },
+      ...outputs.filter((message) =>
+        calls.some((item) => item.id === message.tool_call_id),
+      ),
+    ];
+    if (estimateMessages(candidate) > budget) break;
+    selected = candidate;
+  }
+  return selected;
 }
 
 function messageBlocks(messages: Message[]): Message[][] {

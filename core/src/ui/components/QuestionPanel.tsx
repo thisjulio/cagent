@@ -1,5 +1,8 @@
 import { TextAttributes } from "@opentui/core";
 import type { QuestionRequest } from "../../controller/question-service";
+import { useTheme } from "../primitives/theme-context";
+import { Panel } from "../primitives/Panel";
+import { symbols } from "../theme/symbols";
 
 interface QuestionPanelProps {
   request: QuestionRequest;
@@ -18,6 +21,7 @@ export function QuestionPanel({
   questionIndex = 0,
   selectedOptions = [],
 }: QuestionPanelProps) {
+  const { color } = useTheme();
   const currentIndex = questionIndex;
   const question = request.questions[currentIndex];
   const hasOptions = Boolean(question?.options?.length);
@@ -25,11 +29,10 @@ export function QuestionPanel({
   const progress = `${currentIndex + 1}/${request.questions.length}`;
 
   return (
-    <box flexDirection="column" flexShrink={0}>
-      <text fg="#d97757">
-        ? {question.question}
-        {isMultiple ? " (multiple selection)" : ""}
-      </text>
+    <Panel
+      title={`${symbols.warning} ${question.question}${isMultiple ? " (multiple selection)" : ""}`}
+      tone="warning"
+    >
       {hasOptions && !otherMode ? (
         [...question.options!, ...(isMultiple ? [] : ["Other"])].map(
           (opt, i) => (
@@ -37,10 +40,10 @@ export function QuestionPanel({
               key={i}
               fg={
                 isMultiple && selectedOptions.includes(i)
-                  ? "#d97757"
+                  ? color.accent
                   : selectedOption === i
-                    ? "#d97757"
-                    : "#cccccc"
+                    ? color.accent
+                    : color.text.primary
               }
               attributes={
                 selectedOption === i || selectedOptions.includes(i)
@@ -49,31 +52,33 @@ export function QuestionPanel({
               }
             >
               {isMultiple && selectedOptions.includes(i)
-                ? "☑ " + opt
+                ? `${symbols.taskCompleted} ${opt}`
                 : selectedOption === i
                   ? isMultiple
-                    ? "☐ " + opt
-                    : "▶ " + opt
+                    ? `${symbols.taskPending} ${opt}`
+                    : `${symbols.taskActive} ${opt}`
                   : isMultiple
-                    ? "☐ " + opt
+                    ? `${symbols.taskPending} ${opt}`
                     : "  " + opt}
             </text>
           ),
         )
       ) : (
         <box flexDirection="row">
-          <text fg="#777777">{otherMode ? " Other: " : " answer: "}</text>
-          <text fg="#cccccc">{textAnswer}</text>
-          {otherMode ? <text fg="#d97757">▌</text> : null}
+          <text fg={color.text.muted}>
+            {otherMode ? " Other: " : " answer: "}
+          </text>
+          <text fg={color.text.primary}>{textAnswer}</text>
+          {otherMode ? <text fg={color.accent}>▌</text> : null}
         </box>
       )}
-      <text fg="#666666">
+      <text fg={color.text.muted}>
         {otherMode
           ? "Type your answer • Enter confirm, Esc back"
           : isMultiple
             ? `Question ${progress} • ↑↓ move, Space toggle, Enter confirm, ← back`
             : `Question ${progress} • ← back, ↑↓ select, Enter confirm, Esc dismiss`}
       </text>
-    </box>
+    </Panel>
   );
 }

@@ -5,7 +5,7 @@ export function renderSkillCatalog(catalog: SkillCatalog): string {
   return [
     "Skills are specialized instruction sets. Use the skill tool when a request matches an available skill.",
     'Call the skill tool with the exact skill name as the "name" argument; omit "resource" to load its SKILL.md. To load a referenced file, pass its exact relative path from the skill_files list as "resource".',
-    "Read the skill before applying it.",
+    "Read the skill before applying it. Once loaded, do not load it again in this session; reuse its instructions from the earlier result.",
     "",
     ...catalog.skills
       .filter((s) => !s.metadata.disableModelInvocation)

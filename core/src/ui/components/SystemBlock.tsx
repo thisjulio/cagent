@@ -1,5 +1,6 @@
 import { TextAttributes } from "@opentui/core";
 import type { SystemBlock } from "../render/blocks";
+import { useTheme } from "../primitives/theme-context";
 
 function time(ts?: number): string {
   return ts
@@ -12,6 +13,7 @@ function time(ts?: number): string {
 }
 
 export function SystemBlockComponent({ block }: { block: SystemBlock }) {
+  const { color } = useTheme();
   const item = block.item;
   const compacted = item.content.match(/^compacted:\s*(.+)$/);
 
@@ -25,8 +27,10 @@ export function SystemBlockComponent({ block }: { block: SystemBlock }) {
       flexShrink={0}
     >
       <text>
-        <span fg="#d97757">├─ </span>
-        <strong fg="#a78bfa">{compacted ? "context compacted" : "info"}</strong>
+        <span fg={color.accent}>├─ </span>
+        <strong fg={color.status.special}>
+          {compacted ? "context compacted" : "info"}
+        </strong>
         {item.timestamp ? (
           <span attributes={TextAttributes.DIM}> {time(item.timestamp)}</span>
         ) : null}
@@ -36,7 +40,7 @@ export function SystemBlockComponent({ block }: { block: SystemBlock }) {
           .split("\n")
           .map((line, lineIndex) => (
             <text key={`system-line-${lineIndex}`}>
-              <span fg="#d97757">│ </span>
+              <span fg={color.accent}>│ </span>
               <span attributes={TextAttributes.DIM}>{line}</span>
             </text>
           ))}

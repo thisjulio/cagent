@@ -18,6 +18,7 @@ export async function readSkill(
 }
 
 export function createReadSkillTool(catalog: SkillCatalog): ToolDefinition {
+  const loadedSkills = new Set<string>();
   const tool = defineTool(
     "skill",
     'Load a skill by its exact name from the available skill list. Omit "resource" for SKILL.md. To load a referenced file, pass its listed relative path in "resource".',
@@ -34,7 +35,7 @@ export function createReadSkillTool(catalog: SkillCatalog): ToolDefinition {
       required: ["name"],
       additionalProperties: false,
     },
-    (args) => readSkillTool(catalog, args),
+    (args) => readSkillTool(catalog, args, loadedSkills),
     { readOnly: true },
   );
   refreshReadSkillTool(tool, catalog);
@@ -55,6 +56,7 @@ export function refreshReadSkillTool(
 async function readSkillTool(
   catalog: SkillCatalog,
   args: Record<string, unknown>,
+  loadedSkills: Set<string>,
 ) {
   const name = typeof args.name === "string" ? args.name : "";
   const skill = catalog.byName.get(name);
@@ -78,9 +80,14 @@ async function readSkillTool(
       ? args.resource
       : "SKILL.md";
   if (resource === "SKILL.md") {
+    if (loadedSkills.has(name))
+      return {
+        output: `skill already loaded this session: ${name}. Reuse its earlier instructions instead of loading it again.`,
+      };
     const content = await readSkill(catalog, skill.metadata.name);
     if (content !== undefined) {
       const files = await listSkillResources(skill.directory);
+      loadedSkills.add(name);
       return {
         output: formatSkillToolOutput(
           skill.metadata.name,

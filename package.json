@@ -21,6 +21,7 @@
     "format:write": "biome format --write .",
     "graph:update": "graphify update .",
     "check:plugins": "bun plugins/metadata.ts",
+    "check:design-system": "bun scripts/check-design-system.ts",
     "build:release": "bun scripts/build-release.ts && bun build release.ts --compile --outfile dist/cagent",
     "check:module-limits": "bun scripts/check-module-limits.ts",
     "prepare": "husky"

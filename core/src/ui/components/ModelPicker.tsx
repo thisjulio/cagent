@@ -1,3 +1,8 @@
+import { useTheme } from "../primitives/theme-context";
+import { Panel } from "../primitives/Panel";
+import { responsiveSize } from "../theme/breakpoints";
+import { useTerminalDimensions } from "@opentui/react";
+
 export function ModelPicker({
   routes,
   query,
@@ -9,26 +14,21 @@ export function ModelPicker({
   selectedIndex: number;
   onSelect: (route: string) => void;
 }) {
+  const { color } = useTheme();
+  const { width } = useTerminalDimensions();
+  const compact = responsiveSize(width) === "compact";
   return (
-    <box
-      flexDirection="column"
-      flexShrink={0}
-      border
-      borderStyle="rounded"
-      borderColor="#d97757"
-      paddingX={1}
-    >
-      <text fg="#d97757"> Select model </text>
-      <text fg="#999999">Search: {query || "(all models)"}</text>
+    <Panel title="Select model" tone="focused">
+      <text fg={color.text.muted}>Search: {query || "(all models)"}</text>
       {routes.length === 0 ? (
-        <text fg="#999999">No matching models</text>
+        <text fg={color.text.muted}>No matching models</text>
       ) : null}
       <select
         focused
         selectedIndex={selectedIndex}
         height={Math.min(8, Math.max(1, routes.length))}
         options={routes.map((route) => ({
-          name: route,
+          name: compact ? (route.split("/").at(-1) ?? route) : route,
           description: "",
           value: route,
         }))}
@@ -36,7 +36,7 @@ export function ModelPicker({
           if (option?.value) onSelect(String(option.value));
         }}
       />
-      <text fg="#666666">↑↓ navigate Enter select Esc cancel</text>
-    </box>
+      <text fg={color.text.muted}>↑↓ navigate · Enter select · Esc cancel</text>
+    </Panel>
   );
 }

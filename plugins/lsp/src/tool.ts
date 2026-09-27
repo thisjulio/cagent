@@ -8,12 +8,18 @@ import type { LspServerConfig } from "./types";
 export function lspTool(ctx: PluginContext) {
   const clients = new Map<string, Promise<LspClient>>();
   const servers = configuredServers(ctx.config.lsp);
-  const getClient = (root: string, config: LspServerConfig) => {
+  const getClient = async (root: string, config: LspServerConfig) => {
     const key = `${root}:${config.command.join("\0")}`;
     let client = clients.get(key);
+    if (client) {
+      const active = await client;
+      if (active.isAlive) return active;
+      if (clients.get(key) === client) clients.delete(key);
+      client = clients.get(key);
+    }
     if (!client) {
       client = LspClient.start(root, config).catch((error) => {
-        clients.delete(key);
+        if (clients.get(key) === client) clients.delete(key);
         throw error;
       });
       clients.set(key, client);

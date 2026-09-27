@@ -1,5 +1,6 @@
 import type { ToolDisplay as Display } from "@cagent/sdk";
 import { SyntaxStyle } from "@opentui/core";
+import { useTheme } from "../primitives/theme-context";
 
 const syntaxStyle = SyntaxStyle.create();
 const DISPLAY_MAX_LINES = 12;
@@ -21,6 +22,7 @@ function CodeDisplay({
   display: Extract<Display, { kind: "code" }>;
   maxRows?: number;
 }) {
+  const { color } = useTheme();
   const content = previewContent(display.content, maxRows ?? DISPLAY_MAX_LINES);
   return (
     <box flexDirection="column" width="100%" minWidth={0} overflow="hidden">
@@ -29,7 +31,7 @@ function CodeDisplay({
           minWidth={3}
           paddingRight={1}
           lineNumberOffset={(display.lineStart ?? 1) - 1}
-          fg="#6b7280"
+          fg={color.text.muted}
           width="100%"
         >
           <code
@@ -64,6 +66,7 @@ function DiffDisplay({
   view: "unified" | "split";
   maxRows?: number;
 }) {
+  const { color } = useTheme();
   const allLines = display.content.replace(/\r\n/g, "\n").trimEnd().split("\n");
   const firstHunk = allLines.findIndex((line) => line.startsWith("@@ "));
   const headerRows = Math.min(firstHunk < 0 ? allLines.length : firstHunk, 3);
@@ -94,7 +97,7 @@ function DiffDisplay({
         wrapMode="none"
       />
       {shown.length < allLines.length ? (
-        <text fg="#888888">
+        <text fg={color.text.muted}>
           … {allLines.length - shown.length} more lines · /diff
         </text>
       ) : null}
@@ -109,6 +112,7 @@ function TerminalDisplay({
   display: Extract<Display, { kind: "terminal" }>;
   maxRows?: number;
 }) {
+  const { color } = useTheme();
   const maximum = maxRows ?? DISPLAY_MAX_LINES;
   const output = `${display.stdout}${display.stderr ? `\n${display.stderr}` : ""}`;
   const allLines = output.replace(/\r\n/g, "\n").trimEnd().split("\n");
@@ -123,15 +127,17 @@ function TerminalDisplay({
         {lines.map((line, index) => (
           <text
             key={`terminal-${index}`}
-            fg={index < stdout.length ? "#c9d1d9" : "#f87171"}
+            fg={
+              index < stdout.length ? color.text.secondary : color.status.danger
+            }
           >
             {line}
           </text>
         ))}
         {display.timedOut ? (
-          <text fg="#eab308">[timed out]</text>
+          <text fg={color.status.warning}>[timed out]</text>
         ) : display.exitCode !== undefined && display.exitCode !== 0 ? (
-          <text fg="#f87171">[exit code {display.exitCode}]</text>
+          <text fg={color.status.danger}>[exit code {display.exitCode}]</text>
         ) : null}
       </box>
     </box>

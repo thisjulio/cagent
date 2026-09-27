@@ -3,6 +3,7 @@ import type { KeyEvent, TextareaRenderable } from "@opentui/core";
 import { useRenderer } from "@opentui/react";
 import { readClipboard } from "../../clipboard/clipboard";
 import { ActivitySpinner } from "./ActivitySpinner";
+import { useTheme } from "../primitives/theme-context";
 
 export function InputArea({
   input,
@@ -31,6 +32,7 @@ export function InputArea({
 }) {
   const textarea = useRef<TextareaRenderable>(null);
   const renderer = useRenderer();
+  const { color } = useTheme();
   // ponytail: track last-applied inputKey so setText only runs on external
   // updates (autocomplete, up-arrow, session restore), not on user typing.
   // User typing updates the prop via onChange but doesn't bump inputKey,
@@ -52,13 +54,13 @@ export function InputArea({
       flexDirection="column"
       flexShrink={0}
       border={["top"]}
-      borderColor="#444444"
+      borderColor={color.border.default}
       justifyContent="flex-start"
       paddingX={1}
     >
       <box height={1}>
         {suggest && suggest.length > 0 ? (
-          <text fg="#666666">{"  tab: " + suggest.join("  ")}</text>
+          <text fg={color.text.muted}>{"  Tab: " + suggest.join("  ")}</text>
         ) : busy ? (
           <ActivitySpinner
             label={
@@ -73,13 +75,13 @@ export function InputArea({
       <box
         border
         borderStyle="rounded"
-        borderColor="#d97757"
+        borderColor={active ? color.border.focused : color.border.default}
         paddingX={1}
         width="100%"
         height={5}
         flexDirection="row"
       >
-        <text fg="#d97757" width={2} flexShrink={0}>
+        <text fg={color.accent} width={2} flexShrink={0}>
           {"> "}
         </text>
         <textarea
@@ -148,7 +150,7 @@ export function InputArea({
             }
           }}
           placeholder="type your next instruction"
-          placeholderColor="#666666"
+          placeholderColor={color.text.muted}
           onContentChange={() => {
             const value = textarea.current?.plainText ?? "";
             if (value !== input) onChange(value);
@@ -169,7 +171,7 @@ async function paste(
   const value = await readClipboard();
   onClipboard?.("paste", value?.length ?? 0, value !== undefined);
   if (value !== undefined) {
-    textarea.insertText(value.replace(/\r\n?|\n/g, " "));
+    textarea.insertText(value.replace(/\r\n?/g, "\n"));
     textarea.cursorOffset = textarea.plainText.length;
   }
 }

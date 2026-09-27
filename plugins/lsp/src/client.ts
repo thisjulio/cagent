@@ -55,6 +55,9 @@ export class LspClient {
     }>
   >();
   private serverReady?: () => void;
+  private exited = false;
+  private stderr = "";
+  private exitReason = "LSP server exited";
 
   private constructor(
     private readonly root: string,
@@ -81,18 +84,30 @@ export class LspClient {
     });
     this.process.stdout.on("data", (chunk) => this.read(chunk));
     this.process.on("error", (error) => {
+      this.exited = true;
+      this.exitReason = error.message;
       for (const pending of this.pending.values()) {
         pending.reject(error);
       }
       this.pending.clear();
+      for (const waiters of this.diagnosticWaiters.values())
+        for (const waiter of waiters) waiter.reject(error);
+      this.diagnosticWaiters.clear();
     });
-    this.process.on("exit", () => {
+    this.process.on("close", (code, signal) => {
+      this.exited = true;
+      this.exitReason = `LSP server exited (code ${code ?? "unknown"}${signal ? `, signal ${signal}` : ""})${this.stderr ? `: ${this.stderr.trim()}` : ""}`;
       for (const pending of this.pending.values()) {
-        pending.reject(new Error("LSP server exited"));
+        pending.reject(new Error(this.exitReason));
       }
       this.pending.clear();
+      for (const waiters of this.diagnosticWaiters.values())
+        for (const waiter of waiters) waiter.reject(new Error(this.exitReason));
+      this.diagnosticWaiters.clear();
     });
-    this.process.stderr.resume();
+    this.process.stderr.on("data", (chunk: Buffer) => {
+      this.stderr = (this.stderr + chunk.toString()).slice(-2000);
+    });
   }
 
   static async start(
@@ -118,6 +133,10 @@ export class LspClient {
     client.notify("initialized", {});
     await ready;
     return client;
+  }
+
+  get isAlive(): boolean {
+    return !this.exited;
   }
 
   private read(chunk: Buffer) {
@@ -328,11 +347,12 @@ export class LspClient {
         reject(
           new Error("Timed out waiting for textDocument/publishDiagnostics"),
         );
-      }, 5000);
+      }, 15000);
     });
   }
 
   async close() {
+    if (this.exited) return;
     for (const uri of this.opened) {
       this.notify("textDocument/didClose", { textDocument: { uri } });
     }

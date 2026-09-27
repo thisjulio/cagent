@@ -1,4 +1,7 @@
 import type { ToolArgs } from "@cagent/sdk";
+import { useTheme } from "../primitives/theme-context";
+import { Panel } from "../primitives/Panel";
+import { symbols } from "../theme/symbols";
 
 function asText(value: unknown): string {
   return typeof value === "string" ? value : String(value ?? "");
@@ -16,38 +19,33 @@ export function PendingAsk({
     allowScope?: string;
   };
 }) {
+  const { color } = useTheme();
   const path = asText(ask.args?.path);
   const command = asText(ask.args?.command);
   const isEdit = ask.tool === "edit_file" || ask.tool === "write_file";
   const isRead = ask.tool === "read_file";
   return (
-    <box
-      flexDirection="column"
-      flexShrink={0}
-      border
-      borderColor="#eab308"
-      paddingX={1}
+    <Panel
+      title={`${symbols.warning} ${isEdit ? "Approve edit" : "Approve command"}`}
+      tone="warning"
     >
-      <text fg="#eab308">
-        <strong>Aprovar {isEdit ? "edição" : "comando"}</strong>
-        {ask.title ? ` — ${ask.title}` : ""}
-      </text>
+      {ask.title ? <text fg={color.text.primary}>{ask.title}</text> : null}
       {isEdit ? (
-        <text fg="#facc15">{path || "arquivo"} · edição proposta</text>
+        <text fg={color.text.secondary}>{path || "file"} · proposed edit</text>
       ) : isRead ? (
-        <text fg="#facc15">{path || "arquivo"} · leitura solicitada</text>
+        <text fg={color.text.secondary}>{path || "file"} · read requested</text>
       ) : (
-        <text fg="#facc15">$ {command || ask.cmd}</text>
+        <text fg={color.text.secondary}>$ {command || ask.cmd}</text>
       )}
-      <text fg="#a3a3a3">
-        y aplicar · n recusar · e recusar com instrução
-        {ask.canAlwaysAllow ? ` · a ${ask.allowScope ?? "sempre"}` : ""}
+      <text fg={color.text.primary}>
+        y allow · n deny
+        {ask.canAlwaysAllow ? ` · a allow ${ask.allowScope ?? "always"}` : ""}
       </text>
       {!ask.canAlwaysAllow && ask.tool === "bash" ? (
-        <text fg="#f59e0b">
-          ⚠ "sempre" não se aplica a comandos com sintaxe encadeada
+        <text fg={color.status.warning}>
+          {symbols.warning} Always-allow is unavailable for compound commands
         </text>
       ) : null}
-    </box>
+    </Panel>
   );
 }

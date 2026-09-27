@@ -62,6 +62,18 @@ describe("code-tools tools", () => {
     );
   });
 
+  it("write_file creates missing parent directories", async () => {
+    const { tools } = freshTools();
+    const result = await tools.get("write_file")!.execute({
+      path: "new/deep/file.ts",
+      content: "created",
+    });
+    expect(result.isError).toBeFalsy();
+    expect(fs.readFileSync(path.join(ws, "new/deep/file.ts"), "utf8")).toBe(
+      "created",
+    );
+  });
+
   it("read_file uses a bounded default and exposes the next page", async () => {
     const { tools } = freshTools();
     const content = Array.from({ length: 205 }, (_, i) => `line-${i + 1}`).join(
@@ -190,6 +202,17 @@ a7.ts
     });
     expect(r.isError).toBeFalsy();
     expect(fs.readFileSync(path.join(ws, "new.ts"), "utf8")).toBe("one\ntwo");
+  });
+
+  it("edit_file: Add File patch creates missing parent directories", async () => {
+    const { tools } = freshTools();
+    const result = await tools.get("edit_file")!.execute({
+      patch: `*** Begin Patch\n*** Add File: added/deep/file.ts\n+created\n*** End Patch`,
+    });
+    expect(result.isError).toBeFalsy();
+    expect(fs.readFileSync(path.join(ws, "added/deep/file.ts"), "utf8")).toBe(
+      "created",
+    );
   });
 
   it("edit_file: Add rejects an existing file (E_EXISTS)", async () => {

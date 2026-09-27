@@ -135,7 +135,9 @@ describe("skills", () => {
     const main = await tool.execute({ name: "guided" });
     expect(main.output).toContain("<file>references/guide.md</file>");
     const emptyResource = await tool.execute({ name: "guided", resource: "" });
-    expect(emptyResource.output).toContain('<skill_content name="guided">');
+    expect(emptyResource.output).toContain(
+      "skill already loaded this session: guided",
+    );
     const resource = await tool.execute({
       name: "guided",
       resource: "references/guide.md",
@@ -194,13 +196,18 @@ describe("skills", () => {
   });
 
   it("returns the full skill payload in the native tool envelope", async () => {
-    const result = await createReadSkillTool(catalog()).execute({
-      name: "grilling",
-    });
+    const tool = createReadSkillTool(catalog());
+    const result = await tool.execute({ name: "grilling" });
     expect(result.output).toContain('<skill_content name="grilling">');
     expect(result.output).toContain(
       "Base directory for this skill: /tmp/grilling",
     );
     expect(result.output).toContain("Ask questions about $ARGUMENTS.");
+
+    const repeated = await tool.execute({ name: "grilling" });
+    expect(repeated.output).toContain(
+      "skill already loaded this session: grilling",
+    );
+    expect(repeated.output).not.toContain("Ask questions about $ARGUMENTS.");
   });
 });

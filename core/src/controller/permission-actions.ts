@@ -42,7 +42,7 @@ export function askTool(
     title,
     args,
     canAlwaysAllow: tool.name === "bash" && !hasControlSyntax,
-    allowScope: tool.name === "bash" ? "sempre bash*" : undefined,
+    allowScope: tool.name === "bash" ? "always bash*" : undefined,
   };
   controller.notifyPermissionRequest();
   return new Promise<boolean>((resolve) => {

@@ -2,8 +2,10 @@ import { TextAttributes } from "@opentui/core";
 import type { UserTurnBlock } from "../render/blocks";
 import { formatTime } from "../render/time";
 import { escapeRegExp } from "../render/text";
+import { useTheme } from "../primitives/theme-context";
 
 export function UserTurnBlockComponent({ block }: { block: UserTurnBlock }) {
+  const { color } = useTheme();
   const item = block.items[0];
   const imagePaths = item.imagePaths ?? [];
   const filePaths = item.filePaths ?? [];
@@ -32,27 +34,27 @@ export function UserTurnBlockComponent({ block }: { block: UserTurnBlock }) {
       flexDirection="column"
       flexShrink={0}
     >
-      <text fg="#d97757">
+      <text fg={color.accent}>
         You{" "}
         <span attributes={TextAttributes.DIM}>
           {formatTime(block.timestamp)}
         </span>
       </text>
       <text>
-        <span fg="#d97757">└─ </span>
+        <span fg={color.accent}>└─ </span>
         {item.queueStatus ? `[${item.queueStatus}] ` : ""}
         {textWithoutImages || " "}
       </text>
       {imagePaths.map((path) => (
         <text key={`img-${path}`}>
-          <span fg="#d97757"> </span>
-          <span fg="#a78bfa">[Image: {path}]</span>
+          <span fg={color.accent}> </span>
+          <span fg={color.status.special}>[Image: {path}]</span>
         </text>
       ))}
       {filePaths.map((path) => (
         <text key={`file-${path}`}>
-          <span fg="#d97757"> </span>
-          <span fg="#7dd3fc">[File: {path}]</span>
+          <span fg={color.accent}> </span>
+          <span fg={color.status.info}>[File: {path}]</span>
         </text>
       ))}
     </box>

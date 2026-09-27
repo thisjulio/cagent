@@ -5,6 +5,7 @@ import { formatTime } from "../render/time";
 import { ToolItemComponent } from "./ToolItem";
 import { ThinkingItemComponent } from "./ThinkingItem";
 import { diffStats } from "../../controller/diff-stats";
+import { useTheme } from "../primitives/theme-context";
 
 const markdownSyntaxStyle = SyntaxStyle.create();
 
@@ -15,9 +16,10 @@ function ResponseItemComponent({
   item: Extract<AgentItem, { type: "RESPONSE" }>;
   streaming: boolean;
 }) {
+  const { color } = useTheme();
   return (
     <box flexDirection="row" minWidth={0}>
-      <text fg="#d97757">└─ </text>
+      <text fg={color.accent}>└─ </text>
       <box flexGrow={1} flexBasis={0} minWidth={0} paddingLeft={1}>
         {item.content ? (
           <markdown
@@ -49,6 +51,7 @@ export function AgentTurnBlockComponent({
   controller: Controller;
   terminalWidth: number;
 }) {
+  const { color } = useTheme();
   const changes = block.items.filter(
     (item): item is Extract<AgentItem, { type: "TOOL" }> =>
       item.type === "TOOL" && item.changesWorkspace === true,
@@ -71,13 +74,13 @@ export function AgentTurnBlockComponent({
 
   return (
     <box paddingX={2} width="100%" flexDirection="column" flexShrink={0}>
-      <text fg="#d97757">
+      <text fg={color.accent}>
         cagent{block.subagent ? ` → @${block.subagent}` : ""}{" "}
         <span attributes={TextAttributes.DIM}>
           {formatTime(block.timestamp)}
         </span>
       </text>
-      <text fg="#d97757">│ </text>
+      <text fg={color.accent}>│ </text>
       {block.items.map((item, index) => {
         if (item.type === "THINKING") {
           return (
@@ -87,7 +90,6 @@ export function AgentTurnBlockComponent({
               streaming={
                 streaming && latestTurn && index === block.items.length - 1
               }
-              controller={controller}
             />
           );
         }
@@ -110,13 +112,13 @@ export function AgentTurnBlockComponent({
         );
       })}
       {changes.length ? (
-        <text fg="#888888">
+        <text fg={color.text.muted}>
           └─ {fileCount} file{fileCount === 1 ? "" : "s"}
           {changes.some((item) => item.display?.kind === "diff")
             ? ` · +${stats.added} −${stats.removed}`
             : ""}
           {" · "}
-          <span fg="#d97757">/diff</span>
+          <span fg={color.accent}>/diff</span>
         </text>
       ) : null}
     </box>

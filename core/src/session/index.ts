@@ -98,6 +98,8 @@ export class Session {
     for (const record of rawRecords)
       if (String(record.type) === "snapshot")
         latestSnapshots.set(record.turnId, record);
+    for (const record of rawRecords)
+      if (record.type === "assistant") latestSnapshots.delete(record.turnId);
     const visibleRecords: SessionRecord[] = [];
     for (const record of rawRecords) {
       if (String(record.type) === "snapshot") continue;

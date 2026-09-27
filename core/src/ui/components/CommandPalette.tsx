@@ -1,5 +1,9 @@
 import type { Controller } from "../../controller/controller";
 import type { HelpItem } from "../help-catalog";
+import { Text } from "../primitives/Text";
+import { useTheme } from "../primitives/theme-context";
+import { symbols } from "../theme/symbols";
+import { Panel } from "../primitives/Panel";
 
 export function CommandPalette({
   controller,
@@ -8,6 +12,7 @@ export function CommandPalette({
   controller: Controller;
   items: HelpItem[];
 }) {
+  const { color } = useTheme();
   const { commandPaletteQuery: query, commandPaletteIndex: index } =
     controller.state;
   const normalized = query.toLowerCase();
@@ -15,22 +20,30 @@ export function CommandPalette({
     `${item.name} ${item.description}`.toLowerCase().includes(normalized),
   );
   const selected = matches[index] ?? matches[0];
+  const firstVisible = Math.max(0, Math.min(index - 5, matches.length - 12));
+  const visible = matches.slice(firstVisible, firstVisible + 12);
   return (
-    <box border borderStyle="double" paddingX={1} flexDirection="column">
-      <text fg="#d97757">Command palette</text>
+    <Panel title="Command palette" tone="focused">
       <text>Search: {query || "type to filter"} </text>
-      {matches.slice(0, 12).map((item, itemIndex) => (
-        <text
-          key={`${item.group}:${item.name}`}
-          fg={itemIndex === index ? "#ffffff" : "#888888"}
-        >
-          {itemIndex === index ? "› " : "  "}
-          <strong>{item.name}</strong> — {item.description}
-        </text>
-      ))}
-      {matches.length === 0 && <text fg="#888888">No matching commands</text>}
-      <text fg="#666666">↑↓ select · Enter run · Esc close · Ctrl+P close</text>
-      {selected && <text fg="#666666">Selected: {selected.name}</text>}
-    </box>
+      {visible.map((item, offset) => {
+        const itemIndex = firstVisible + offset;
+        return (
+          <text
+            key={`${item.group}:${item.name}`}
+            fg={itemIndex === index ? color.text.primary : color.text.muted}
+          >
+            {itemIndex === index ? `${symbols.selected} ` : "  "}
+            <strong>{item.name}</strong> — {item.description}
+          </text>
+        );
+      })}
+      {matches.length === 0 && <Text tone="muted">No matching commands</Text>}
+      <Text tone="muted">↑↓ select · Enter run · Esc close</Text>
+      {selected && (
+        <Text tone="muted">
+          {index + 1}/{matches.length} · {selected.name}
+        </Text>
+      )}
+    </Panel>
   );
 }

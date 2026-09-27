@@ -1,3 +1,5 @@
+import { supportsSplit } from "../theme/breakpoints";
+
 export function diffViewForWidth(width: number): "unified" | "split" {
-  return width >= 140 ? "split" : "unified";
+  return supportsSplit(width) ? "split" : "unified";
 }

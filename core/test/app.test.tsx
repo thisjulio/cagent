@@ -98,6 +98,8 @@ describe("OpenTUI render", () => {
     expect(out).toContain("openai");
     expect(out).toContain("100k");
     expect(out).toContain("%");
+    expect(out).toContain("⇧Tab ask");
+    expect(out).toContain("? help");
     act(() => setup.renderer.destroy());
   });
 
@@ -105,12 +107,17 @@ describe("OpenTUI render", () => {
     const c = new Controller(deps());
     const setup = await testRender(
       React.createElement(App, { c, mcpServerCount: 2 }),
-      { width: 80, height: 24 },
+      { width: 80, height: 40 },
     );
     await act(async () => {
       await setup.flush();
     });
-    expect(setup.captureCharFrame()).toContain("2 MCP");
+    const frame = setup.captureCharFrame();
+    expect(frame).toContain("2 MCP");
+    const welcomeRow = frame
+      .split("\n")
+      .findIndex((line) => line.includes("loaded:"));
+    expect(welcomeRow).toBeGreaterThan(10);
     act(() => setup.renderer.destroy());
   });
 
@@ -351,7 +358,7 @@ describe("OpenTUI render", () => {
 
   it("keeps missing image paths as ordinary user text", async () => {
     const c = new Controller(deps());
-    c.state.chat.push({ kind: "user", content: "analise ./missing-image.png" });
+    c.state.chat.push({ kind: "user", content: "analyze ./missing-image.png" });
     const setup = await testRender(React.createElement(App, { c }), {
       width: 80,
       height: 24,
@@ -363,7 +370,7 @@ describe("OpenTUI render", () => {
       await setup.flush();
     });
     const out = setup.captureCharFrame();
-    expect(out).toContain("analise ./missing-image.png");
+    expect(out).toContain("analyze ./missing-image.png");
     expect(out).not.toContain("[Image: ./missing-image.png]");
     act(() => setup.renderer.destroy());
   });
@@ -405,9 +412,9 @@ describe("OpenTUI render", () => {
     act(() => setup.renderer.destroy());
   });
 
-  it("keeps the input indicator on the same line as the text", async () => {
+  it("keeps the input indicator aligned with a three-line composer", async () => {
     const c = new Controller(deps());
-    c.state.input = "type a long text without breaking the indicator";
+    c.state.input = "first line\nsecond line\nthird line";
     const previousColumns = process.stdout.columns;
     process.stdout.columns = 40;
     try {
@@ -421,7 +428,9 @@ describe("OpenTUI render", () => {
         await setup.flush();
       });
       const lines = setup.captureCharFrame().split("\n");
-      expect(lines.some((line) => line.includes("> type"))).toBe(true);
+      expect(lines.some((line) => line.includes("> first line"))).toBe(true);
+      expect(lines.some((line) => line.includes("second line"))).toBe(true);
+      expect(lines.some((line) => line.includes("third line"))).toBe(true);
       act(() => setup.renderer.destroy());
     } finally {
       process.stdout.columns = previousColumns;

@@ -2,6 +2,9 @@ import type { ChatItem } from "../../controller/state";
 import { useTerminalDimensions } from "@opentui/react";
 import { ToolDisplayComponent } from "./ToolDisplay";
 import { diffViewForWidth } from "../render/diff-view";
+import { useTheme } from "../primitives/theme-context";
+import { Panel } from "../primitives/Panel";
+import { Scrollable } from "../primitives/Scrollable";
 
 export function DiffPanel({
   tools,
@@ -11,6 +14,7 @@ export function DiffPanel({
   index: number;
 }) {
   const dimensions = useTerminalDimensions();
+  const { color } = useTheme();
   const changes = tools.filter(
     (item) => item.kind === "tool" && item.display?.kind === "diff",
   );
@@ -23,27 +27,21 @@ export function DiffPanel({
   );
   const selected = changes[index];
   return (
-    <box
-      border
-      borderStyle="single"
-      borderColor="#666666"
-      paddingX={1}
-      flexDirection="column"
-      height="100%"
-      minHeight={0}
-      flexShrink={0}
+    <Panel
+      grow
+      title={`File changes · ${changedPaths.size} ${changedPaths.size === 1 ? "file" : "files"}${changes.length ? ` · ${index + 1}/${changes.length}` : ""}`}
+      footer={
+        <text fg={color.text.muted}>
+          Ctrl+O next earlier · Shift+Ctrl+O previous · Esc close
+        </text>
+      }
     >
-      <text fg="#d97757">
-        File changes · {changedPaths.size}{" "}
-        {changedPaths.size === 1 ? "file" : "files"}
-        {changes.length ? ` · ${index + 1}/${changes.length}` : ""}
-      </text>
-      <scrollbox flexGrow={1} flexShrink={1} minHeight={0} height="100%">
+      <Scrollable>
         {!selected ? (
           <text>No file changes in this turn</text>
         ) : (
           <box flexDirection="column">
-            <text fg="#d97757">
+            <text fg={color.accent}>
               {selected.display?.kind === "diff"
                 ? (selected.display.path ?? selected.cmd ?? selected.toolName)
                 : selected.toolName}
@@ -56,10 +54,7 @@ export function DiffPanel({
             ) : null}
           </box>
         )}
-      </scrollbox>
-      <text fg="#666666">
-        Ctrl+O next earlier · Shift+Ctrl+O previous · Esc close
-      </text>
-    </box>
+      </Scrollable>
+    </Panel>
   );
 }

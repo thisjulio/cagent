@@ -92,6 +92,8 @@ export function onKey(c: Controller, key: InputKey, input: string): void {
   }
   if (s.toolViewerIndex != null) {
     if (key.escape) c.closeToolViewer();
+    else if (key.ctrl && (input === "o" || input === "\u000f"))
+      c.openToolViewer(key.shift ? "backward" : "forward", s.toolViewerTurnId);
     else c.bump();
     return;
   }

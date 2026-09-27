@@ -41,5 +41,16 @@ describe("LSP diagnostics", () => {
     expect(
       diagnostics.some((item) => item.code === "lint/suspicious/noExplicitAny"),
     ).toBe(true);
+    expect(client.isAlive).toBe(true);
+  });
+
+  test("reports the exit code and stderr when a server exits during startup", async () => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), "cagent-lsp-exit-"));
+    await expect(
+      LspClient.start(root, {
+        command: ["sh", "-c", "echo startup failed >&2; exit 7"],
+        extensions: [".ts"],
+      }),
+    ).rejects.toThrow("LSP server exited (code 7): startup failed");
   });
 });
