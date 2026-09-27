@@ -3,6 +3,7 @@ import type { AgentTurnBlock, AgentItem } from "../render/blocks";
 import type { Controller } from "../../controller/controller";
 import { formatTime } from "../render/time";
 import { ToolItemComponent } from "./ToolItem";
+import { SkillItemComponent } from "./SkillItem";
 import { ThinkingItemComponent } from "./ThinkingItem";
 import { diffStats } from "../../controller/diff-stats";
 import { useTheme } from "../primitives/theme-context";
@@ -90,6 +91,15 @@ export function AgentTurnBlockComponent({
               streaming={
                 streaming && latestTurn && index === block.items.length - 1
               }
+            />
+          );
+        }
+        if (item.type === "SKILL") {
+          return (
+            <SkillItemComponent
+              key={`skill-${index}`}
+              item={item}
+              onClick={() => controller.toggleToolExpand(item.chatIndex)}
             />
           );
         }

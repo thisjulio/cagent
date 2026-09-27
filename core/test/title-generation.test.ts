@@ -43,4 +43,12 @@ describe("ensureToolTitle", () => {
       ensureToolTitle("   ", "read_file", "read", { path: "src/total.ts" }),
     ).toBe("Read total.ts");
   });
+
+  it("uses the requested skill name instead of a model-generated title", () => {
+    expect(
+      ensureToolTitle("skill", "skill", "generic", {
+        name: "Aplicar simplicidade à mudança",
+      }),
+    ).toBe("skill Aplicar simplicidade à mudança");
+  });
 });

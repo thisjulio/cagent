@@ -7,6 +7,7 @@ import { Controller } from "../src/controller/controller.js";
 import { EventBus } from "../src/events.js";
 import { Registry } from "../src/registry.js";
 import { loadConfig } from "../src/config.js";
+import { ensureToolTitle } from "../src/tool-title.js";
 
 type SnapTool = "write" | "read" | "bash";
 const TOOL_ALIASES: Record<string, SnapTool> = {
@@ -48,6 +49,19 @@ function multilineToolScenarios(): ChatItem[] {
       content:
         "The user wants total() to multiply price by qty. I will read the file, edit it, and run bun test.",
       expanded: true,
+    }),
+    withTurn({
+      kind: "tool",
+      toolName: "skill",
+      toolCategory: "skill",
+      title: ensureToolTitle("skill", "skill", "generic", {
+        name: "ponytail",
+      }),
+      cmd: "ponytail",
+      content:
+        '<skill_content name="ponytail">Skill instructions.</skill_content>',
+      expanded: false,
+      running: false,
     }),
     withTurn({
       kind: "tool",

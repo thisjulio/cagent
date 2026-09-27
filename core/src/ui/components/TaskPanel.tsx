@@ -12,6 +12,7 @@ import { symbols } from "../theme/symbols";
 import { useTheme } from "../primitives/theme-context";
 import { Panel } from "../primitives/Panel";
 import { ShimmerText } from "../primitives/ShimmerText";
+import { DisclosureIndicator } from "../primitives/DisclosureIndicator";
 
 export interface TaskPanelHandle {
   toggle: () => void;
@@ -65,12 +66,21 @@ export const TaskPanel = forwardRef<
         flexShrink={0}
       >
         <box flexDirection="row" flexShrink={1}>
-          <text fg={color.accent}>
-            {icon} Tasks {taskProgress(tasks)} ·{" "}
-          </text>
-          <ShimmerText>{current?.title ?? "Tasks"}</ShimmerText>
+          <text fg={color.accent}>{icon} </text>
+          <DisclosureIndicator expanded={false} />
+          <text fg={color.accent}> </text>
+          {current?.status === "in_progress" ? (
+            <ShimmerText>{current.title}</ShimmerText>
+          ) : (
+            <text fg={color.accent}>
+              {current?.title ?? "Tasks"}
+              {current?.status === "blocked" && current.reason
+                ? ` (${current.reason})`
+                : ""}
+            </text>
+          )}
         </box>
-        <text fg={color.text.muted}>Ctrl+T</text>
+        <text fg={color.text.muted}>Tasks {taskProgress(tasks)} · Ctrl+T</text>
       </box>
     );
   }
@@ -114,7 +124,10 @@ export const TaskPanel = forwardRef<
           </box>
         ))}
       </scrollbox>
-      <text fg={color.text.muted}>Ctrl+T collapse</text>
+      <box flexDirection="row">
+        <DisclosureIndicator expanded />
+        <text fg={color.text.muted}> Ctrl+T collapse</text>
+      </box>
     </Panel>
   );
 });

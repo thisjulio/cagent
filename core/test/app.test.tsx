@@ -121,6 +121,34 @@ describe("OpenTUI render", () => {
     act(() => setup.renderer.destroy());
   });
 
+  it("renders skills collapsed and expands their content on click", async () => {
+    const c = new Controller(deps());
+    c.state.chat.push({
+      kind: "skill",
+      skillName: "code-review",
+      content: "Skill instructions",
+      expanded: false,
+    });
+    const setup = await testRender(React.createElement(App, { c }), {
+      width: 80,
+      height: 30,
+    });
+    await act(async () => setup.flush());
+
+    expect(setup.captureCharFrame()).toContain("▸ skill code-review");
+    expect(setup.captureCharFrame()).not.toContain("Skill instructions");
+
+    await act(async () => {
+      setup.mockInput.pressKey("o", { ctrl: true });
+      await setup.flush();
+    });
+
+    expect(c.state.chat[0]?.expanded).toBe(true);
+    expect(setup.captureCharFrame()).toContain("▾ skill code-review");
+    expect(setup.captureCharFrame()).toContain("Skill instructions");
+    act(() => setup.renderer.destroy());
+  });
+
   it("keeps expanded tool content aligned at narrow widths", async () => {
     const c = new Controller(deps());
     c.state.chat.push({
@@ -530,7 +558,7 @@ describe("OpenTUI render", () => {
       await setup.flush();
     });
     const out = setup.captureCharFrame();
-    expect(out).toContain("✓ Run git");
+    expect(out).toContain("✓▸ Run git");
     expect(out).toContain("$ git status");
     act(() => setup.renderer.destroy());
   });

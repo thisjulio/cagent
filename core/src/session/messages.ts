@@ -33,6 +33,8 @@ export function recordsToMessages(records: SessionRecord[]): Message[] {
         content: String(payload.content ?? ""),
         ...(toolCalls ? { tool_calls: toolCalls } : {}),
       });
+    } else if (record.type === "skill") {
+      // Skill records are a UI projection; tool records retain model context.
     } else if (record.type === "tool") {
       messages.push({
         role: "tool",

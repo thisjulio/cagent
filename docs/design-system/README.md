@@ -5,7 +5,7 @@ The Design System is the shared contract for terminal-native UI in cagent. It pr
 ## Layers
 
 1. Foundations in `core/src/ui/theme/`: primitive palette, semantic themes, spacing, typography roles, symbols, breakpoints, motion preference, and terminal runtime theme subscription.
-2. Primitives in `core/src/ui/primitives/`: `Text`, `ShimmerText`, `Stack`, `Row`, `Divider`, `Surface`, `Panel`, `KeyHint`, `Status`, `Badge`, `Progress`, `Scrollable`, `SelectableList`, and `EmptyState`.
+2. Primitives in `core/src/ui/primitives/`: `Text`, `ShimmerText`, `DisclosureIndicator`, `Stack`, `Row`, `Divider`, `Surface`, `Panel`, `KeyHint`, `Status`, `Badge`, `Progress`, `Scrollable`, `SelectableList`, and `EmptyState`.
 3. Product components in `core/src/ui/components/` compose these primitives and own presentation, not domain logic.
 4. Application surfaces are organized as a one-row header, transcript, optional context strip, composer, and one-row status bar.
 

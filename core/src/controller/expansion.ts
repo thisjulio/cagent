@@ -2,6 +2,7 @@ import type { ChatItem } from "./state";
 import { diffStats } from "./diff-stats";
 
 export function defaultExpanded(item: ChatItem): boolean {
+  if (item.kind === "skill" || item.toolCategory === "skill") return false;
   if (item.display?.kind === "diff") {
     const { added, removed } = diffStats(item.display.content);
     return added + removed <= 12;
@@ -10,7 +11,12 @@ export function defaultExpanded(item: ChatItem): boolean {
 }
 
 export function isExpandable(item: ChatItem): boolean {
-  return item.kind === "tool" || item.kind === "thinking";
+  return (
+    item.kind === "tool" ||
+    item.kind === "skill" ||
+    item.kind === "thinking" ||
+    (item.kind === "meta" && item.command === "skill-activated")
+  );
 }
 
 export function expandedState(item: ChatItem): boolean {

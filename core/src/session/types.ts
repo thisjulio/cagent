@@ -16,7 +16,7 @@ export type SessionCheckpoint = {
 export type SessionRecord = {
   ts: number;
   turnId?: string;
-  type: "user" | "assistant" | "thinking" | "tool" | "meta";
+  type: "user" | "assistant" | "thinking" | "tool" | "meta" | "skill";
   payload: Record<string, unknown>;
 };
 

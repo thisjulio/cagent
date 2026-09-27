@@ -27,6 +27,15 @@ describe("buildSystemPrompt", () => {
   expect(p).not.toContain(
     "Write every task title in the language of the latest user request",
   );
+
+  it("avoids redundant task status queries", () => {
+    expect(p).toContain("once before acting");
+    expect(p).toContain("Do not call `list` just to check first");
+    expect(p).toContain(
+      "do not call `list` solely to prepare the final answer",
+    );
+    expect(p).not.toContain("call `list` and inspect its returned state");
+  });
 });
 
 describe("scoped rules", () => {

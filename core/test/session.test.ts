@@ -11,6 +11,69 @@ describe("JSONL sessions", () => {
     dir = mkdtempSync(path.join(tmpdir(), "cagent-sess-"));
   });
 
+  it("restores skill projections without changing model tool-call context", () => {
+    const session = new Session("skill-projection", dir);
+    session.append({
+      ts: 1,
+      turnId: "turn-1",
+      type: "assistant",
+      payload: {
+        content: "",
+        tool_calls: [
+          { id: "skill-1", name: "skill", arguments: '{"name":"graphify"}' },
+        ],
+      },
+    });
+    session.append({
+      ts: 2,
+      turnId: "turn-1",
+      type: "tool",
+      payload: {
+        tool_call_id: "skill-1",
+        content:
+          '<skill_content name="graphify">\nInstructions\n</skill_content>',
+        toolName: "skill",
+        args: { name: "graphify" },
+      },
+    });
+    session.append({
+      ts: 3,
+      turnId: "turn-1",
+      type: "skill",
+      payload: {
+        name: "graphify",
+        content:
+          '<skill_content name="graphify">\nInstructions\n</skill_content>',
+        expanded: false,
+      },
+    });
+
+    const loaded = new Session(session.id, dir).load();
+
+    expect(loaded.messages).toEqual([
+      {
+        role: "assistant",
+        content: "",
+        tool_calls: [
+          { id: "skill-1", name: "skill", arguments: '{"name":"graphify"}' },
+        ],
+      },
+      {
+        role: "tool",
+        tool_call_id: "skill-1",
+        content:
+          '<skill_content name="graphify">\nInstructions\n</skill_content>',
+      },
+    ]);
+    expect(toChatItems(loaded.records)).toMatchObject([
+      {
+        kind: "skill",
+        skillName: "graphify",
+        expanded: false,
+      },
+    ]);
+  });
+
   it("persists the latest model selection", () => {
     const s = new Session(undefined, dir);
     s.appendModelSelection({ model: "openai/gpt-4", variant: "fast" });

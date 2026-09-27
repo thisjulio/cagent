@@ -1,19 +1,37 @@
 import type { UIState } from "./state";
 import { defaultExpanded, isExpandable } from "./expansion";
+import type { SessionRecord } from "../session/types";
+
+function toggleAt(
+  state: UIState,
+  index: number,
+  persist?: (record: SessionRecord) => void,
+): void {
+  const item = state.chat[index];
+  if (!isExpandable(item)) return;
+  const expanded = !(item.expanded ?? defaultExpanded(item));
+  state.chat[index] = {
+    ...item,
+    expanded,
+  };
+  if (item.kind === "skill") {
+    persist?.({
+      ts: Date.now(),
+      turnId: item.turnId,
+      type: "skill",
+      payload: { name: item.skillName, content: item.content, expanded },
+    });
+  }
+}
 
 export function toggleToolExpand(
   state: UIState,
   index: number | undefined,
   bump: () => void,
+  persist?: (record: SessionRecord) => void,
 ): void {
   if (index !== undefined) {
-    if (!isExpandable(state.chat[index])) return;
-    state.chat[index] = {
-      ...state.chat[index],
-      expanded: !(
-        state.chat[index].expanded ?? defaultExpanded(state.chat[index])
-      ),
-    };
+    toggleAt(state, index, persist);
     bump();
     return;
   }
@@ -23,7 +41,8 @@ export function toggleToolExpand(
       (item) =>
         item.kind === "assistant" ||
         item.kind === "thinking" ||
-        item.kind === "tool",
+        item.kind === "tool" ||
+        item.kind === "skill",
     );
   const latestTurnId = latestTurnItem?.turnId;
   let candidate: number | undefined;
@@ -39,11 +58,7 @@ export function toggleToolExpand(
     break;
   }
   if (candidate !== undefined) {
-    const i = candidate;
-    state.chat[i] = {
-      ...state.chat[i],
-      expanded: !(state.chat[i].expanded ?? defaultExpanded(state.chat[i])),
-    };
+    toggleAt(state, candidate, persist);
     bump();
   }
 }

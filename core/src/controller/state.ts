@@ -18,7 +18,7 @@ import type { SubagentRequest } from "../subagents/executor";
 import type { VerificationRunner } from "../verification/runner";
 
 export type ChatItem = {
-  kind: "user" | "assistant" | "tool" | "meta" | "thinking";
+  kind: "user" | "assistant" | "tool" | "meta" | "thinking" | "skill";
   content: string;
   turnId?: string;
   imagePaths?: string[];
@@ -27,6 +27,7 @@ export type ChatItem = {
   subagentHeader?: boolean;
   toolName?: string;
   title?: string;
+  skillName?: string;
   toolCategory?: ToolCategory;
   cmd?: string;
   isError?: boolean;

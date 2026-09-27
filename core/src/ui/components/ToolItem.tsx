@@ -7,6 +7,7 @@ import { diffStats } from "../../controller/diff-stats";
 import { redactCommand } from "../../tool-preview";
 import { useTheme } from "../primitives/theme-context";
 import { symbols } from "../theme/symbols";
+import { DisclosureIndicator } from "../primitives/DisclosureIndicator";
 
 const TURN_INSET = 5;
 const MAX_EXPANDED_ERROR_LINES = 8;
@@ -83,7 +84,7 @@ export function ToolItemComponent({
           ? `${(item.durationMs / 1000).toFixed(1)}s`
           : undefined,
     },
-    width,
+    width - 1,
   );
   const body =
     item.display?.kind === "terminal"
@@ -98,8 +99,8 @@ export function ToolItemComponent({
 
   return (
     <box flexDirection="column">
-      <text
-        wrapMode="none"
+      <box
+        flexDirection="row"
         width="100%"
         onMouseDown={(event) => {
           if (event.button === 0) {
@@ -109,16 +110,19 @@ export function ToolItemComponent({
           }
         }}
       >
-        <span fg={theme.accent}>├─ </span>
-        <span fg={statusColor}>{status}</span>
-        {row.left.slice("├─ ".length + status.length)}
+        <text fg={theme.accent}>├─ </text>
+        <text fg={statusColor}>{status}</text>
+        <DisclosureIndicator expanded={expanded} />
+        <text wrapMode="none">
+          {row.left.slice("├─ ".length + status.length)}
+        </text>
         {row.right ? (
-          <span attributes={TextAttributes.DIM}>
+          <text attributes={TextAttributes.DIM}>
             {"  "}
             {row.right}
-          </span>
+          </text>
         ) : null}
-      </text>
+      </box>
       {item.toolCategory === "shell" && item.cmd ? (
         <text wrapMode="none">
           <span fg={theme.accent}>│ $ </span>

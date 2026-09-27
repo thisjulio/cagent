@@ -280,8 +280,8 @@ describe("controller", () => {
     expect(
       c.state.chat.some(
         (item) =>
-          item.kind === "tool" &&
-          item.toolName === "skill" &&
+          item.kind === "skill" &&
+          item.skillName === "grill-me" &&
           item.content.includes('<skill_content name="grill-me">'),
       ),
     ).toBe(true);

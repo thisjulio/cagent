@@ -52,6 +52,8 @@ export function ensureToolTitle(
     categoryOrArgs && typeof categoryOrArgs === "object"
       ? categoryOrArgs
       : toolArgs;
+  if (tool === "skill" && typeof args.name === "string")
+    return `skill ${args.name}`;
   return (
     normalizeToolTitle(value) ??
     fallbackToolTitle(tool, category ?? inferCategory(tool), args)

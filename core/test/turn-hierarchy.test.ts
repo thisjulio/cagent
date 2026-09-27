@@ -14,7 +14,7 @@ describe("turn hierarchy controller rules", () => {
     });
   });
 
-  test("defaults to diff and non-denied error expansion", () => {
+  test("defaults tools and skills to the correct expansion state", () => {
     expect(
       defaultExpanded({
         kind: "tool",
@@ -34,6 +34,9 @@ describe("turn hierarchy controller rules", () => {
       true,
     );
     expect(defaultExpanded({ kind: "thinking", content: "reason" })).toBe(
+      false,
+    );
+    expect(defaultExpanded({ kind: "skill", content: "instructions" })).toBe(
       false,
     );
   });

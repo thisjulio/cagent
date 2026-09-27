@@ -1,4 +1,5 @@
 import { Text } from "../primitives/Text";
+import { DisclosureIndicator } from "../primitives/DisclosureIndicator";
 import type { AgentItem } from "../render/blocks";
 
 export function ThinkingItemComponent({
@@ -12,14 +13,12 @@ export function ThinkingItemComponent({
   const summary = streaming
     ? `reasoning… ${lines[lines.length - 1] ?? ""}`
     : `reasoning · ${lines.length} ${lines.length === 1 ? "line" : "lines"}`;
-  const marker = item.expanded ? "▾" : "▸";
   return (
     <box flexDirection="column">
       <box flexDirection="row">
         <Text tone="accent">├─ </Text>
-        <Text tone="muted">
-          {marker} {summary}
-        </Text>
+        <DisclosureIndicator expanded={Boolean(item.expanded)} />
+        <Text tone="muted"> {summary}</Text>
       </box>
       {item.expanded ? (
         <box flexDirection="column" paddingLeft={2}>

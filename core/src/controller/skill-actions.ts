@@ -2,7 +2,6 @@ import crypto from "node:crypto";
 import type { Controller } from "./controller";
 import type { SkillActivation } from "../skills/types";
 import { formatSkillToolOutput } from "../skills/tool-result";
-import { toolPost, toolPre } from "./tool-events";
 
 export async function invokeSkill(
   controller: Controller,
@@ -42,8 +41,14 @@ function appendSkillActivation(
     tool_calls: [toolCall],
   });
   controller.messages.push({ role: "tool", tool_call_id: id, content: output });
-  toolPre(controller.state, { tool: "skill", args: { name } });
-  toolPost(controller.state, { tool: "skill", result: { output } });
+  controller.state.chat.push({
+    kind: "skill",
+    content: output,
+    skillName: name,
+    expanded: false,
+    turnId,
+    timestamp: Date.now(),
+  });
   controller.session.append({
     ts: Date.now(),
     turnId,
@@ -65,6 +70,22 @@ function appendSkillActivation(
     ts: Date.now(),
     turnId,
     type: "tool",
-    payload: { tool_call_id: id, content: output, toolName: "skill" },
+    payload: {
+      tool_call_id: id,
+      content: output,
+      toolName: "skill",
+      title: `skill ${name}`,
+      args: { name },
+    },
+  });
+  controller.session.append({
+    ts: Date.now(),
+    turnId,
+    type: "skill",
+    payload: {
+      name,
+      content: output,
+      expanded: false,
+    },
   });
 }

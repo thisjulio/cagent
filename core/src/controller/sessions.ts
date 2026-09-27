@@ -32,8 +32,9 @@ export function findLatestModelSelection(
 
 type LoadedRecord = {
   ts: number;
-  type: "user" | "assistant" | "thinking" | "tool" | "meta";
+  type: "user" | "assistant" | "thinking" | "tool" | "meta" | "skill";
   payload: Record<string, unknown>;
+  turnId?: string;
 };
 
 export function toChatItems(records: LoadedRecord[]): ChatItem[] {
@@ -70,10 +71,31 @@ export function toChatItems(records: LoadedRecord[]): ChatItem[] {
           ...(typeof p.expanded === "boolean" ? { expanded: p.expanded } : {}),
         });
       }
+    } else if (r.type === "skill") {
+      result.push({
+        kind: "skill",
+        content: String(p.content ?? ""),
+        skillName: String(p.name ?? ""),
+        turnId: r.turnId,
+        timestamp: r.ts,
+        ...(typeof p.expanded === "boolean" ? { expanded: p.expanded } : {}),
+      });
     } else if (r.type === "tool") {
       const toolName = p.toolName
         ? String(p.toolName)
         : String(p.tool_call_id ?? "");
+      if (
+        toolName === "skill" &&
+        records.some(
+          (record) =>
+            record.type === "skill" &&
+            record.turnId === r.turnId &&
+            record.payload.name ===
+              (p.args as Record<string, unknown> | undefined)?.name,
+        )
+      ) {
+        continue;
+      }
       const item: ChatItem = {
         kind: "tool",
         content: String(p.content ?? ""),
@@ -105,13 +127,11 @@ export function toChatItems(records: LoadedRecord[]): ChatItem[] {
         subagentHeader: true,
         timestamp: r.ts,
       });
-    } else if (p.kind === "skill-activated") {
-      if (p.format !== "tool-v1") {
-        result.push({
-          kind: "meta",
-          content: `skill activated: ${String(p.name ?? "")}`,
-        });
-      }
+    } else if (p.kind === "skill-activated" && p.format !== "tool-v1") {
+      result.push({
+        kind: "meta",
+        content: `skill activated: ${String(p.name ?? "")}`,
+      });
     } else if (p.kind === "compacted") {
       result.push({ kind: "meta", content: "conversation compacted" });
     }

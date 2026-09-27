@@ -12,6 +12,18 @@ export type PromptItem = {
   chatIndex: number;
 };
 
+export type SkillItem = {
+  type: "SKILL";
+  name: string;
+  content: string;
+  expanded?: boolean;
+  isError?: boolean;
+  denied?: boolean;
+  running?: boolean;
+  timestamp?: number;
+  chatIndex: number;
+};
+
 export type ResponseItem = {
   type: "RESPONSE";
   content: string;
@@ -55,7 +67,7 @@ export type MetaItem = {
   chatIndex: number;
 };
 
-export type AgentItem = ThinkingItem | ToolItem | ResponseItem;
+export type AgentItem = ThinkingItem | ToolItem | SkillItem | ResponseItem;
 
 export type UserTurnBlock = {
   type: "user-turn";
@@ -148,26 +160,58 @@ export function chatToBlocks(chat: ChatItem[]): Block[] {
           expanded: item.expanded,
           chatIndex: i,
         });
-      } else if (item.kind === "tool") {
+      } else if (item.kind === "skill") {
         block.items.push({
-          type: "TOOL",
-          toolName: item.toolName,
-          title: item.title,
-          toolCategory: item.toolCategory,
-          cmd: item.cmd,
+          type: "SKILL",
+          name: item.skillName ?? "",
           content: item.content,
-          summary: item.summary,
-          isError: item.isError,
-          denied: item.denied,
-          running: item.running,
           expanded: item.expanded,
-          durationMs: item.durationMs,
-          display: item.display,
-          changesWorkspace: item.changesWorkspace,
-          changedPaths: item.changedPaths,
           timestamp: item.timestamp,
           chatIndex: i,
         });
+      } else if (item.kind === "tool") {
+        if (item.toolCategory === "skill") {
+          const hasSkillProjection = chat.some(
+            (candidate) =>
+              candidate.kind === "skill" &&
+              candidate.turnId !== undefined &&
+              candidate.turnId === item.turnId,
+          );
+          if (!hasSkillProjection) {
+            block.items.push({
+              type: "SKILL",
+              name:
+                item.title?.replace(/^skill\s+/, "") ??
+                String(item.cmd ?? "").replace(/^skill\s+/, ""),
+              content: item.content ?? "",
+              expanded: item.expanded,
+              isError: item.isError,
+              denied: item.denied,
+              running: item.running,
+              chatIndex: i,
+            });
+          }
+        } else {
+          block.items.push({
+            type: "TOOL",
+            toolName: item.toolName,
+            title: item.title,
+            toolCategory: item.toolCategory,
+            cmd: item.cmd,
+            content: item.content,
+            summary: item.summary,
+            isError: item.isError,
+            denied: item.denied,
+            running: item.running,
+            expanded: item.expanded,
+            durationMs: item.durationMs,
+            display: item.display,
+            changesWorkspace: item.changesWorkspace,
+            changedPaths: item.changedPaths,
+            timestamp: item.timestamp,
+            chatIndex: i,
+          });
+        }
       } else if (item.kind === "assistant") {
         if (item.subagentHeader) {
           block.subagent = item.subagent;

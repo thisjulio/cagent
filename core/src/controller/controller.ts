@@ -408,7 +408,12 @@ export class Controller implements ControllerRuntime {
     this.answerAsk(true);
   }
   toggleToolExpand(index?: number): void {
-    toggleToolExpandAction(this.state, index, () => this.bump());
+    toggleToolExpandAction(
+      this.state,
+      index,
+      () => this.bump(),
+      (record) => this.session.append(record),
+    );
   }
   newSession(): void {
     newSession(this);
