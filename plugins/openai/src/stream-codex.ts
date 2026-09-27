@@ -105,12 +105,25 @@ export async function* streamCodex(
           const text = data.delta ?? data.text ?? data.part;
           if (typeof text === "string" && text)
             yield { type: "reasoning", text: text + "\n" };
-        } else if (event === "response.output_item.done") {
+        } else if (
+          event === "response.output_item.added" ||
+          event === "response.output_item.done"
+        ) {
           const item = data.item as Record<string, unknown> | undefined;
           if (
             item &&
             (item.type === "function_call" || item.type === "custom_tool_call")
           ) {
+            if (event === "response.output_item.added") {
+              yield {
+                type: "tool-call-start",
+                tool_call: {
+                  id: String(item.call_id ?? item.id ?? ""),
+                  name: String(item.name ?? ""),
+                },
+              };
+              continue;
+            }
             yield {
               type: "tool-call",
               tool_call: {

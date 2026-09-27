@@ -43,6 +43,8 @@ export type TurnHost = {
   maxInputTokensPerTurn?: number;
   onText?: (text: string) => void;
   onReasoning?: (text: string) => void;
+  onToolCallStart?: (toolCall: { id: string; name: string }) => void;
+  onToolCallFinished?: (id: string) => void;
   observability?: Observability;
   traceAttributes?: Record<string, string | number | boolean>;
   onContextLimit?: () => Promise<void>;
@@ -73,6 +75,7 @@ export async function executeTurn(host: TurnHost): Promise<void> {
     persistTurn(host, records, thinkingContent);
     for (const item of host.state.chat)
       if (item.kind === "tool" && item.running) item.running = false;
+    removePreparingItems(host.state);
     if (turn.inputTokens !== undefined && turn.outputTokens !== undefined) {
       host.state.tokens = turn.inputTokens + turn.outputTokens;
     }
@@ -106,6 +109,7 @@ export async function executeTurn(host: TurnHost): Promise<void> {
         `error: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
+    removePreparingItems(host.state);
   }
   host.observability?.recordMetric(
     "agent.turn.elapsed_ms",
@@ -131,6 +135,17 @@ export async function executeTurn(host: TurnHost): Promise<void> {
     }
   }
   host.bump();
+}
+
+function removePreparingItems(state: UIState): void {
+  let removed = false;
+  for (let i = state.chat.length - 1; i >= 0; i--) {
+    if (!state.chat[i].preparing) continue;
+    state.chat.splice(i, 1);
+    removed = true;
+  }
+  if (!removed) return;
+  state.chatVersion += 1;
 }
 
 async function runAgentTurnWithRecovery(
@@ -206,6 +221,8 @@ async function runAgentTurn(
       host.onText?.(text);
     },
     onAssistantSnapshot: (content) => persistAssistantSnapshot(host, content),
+    onToolCallStart: host.onToolCallStart,
+    onToolCallFinished: host.onToolCallFinished,
     onReasoning: (text) => {
       setThinking(appendCapped(getThinking(), text, MAX_VISIBLE_STREAM_CHARS));
       appendReasoning(host, text);

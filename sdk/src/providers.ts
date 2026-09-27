@@ -4,6 +4,7 @@ import type { ToolDefinition, ToolOverrides } from "./tools";
 export type LlmChunk =
   | { type: "text"; text: string }
   | { type: "reasoning"; text: string }
+  | { type: "tool-call-start"; tool_call: { id: string; name: string } }
   | {
       type: "tool-call";
       tool_call: {

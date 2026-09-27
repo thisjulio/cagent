@@ -8,7 +8,12 @@ import { deriveSummary } from "./tool-summary";
 
 function lastRunningChat(chat: ChatItem[], tool: string): ChatItem | undefined {
   for (let i = chat.length - 1; i >= 0; i--) {
-    if (chat[i].kind === "tool" && chat[i].toolName === tool && chat[i].running)
+    if (
+      chat[i].kind === "tool" &&
+      chat[i].toolName === tool &&
+      chat[i].running &&
+      !chat[i].preparing
+    )
       return chat[i];
   }
   return undefined;
@@ -23,6 +28,24 @@ export function toolPre(state: UIState, p: unknown): void {
   const cmd = toolCommandLabel(tool, args);
   const category = classifyTool(tool);
   const toolTitle = ensureToolTitle(title, tool, category, args);
+  const preparing = state.chat.find(
+    (item) => item.kind === "tool" && item.preparing && item.toolName === tool,
+  );
+  if (preparing) {
+    Object.assign(preparing, {
+      title: toolTitle,
+      toolCategory: category,
+      cmd,
+      detail: tool === "subagent" ? String(args.task ?? "") : undefined,
+      preparing: false,
+      toolCallId: undefined,
+      startedAt: Date.now(),
+      content: "",
+    });
+    state.chatVersion += 1;
+    appendToolLog(state, { tool, cmd, running: true });
+    return;
+  }
   appendChat(state, {
     kind: "tool",
     toolName: tool,
@@ -110,6 +133,25 @@ export function toolDenied(state: UIState, p: unknown): void {
   const cmd = toolCommandLabel(tool, args);
   const category = classifyTool(tool);
   const toolTitle = ensureToolTitle(title, tool, category, args);
+  const preparing = state.chat.find(
+    (item) => item.kind === "tool" && item.preparing && item.toolName === tool,
+  );
+  if (preparing) {
+    Object.assign(preparing, {
+      title: toolTitle,
+      toolCategory: category,
+      cmd,
+      preparing: false,
+      toolCallId: undefined,
+      denied: true,
+      isError: true,
+      running: false,
+      content: "user denied",
+    });
+    state.chatVersion += 1;
+    appendToolLog(state, { tool, cmd, denied: true });
+    return;
+  }
   appendChat(state, {
     kind: "tool",
     toolName: tool,

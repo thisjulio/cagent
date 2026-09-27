@@ -22,6 +22,8 @@ export interface StreamOpts {
   onText?: (text: string) => void;
   onReasoning?: (text: string) => void;
   onAssistantSnapshot?: (content: string) => void;
+  onToolCallStart?: (toolCall: { id: string; name: string }) => void;
+  onToolCallFinished?: (id: string) => void;
   onToolOutput?: (content: string) => void;
   onUsage?: (usage: {
     inputTokens?: number;

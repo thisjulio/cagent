@@ -32,6 +32,40 @@ describe("agent loop", () => {
   }));
   const bus = new EventBus();
 
+  it("reports a streamed tool-call start before the complete call", async () => {
+    const starts: Array<{ id: string; name: string }> = [];
+    await runTurn({
+      adapter: fakeAdapter([
+        [
+          {
+            type: "tool-call-start",
+            tool_call: { id: "edit-1", name: "edit_file" },
+          },
+          {
+            type: "tool-call",
+            tool_call: {
+              id: "edit-1",
+              name: "edit_file",
+              arguments: "{}",
+            },
+          },
+          { type: "finish", finish_reason: "stop" },
+        ],
+        [{ type: "finish", finish_reason: "stop" }],
+      ]),
+      model: "m",
+      messages: [{ role: "user", content: "edit" }],
+      tools: [
+        defineTool("edit_file", "edit", {}, async () => ({ output: "ok" })),
+      ],
+      allowlist: [],
+      ask: async () => false,
+      bus,
+      onToolCallStart: (toolCall) => starts.push(toolCall),
+    });
+    expect(starts).toEqual([{ id: "edit-1", name: "edit_file" }]);
+  });
+
   it("requires every declared tool argument in the wrapped provider schema", async () => {
     let receivedParameters: Record<string, unknown> | undefined;
     const adapter = fakeAdapter([[{ type: "finish", finish_reason: "stop" }]]);

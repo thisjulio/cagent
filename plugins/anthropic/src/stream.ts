@@ -216,6 +216,13 @@ export async function* streamMessages(
               name: event.content_block.name ?? "",
               arguments: "",
             });
+            yield {
+              type: "tool-call-start",
+              tool_call: {
+                id: event.content_block.id ?? `call_${event.index}`,
+                name: event.content_block.name ?? "",
+              },
+            };
           }
           break;
         }

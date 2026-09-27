@@ -43,6 +43,7 @@ export async function* streamApi(
     number,
     { id: string; name: string; arguments: string }
   >();
+  const announced = new Set<number>();
   for await (const chunk of res) {
     const choice = chunk.choices[0];
     const delta = choice?.delta;
@@ -55,7 +56,16 @@ export async function* streamApi(
           arguments: "",
         };
         if (tc.id) cur.id = tc.id;
-        if (tc.function?.name) cur.name += tc.function.name;
+        if (tc.function?.name) {
+          cur.name += tc.function.name;
+          if (!announced.has(tc.index)) {
+            announced.add(tc.index);
+            yield {
+              type: "tool-call-start",
+              tool_call: { id: cur.id || `call_${tc.index}`, name: cur.name },
+            };
+          }
+        }
         if (tc.function?.arguments) cur.arguments += tc.function.arguments;
         toolCalls.set(tc.index, cur);
       }
@@ -65,6 +75,7 @@ export async function* streamApi(
       for (const tc of toolCalls.values())
         yield { type: "tool-call", tool_call: tc };
       toolCalls.clear();
+      announced.clear();
     }
     if (chunk.usage) {
       usage = {

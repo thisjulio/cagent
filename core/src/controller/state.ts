@@ -33,6 +33,8 @@ export type ChatItem = {
   isError?: boolean;
   denied?: boolean;
   running?: boolean;
+  preparing?: boolean;
+  toolCallId?: string;
   summary?: string;
   detail?: string;
   expanded?: boolean;

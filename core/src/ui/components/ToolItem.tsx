@@ -83,11 +83,12 @@ export const ToolItemComponent = memo(
         summary: item.summary,
         added: diff?.added,
         removed: diff?.removed,
-        duration: item.running
-          ? runningDuration(item)
-          : item.durationMs !== undefined && item.durationMs >= 1000
-            ? `${(item.durationMs / 1000).toFixed(1)}s`
-            : undefined,
+        duration:
+          item.running && !item.preparing
+            ? runningDuration(item)
+            : item.durationMs !== undefined && item.durationMs >= 1000
+              ? `${(item.durationMs / 1000).toFixed(1)}s`
+              : undefined,
       },
       width - 1,
     );

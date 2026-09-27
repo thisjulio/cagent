@@ -64,6 +64,7 @@ async function* streamChatCompletions(
     number,
     { id: string; name: string; arguments: string }
   >();
+  const announced = new Set<number>();
   const consume = async function* (text: string): AsyncGenerator<LlmChunk> {
     for (const block of text.split(/\n\n/)) {
       const line = block.split("\n").find((item) => item.startsWith("data:"));
@@ -96,7 +97,19 @@ async function* streamChatCompletions(
           arguments: "",
         };
         if (call.id) current.id = call.id;
-        if (call.function?.name) current.name += call.function.name;
+        if (call.function?.name) {
+          current.name += call.function.name;
+          if (!announced.has(index)) {
+            announced.add(index);
+            yield {
+              type: "tool-call-start",
+              tool_call: {
+                id: current.id || `call_${index}`,
+                name: current.name,
+              },
+            };
+          }
+        }
         if (call.function?.arguments)
           current.arguments += call.function.arguments;
         calls.set(index, current);

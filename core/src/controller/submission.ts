@@ -18,6 +18,7 @@ import {
   withFileContext,
 } from "../context/file-mentions";
 import { selectRequestWindow } from "../context/request-window";
+import { finishPreparingTool, startPreparingTool } from "./tool-preparation";
 export async function submitMessage(
   controller: Controller,
   text: string,
@@ -212,6 +213,12 @@ export async function submitMessage(
     maxInputTokensPerTurn: controller.maxInputTokensPerTurn,
     onText: controller.onText,
     onReasoning: controller.onReasoning,
+    onToolCallStart: (toolCall) => {
+      if (startPreparingTool(state, toolCall)) controller.bump();
+    },
+    onToolCallFinished: (id) => {
+      if (finishPreparingTool(state, id)) controller.bump();
+    },
     bump: controller.bump,
     bumpStream: () => controller.bumpStreamNow(),
     observability: controller.observability,

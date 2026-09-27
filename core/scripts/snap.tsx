@@ -335,3 +335,24 @@ await frame(80);
 controller.state.taskPanelExpanded = true;
 controller.state.title = "tasks expanded";
 await frame(80);
+
+controller.state.chat = [
+  withTurn({ kind: "user", content: "update the helper" }, "preparing-turn"),
+  withTurn(
+    {
+      kind: "tool",
+      toolName: "edit_file",
+      toolCategory: "write",
+      title: "preparing edit",
+      preparing: true,
+      running: true,
+      content: "",
+    },
+    "preparing-turn",
+  ),
+];
+controller.state.tasks = [];
+controller.state.taskPanelExpanded = false;
+controller.state.busy = true;
+controller.state.title = "preparing edit";
+for (const width of [60, 80, 120]) await frame(width);

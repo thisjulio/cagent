@@ -32,6 +32,8 @@ Rules:
 - `bun run verify` - locally run build, typecheck, lint, and tests.
 - `bun core/scripts/snap.tsx` - render UI snapshots at 60, 80, and 120 columns.
 - `bun run check:plugins` - validate plugin package metadata after manifest changes.
+- `bun run check:module-limits` - enforce the 500-line-per-file limit (runs on pre-commit).
+- `bun run check:design-system` - enforce UI design-system constraints (local check, not in CI).
 - `bun run format` - format repository files; CI runs this check.
 - `graphify update .` - update the knowledge graph (AST, no API cost).
 
@@ -53,7 +55,8 @@ docs/adr/             # accepted and proposed architecture decisions
 ```
 
 The workspace also includes `plugins/mcp`, `plugins/lsp`, `plugins/claude-*`,
-`plugins/codex-*`, `openai`, `anthropic`, `llama.cpp`, `bash`, and `code-tools`.
+`plugins/codex-*`, `plugins/agent-skills`, `plugins/opencode-skills`, `openai`,
+`anthropic`, `llama.cpp`, `bash`, and `code-tools`.
 
 ## Project References
 
@@ -127,7 +130,7 @@ Only add to an existing file when the change belongs to the same concept already
 ## Conventions
 
 - The comment `// ponytail:` marks a non-obvious decision or known trap - explain *why*, never *what*. If the line only restates the code, delete it.
-- Husky hooks run automatically: `pre-commit` runs `biome check --staged`, `bun run typecheck`, and `bun test` on every commit; `post-merge` and `post-checkout` run `bun run graph:update`. A slow or failing commit is usually one of these, not a stuck terminal.
+- Husky hooks run automatically: `pre-commit` runs `biome check --staged`, `bun run check:module-limits`, `bun run typecheck`, and `bun test` on every commit; `post-merge` and `post-checkout` run `bun run graph:update`. A slow or failing commit is usually one of these, not a stuck terminal.
 
 ## Definition of Done
 

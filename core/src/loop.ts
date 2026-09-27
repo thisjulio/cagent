@@ -140,6 +140,8 @@ export async function streamOnce(opts: StreamOpts): Promise<{
           opts.onReasoning?.(chunk.text);
         } else if (chunk.type === "tool-call") {
           toolCalls.push(chunk.tool_call);
+        } else if (chunk.type === "tool-call-start") {
+          opts.onToolCallStart?.(chunk.tool_call);
         }
       }
       streamSpan.setAttribute("provider.stream.chunks", chunks);
@@ -203,6 +205,11 @@ export async function runTurn(opts: TurnOpts): Promise<TurnResult> {
   const nameToCanonical = overrideNameMap(overrides);
   const streamOpts: StreamOpts = {
     ...opts,
+    onToolCallStart: (toolCall) =>
+      opts.onToolCallStart?.({
+        ...toolCall,
+        name: nameToCanonical[toolCall.name] ?? toolCall.name,
+      }),
     tools: applyToolOverrides(opts.tools, overrides).map((tool) => ({
       ...tool,
       parameters: wrapToolParameters(tool.parameters),
@@ -339,6 +346,7 @@ export async function runTurn(opts: TurnOpts): Promise<TurnResult> {
             break turnLoop;
           }
           await runToolCall(ctx, tc);
+          opts.onToolCallFinished?.(tc.id);
           if (ctx.records.at(-1)?.changesWorkspace) {
             verifiedChanges = false;
             verificationFailures = 0;

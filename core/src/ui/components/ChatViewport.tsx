@@ -45,6 +45,7 @@ function sameItem(a: AgentItem, b: AgentItem): boolean {
         a.isError === (b as typeof a).isError &&
         a.denied === (b as typeof a).denied &&
         a.running === (b as typeof a).running &&
+        a.preparing === (b as typeof a).preparing &&
         a.expanded === (b as typeof a).expanded &&
         a.durationMs === (b as typeof a).durationMs &&
         a.display === (b as typeof a).display &&

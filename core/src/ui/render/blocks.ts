@@ -51,6 +51,7 @@ export type ToolItem = {
   isError?: boolean;
   denied?: boolean;
   running?: boolean;
+  preparing?: boolean;
   expanded?: boolean;
   durationMs?: number;
   display?: ToolDisplay;
@@ -212,6 +213,7 @@ export function chatToBlocks(chat: ChatItem[]): Block[] {
             isError: item.isError,
             denied: item.denied,
             running: item.running,
+            preparing: item.preparing,
             expanded: item.expanded,
             durationMs: item.durationMs,
             display: item.display,
