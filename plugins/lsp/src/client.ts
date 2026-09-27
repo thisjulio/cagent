@@ -18,6 +18,9 @@ type PublishDiagnostics = {
   params?: { uri?: string; diagnostics?: LspDiagnostic[] };
 };
 
+const REQUEST_TIMEOUT_MS = 8000;
+const SERVER_READY_TIMEOUT_MS = 5000;
+
 function workspaceUri(root: string): string {
   const uri = pathToFileURL(root).href;
   return uri.endsWith("/") ? uri : `${uri}/`;
@@ -66,16 +69,27 @@ export class LspClient {
     const [command, ...args] = config.command;
     if (!command) throw new Error("LSP command is empty");
     this.pushDiagnostics = command.includes("biome");
-    const available = spawnSync(
-      "sh",
-      ["-c", `command -v "$1"`, "sh", command],
-      {
-        env: process.env,
-        stdio: "ignore",
-      },
-    );
-    if (available.status !== 0) {
-      throw new Error(`LSP executable not found in $PATH: "${command}"`);
+    if (command.includes("/")) {
+      try {
+        fs.accessSync(command, fs.constants.X_OK);
+      } catch {
+        if (!fs.existsSync(command)) {
+          throw new Error(`LSP executable not found: "${command}"`);
+        }
+        // ponytail: resolved JS entry without +x still runs via shebang/node.
+      }
+    } else {
+      const available = spawnSync(
+        "sh",
+        ["-c", `command -v "$1"`, "sh", command],
+        {
+          env: process.env,
+          stdio: "ignore",
+        },
+      );
+      if (available.status !== 0) {
+        throw new Error(`LSP executable not found in $PATH: "${command}"`);
+      }
     }
     this.process = spawn(command, args, {
       cwd: root,
@@ -169,8 +183,7 @@ export class LspClient {
           "Server initialized",
         )
       ) {
-        this.serverReady?.();
-        this.serverReady = undefined;
+        this.markServerReady();
       }
       if (
         notification.method === "textDocument/publishDiagnostics" &&
@@ -182,6 +195,7 @@ export class LspClient {
         for (const waiter of this.diagnosticWaiters.get(uri) ?? [])
           waiter.resolve(diagnostics);
         this.diagnosticWaiters.delete(uri);
+        this.markServerReady();
         continue;
       }
       if (typeof message.id === "number" && message.method) {
@@ -233,12 +247,18 @@ export class LspClient {
     );
   }
 
+  private markServerReady(): void {
+    this.serverReady?.();
+    this.serverReady = undefined;
+  }
+
   private waitForServerReady(): Promise<void> {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const timeout = setTimeout(() => {
+        // ponytail: Biome stays usable without the ready log; don't fail start.
         this.serverReady = undefined;
-        reject(new Error("Biome language server initialization timed out"));
-      }, 5000);
+        resolve();
+      }, SERVER_READY_TIMEOUT_MS);
       this.serverReady = () => {
         clearTimeout(timeout);
         resolve();
@@ -246,11 +266,39 @@ export class LspClient {
     });
   }
 
-  private request(method: string, params: unknown): Promise<unknown> {
+  private request(
+    method: string,
+    params: unknown,
+    timeoutMs = REQUEST_TIMEOUT_MS,
+  ): Promise<unknown> {
     const id = this.nextId++;
     return new Promise((resolve, reject) => {
-      this.pending.set(id, { resolve, reject });
-      this.send({ jsonrpc: "2.0", id, method, params });
+      const timer = setTimeout(() => {
+        if (!this.pending.has(id)) return;
+        this.pending.delete(id);
+        reject(new Error(`LSP request timed out: ${method}`));
+      }, timeoutMs);
+      this.pending.set(id, {
+        resolve: (value) => {
+          clearTimeout(timer);
+          resolve(value);
+        },
+        reject: (error) => {
+          clearTimeout(timer);
+          reject(error);
+        },
+      });
+      try {
+        this.send({ jsonrpc: "2.0", id, method, params });
+      } catch (error) {
+        clearTimeout(timer);
+        this.pending.delete(id);
+        reject(
+          error instanceof Error
+            ? error
+            : new Error(`LSP send failed: ${method}`),
+        );
+      }
     });
   }
 

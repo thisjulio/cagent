@@ -63,8 +63,15 @@ export function serverForFile(
   servers: Record<string, LspServerConfig>,
   file: string,
 ): [string, LspServerConfig] | undefined {
+  return serversForFile(servers, file)[0];
+}
+
+export function serversForFile(
+  servers: Record<string, LspServerConfig>,
+  file: string,
+): Array<[string, LspServerConfig]> {
   const extension = path.extname(file).toLowerCase();
-  return Object.entries(servers).find(([, server]) =>
+  return Object.entries(servers).filter(([, server]) =>
     server.extensions.includes(extension),
   );
 }

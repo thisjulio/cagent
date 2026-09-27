@@ -22,6 +22,12 @@ export function LspPanel({ servers }: { servers: LspServer[] }) {
                   <text fg={color.text.muted}> · {server.version}</text>
                 ) : null}
               </box>
+              {server.detail ? (
+                <text fg={color.text.muted}>
+                  {"  "}
+                  {server.detail}
+                </text>
+              ) : null}
               {server.status === "missing" ? (
                 <text fg={color.text.secondary}>
                   {"  → "}

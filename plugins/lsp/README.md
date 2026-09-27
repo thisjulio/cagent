@@ -1,12 +1,13 @@
 # LSP plugin
 
 The LSP plugin provides a minimal JSON-RPC client for language servers running
-over standard input and output. It supports TypeScript/JavaScript, Python, and
-Rust by default.
+over standard input and output. It supports TypeScript/JavaScript, Biome,
+Python, and Rust by default.
 
-TypeScript/JavaScript and Python servers ship with the plugin as dependencies
-(`typescript-language-server` and `pyright`) and are resolved from the local
-`node_modules/.bin` automatically. Rust requires a separate install:
+TypeScript/JavaScript, Biome, and Python servers ship with the plugin as
+dependencies (`typescript-language-server`, `@biomejs/biome`, and `pyright`)
+and are resolved to absolute paths automatically. Rust requires a separate
+install:
 
 - Rust: `rust-analyzer`
 
@@ -22,7 +23,13 @@ plugins:
 
 The agent can call the `lsp` tool with `diagnostics`, `hover`, `definition`,
 `references`, or `documentSymbol`. Lines and characters supplied to the tool
-are one-based.
+are one-based. Diagnostics fan out to every matching server, so `.ts` files
+report `typescript+biome` findings tagged with `[server]`; other operations
+prefer `typescript` when several servers match.
+
+Every request has an 8s timeout and impact analysis is capped at 6s as
+best-effort, so a slow server degrades to partial diagnostics instead of
+hanging the edit hook.
 
 Servers can be disabled or replaced:
 
