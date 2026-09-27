@@ -1,8 +1,6 @@
 import type { ToolDisplay as Display } from "@cagent/sdk";
-import { SyntaxStyle } from "@opentui/core";
+import { markdownSyntaxStyle } from "../render/markdown-style";
 import { useTheme } from "../primitives/theme-context";
-
-const syntaxStyle = SyntaxStyle.create();
 const DISPLAY_MAX_LINES = 12;
 
 function visibleLines(content: string, maximum: number): string[] {
@@ -23,6 +21,7 @@ function CodeDisplay({
   maxRows?: number;
 }) {
   const { color } = useTheme();
+  const syntaxStyle = markdownSyntaxStyle(color);
   const content = previewContent(display.content, maxRows ?? DISPLAY_MAX_LINES);
   return (
     <box flexDirection="column" width="100%" minWidth={0} overflow="hidden">
@@ -67,6 +66,7 @@ function DiffDisplay({
   maxRows?: number;
 }) {
   const { color } = useTheme();
+  const syntaxStyle = markdownSyntaxStyle(color);
   const allLines = display.content.replace(/\r\n/g, "\n").trimEnd().split("\n");
   const firstHunk = allLines.findIndex((line) => line.startsWith("@@ "));
   const headerRows = Math.min(firstHunk < 0 ? allLines.length : firstHunk, 3);
