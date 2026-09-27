@@ -110,6 +110,7 @@ export async function executeTurn(host: TurnHost): Promise<void> {
   host.observability?.recordMetric(
     "agent.turn.elapsed_ms",
     host.state.turnStartedAt ? Date.now() - host.state.turnStartedAt : 0,
+    { session_id: host.session.id },
   );
   host.state.busy = false;
   host.state.elapsedMs = host.state.turnStartedAt

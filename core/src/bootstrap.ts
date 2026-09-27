@@ -212,6 +212,7 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
   controllerRef = c;
   await c.registry.hooks.run({ phase: "session_start" });
   telemetry.recordMetric("app.startup_ms", performance.now() - started, {
+    session_id: c.session.id,
     "plugin.count": loadedPlugins.commandSources.length,
   });
   ask = c.ask;

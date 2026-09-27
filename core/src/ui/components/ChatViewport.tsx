@@ -132,7 +132,11 @@ export const ChatViewport = memo(function ChatViewport({
   }, [version, chat.length, tailSig]);
   const observability = controller.observability;
   if (observability) {
+    // ponytail: session_id keeps per-session perf analysis possible —
+    // summary() filters on it, so metrics without it are invisible.
+    const sessionId = controller.session.id;
     observability.recordMetric("ui.chat.blocks_ms", blockBuildMs, {
+      session_id: sessionId,
       "chat.item_count": chat.length,
       "chat.block_count": blocks.length,
       "chat.busy": busy,
@@ -144,12 +148,20 @@ export const ChatViewport = memo(function ChatViewport({
       observability.recordMetric(
         "ui.chat.renders_per_second",
         (renderWindowCount * 1000) / (now - renderWindowStarted),
-        { "chat.item_count": chat.length, "chat.busy": busy },
+        {
+          session_id: sessionId,
+          "chat.item_count": chat.length,
+          "chat.busy": busy,
+        },
       );
       observability.recordMetric(
         "ui.chat.blocks_ms_per_second",
         (renderWindowBlockBuildMs * 1000) / (now - renderWindowStarted),
-        { "chat.item_count": chat.length, "chat.busy": busy },
+        {
+          session_id: sessionId,
+          "chat.item_count": chat.length,
+          "chat.busy": busy,
+        },
       );
       renderWindowStarted = now;
       renderWindowCount = 0;

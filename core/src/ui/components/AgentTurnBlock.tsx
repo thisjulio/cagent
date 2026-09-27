@@ -7,6 +7,7 @@ import { ToolItemComponent } from "./ToolItem";
 import { SkillItemComponent } from "./SkillItem";
 import { ThinkingItemComponent } from "./ThinkingItem";
 import { cachedDiffStats } from "../../controller/diff-stats";
+import { settleStreamingMarkdown } from "../render/streaming-markdown";
 import { useTheme } from "../primitives/theme-context";
 import { symbols } from "../theme/symbols";
 
@@ -22,13 +23,19 @@ const ResponseItemComponent = memo(function ResponseItemComponent({
   streaming: boolean;
 }) {
   const { color } = useTheme();
+  // ponytail: settled tail closes partial trailing constructs for display
+  // only, so markers don't flash on every chunk; finalized content passes
+  // through untouched.
+  const content = streaming
+    ? settleStreamingMarkdown(item.content)
+    : item.content;
   return (
     <box flexDirection="row" minWidth={0}>
       <text fg={color.accent}>└─ </text>
       <box flexGrow={1} flexBasis={0} minWidth={0} paddingLeft={1}>
-        {item.content ? (
+        {content ? (
           <markdown
-            content={item.content}
+            content={content}
             syntaxStyle={markdownSyntaxStyle}
             streaming={streaming}
             width="100%"
