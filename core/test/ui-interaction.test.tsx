@@ -100,14 +100,16 @@ describe("focused UI keyboard behavior", () => {
     await act(async () => {
       setup.mockInput.pressKey("o", { ctrl: true });
       await setup.flush();
+      await setup.flush();
     });
     expect(controller.state.toolViewerIndex).toBe(1);
     expect(setup.captureCharFrame()).toContain("two.ts");
 
-    await act(async () =>
-      controller.handleKey({ ctrl: true, shift: true }, "o"),
-    );
-    await act(async () => setup.flush());
+    await act(async () => {
+      controller.handleKey({ ctrl: true, shift: true }, "o");
+      await setup.flush();
+      await setup.flush();
+    });
     expect(controller.state.toolViewerIndex).toBe(2);
     expect(setup.captureCharFrame()).toContain("three.ts");
     act(() => setup.renderer.destroy());
@@ -127,6 +129,7 @@ describe("focused UI keyboard behavior", () => {
 
     await act(async () => {
       setup.mockInput.pressArrow("down");
+      await setup.flush();
       await setup.flush();
     });
     const item = getHelpCatalog({})[15];

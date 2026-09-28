@@ -141,6 +141,7 @@ describe("OpenTUI render", () => {
     await act(async () => {
       setup.mockInput.pressKey("o", { ctrl: true });
       await setup.flush();
+      await setup.flush();
     });
 
     expect(c.state.chat[0]?.expanded).toBe(true);
