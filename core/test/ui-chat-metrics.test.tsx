@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import React, { act } from "react";
 import { describe, expect, it } from "bun:test";
-import { testRender } from "@opentui/react/test-utils";
+import { testRender } from "./ui-test-harness";
 import { InMemoryObservability } from "@cagent/sdk";
 import { Controller, type ControllerDeps } from "../src/controller/controller";
 import { EventBus } from "../src/events";

@@ -5,8 +5,8 @@ import React from "react";
 import { act } from "react";
 import { describe, expect, it } from "bun:test";
 
-import { testRender } from "@opentui/react/test-utils";
 import { App } from "../src/ui/components/App";
+import { actUntilFrame, testRender } from "./ui-test-harness";
 import { EventBus } from "../src/events";
 import { Registry } from "../src/registry";
 import { Controller, type ControllerDeps } from "../src/controller/controller";
@@ -138,15 +138,14 @@ describe("OpenTUI render", () => {
     expect(setup.captureCharFrame()).toContain("▸ skill code-review");
     expect(setup.captureCharFrame()).not.toContain("Skill instructions");
 
-    await act(async () => {
-      setup.mockInput.pressKey("o", { ctrl: true });
-      await setup.flush();
-      await setup.flush();
-    });
+    const expandedFrame = await actUntilFrame(
+      setup,
+      () => setup.mockInput.pressKey("o", { ctrl: true }),
+      "▾ skill code-review",
+    );
 
     expect(c.state.chat[0]?.expanded).toBe(true);
-    expect(setup.captureCharFrame()).toContain("▾ skill code-review");
-    expect(setup.captureCharFrame()).toContain("Skill instructions");
+    expect(expandedFrame).toContain("Skill instructions");
     act(() => setup.renderer.destroy());
   });
 

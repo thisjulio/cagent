@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, expect, test } from "bun:test";
-import { testRender } from "@opentui/react/test-utils";
+import { testRender } from "../../../test/ui-test-harness";
 import { act } from "react";
 import { ThinkingItemComponent } from "./ThinkingItem";
 

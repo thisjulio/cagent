@@ -3,12 +3,12 @@ import os from "node:os";
 import path from "node:path";
 import React, { act } from "react";
 import { describe, expect, it } from "bun:test";
-import { testRender } from "@opentui/react/test-utils";
 import { Controller, type ControllerDeps } from "../src/controller/controller";
 import { EventBus } from "../src/events";
 import { Registry } from "../src/registry";
 import { App } from "../src/ui/components/App";
 import { getHelpCatalog } from "../src/ui/help-catalog";
+import { actUntilFrame, testRender } from "./ui-test-harness";
 
 function createController(permissions = false): Controller {
   const deps: ControllerDeps = {
@@ -97,19 +97,19 @@ describe("focused UI keyboard behavior", () => {
     );
     await act(async () => setup.flush());
 
-    await act(async () => {
-      setup.mockInput.pressKey("o", { ctrl: true });
-      await setup.flush();
-      await setup.flush();
-    });
+    await actUntilFrame(
+      setup,
+      () => setup.mockInput.pressKey("o", { ctrl: true }),
+      "two.ts",
+    );
     expect(controller.state.toolViewerIndex).toBe(1);
     expect(setup.captureCharFrame()).toContain("two.ts");
 
-    await act(async () => {
-      controller.handleKey({ ctrl: true, shift: true }, "o");
-      await setup.flush();
-      await setup.flush();
-    });
+    await actUntilFrame(
+      setup,
+      () => controller.handleKey({ ctrl: true, shift: true }, "o"),
+      "three.ts",
+    );
     expect(controller.state.toolViewerIndex).toBe(2);
     expect(setup.captureCharFrame()).toContain("three.ts");
     act(() => setup.renderer.destroy());
@@ -127,14 +127,13 @@ describe("focused UI keyboard behavior", () => {
       },
     );
 
-    await act(async () => {
-      setup.mockInput.pressArrow("down");
-      await setup.flush();
-      await setup.flush();
-    });
+    const frame = await actUntilFrame(
+      setup,
+      () => setup.mockInput.pressArrow("down"),
+      "16/21",
+    );
     const item = getHelpCatalog({})[15];
     expect(controller.state.commandPaletteIndex).toBe(15);
-    const frame = setup.captureCharFrame();
     expect(item).toBeDefined();
     expect(frame).toContain("16/21");
     expect(frame).toContain(item?.name ?? "");
