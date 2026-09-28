@@ -310,6 +310,36 @@ describe("llama.cpp adapter", () => {
     }
   });
 
+  test("announces a streamed tool after its name fragments are complete", async () => {
+    const orig = globalThis.fetch;
+    globalThis.fetch = (async () =>
+      new Response(
+        'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call-1","function":{"name":"replace_"}}]}}]}\n\n' +
+          'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"lines","arguments":"{}"}}]}}]}\n\n' +
+          "data: [DONE]\n\n",
+        { headers: { "Content-Type": "text/event-stream" } },
+      )) as typeof fetch;
+    try {
+      const chunks = [];
+      for await (const chunk of createAdapter().stream({
+        model: "qwen",
+        messages: [],
+        tools: [],
+      }))
+        chunks.push(chunk);
+      expect(chunks).toContainEqual({
+        type: "tool-call-start",
+        tool_call: { id: "call-1", name: "replace_lines" },
+      });
+      expect(chunks).toContainEqual({
+        type: "tool-call",
+        tool_call: { id: "call-1", name: "replace_lines", arguments: "{}" },
+      });
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+
   test("forwards llama-server prompt token usage on the finish chunk", async () => {
     const orig = globalThis.fetch;
     globalThis.fetch = (async () =>

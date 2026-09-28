@@ -97,9 +97,9 @@ async function* streamChatCompletions(
           arguments: "",
         };
         if (call.id) current.id = call.id;
-        if (call.function?.name) {
-          current.name += call.function.name;
-          if (!announced.has(index)) {
+        if (call.function?.name) current.name += call.function.name;
+        if (call.function?.arguments) {
+          if (current.name && !announced.has(index)) {
             announced.add(index);
             yield {
               type: "tool-call-start",
@@ -109,9 +109,8 @@ async function* streamChatCompletions(
               },
             };
           }
-        }
-        if (call.function?.arguments)
           current.arguments += call.function.arguments;
+        }
         calls.set(index, current);
       }
       const usage = json.usage;
@@ -174,7 +173,13 @@ async function* streamChatCompletions(
   }
   buffer += decoder.decode();
   for await (const chunk of consume(buffer)) yield chunk;
-  for (const call of calls.values()) {
+  for (const [index, call] of calls) {
+    if (!announced.has(index)) {
+      yield {
+        type: "tool-call-start",
+        tool_call: { id: call.id, name: call.name },
+      };
+    }
     yield {
       type: "tool-call",
       tool_call: {
