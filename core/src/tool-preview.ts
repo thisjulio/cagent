@@ -3,12 +3,10 @@ const SENSITIVE_ARGUMENT =
 const MAX_PREVIEW_LENGTH = 160;
 
 export function redactCommand(command: string): string {
-  return command
-    .replace(
-      /(--?(?:token|password|passwd|secret|api[-_]?key|authorization)(?:=|\s+))([^\s]+)/gi,
-      "$1[redacted]",
-    )
-    .slice(0, MAX_PREVIEW_LENGTH);
+  return command.replace(
+    /(--?(?:token|password|passwd|secret|api[-_]?key|authorization)(?:=|\s+))([^\s]+)/gi,
+    "$1[redacted]",
+  );
 }
 
 export function toolPreview(
@@ -17,7 +15,7 @@ export function toolPreview(
 ): string | undefined {
   if (tool !== "bash") return undefined;
   if (typeof args.command !== "string") return undefined;
-  return redactCommand(args.command);
+  return redactCommand(args.command).slice(0, MAX_PREVIEW_LENGTH);
 }
 
 export function safeArgumentSummary(

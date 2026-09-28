@@ -11,8 +11,37 @@ import { symbols } from "../theme/symbols";
 import { DisclosureIndicator } from "../primitives/DisclosureIndicator";
 
 const TURN_INSET = 5;
-const MAX_EXPANDED_ERROR_LINES = 8;
-const MAX_PLAIN_BODY_LINES = 200;
+const COLLAPSED_OUTPUT_LINES = 3;
+
+function outputPreview(content: string): {
+  lines: string[];
+  remaining: number;
+} {
+  const normalized = content.replace(/\r\n/g, "\n").trimEnd();
+  const lines: string[] = [];
+  let start = 0;
+  for (let i = 0; i < COLLAPSED_OUTPUT_LINES; i++) {
+    const newline = normalized.indexOf("\n", start);
+    if (newline < 0) {
+      if (start < normalized.length) lines.push(normalized.slice(start));
+      return { lines, remaining: 0 };
+    }
+    lines.push(normalized.slice(start, newline));
+    start = newline + 1;
+  }
+  let remaining = 1;
+  for (let i = start; i < normalized.length; i++)
+    if (normalized[i] === "\n") remaining++;
+  return { lines, remaining };
+}
+
+function terminalContent(item: ToolItemData): string {
+  if (item.display?.kind !== "terminal") return item.content ?? "";
+  if (item.content) return item.content;
+  return (
+    [item.display.stdout, item.display.stderr].filter(Boolean).join("\n") || ""
+  );
+}
 
 function lspOutput(content: string | undefined): string[] {
   const lines = content?.split("\n") ?? [];
@@ -92,29 +121,27 @@ export const ToolItemComponent = memo(
       },
       width - 1,
     );
-    // ponytail: the body strings are only needed when expanded; split lazily
-    // and cap plain output so a huge tool dump can't create thousands of nodes.
-    const needsErrorTail = expanded && item.isError;
+    // ponytail: keep output in one text node so full retained results don't fan out into line nodes.
+    const needsErrorOutput = expanded && item.isError;
     const needsPlainBody = expanded && !item.display && !item.isError;
     const needsLsp = expanded && item.display;
     const body =
-      needsErrorTail || needsPlainBody
-        ? item.display?.kind === "terminal"
-          ? `${item.display.stdout}${item.display.stderr ? `\n${item.display.stderr}` : ""}`.split(
-              "\n",
-            )
-          : (item.content?.split("\n") ?? [])
-        : [];
-    const truncatedPlain = needsPlainBody && body.length > MAX_PLAIN_BODY_LINES;
-    const visibleBody = item.isError
-      ? body.slice(-MAX_EXPANDED_ERROR_LINES)
-      : truncatedPlain
-        ? body.slice(0, MAX_PLAIN_BODY_LINES)
-        : body;
+      needsErrorOutput || needsPlainBody ? terminalContent(item) : "";
+    const collapsedContent = !expanded
+      ? item.display?.kind === "terminal"
+        ? terminalContent(item)
+        : item.display?.kind === "code"
+          ? item.display.content
+          : !item.display
+            ? terminalContent(item)
+            : ""
+      : "";
+    const { lines: visiblePreview, remaining: remainingPreviewLines } =
+      outputPreview(collapsedContent);
     const lspLines = needsLsp ? lspOutput(item.content) : [];
 
     return (
-      <box flexDirection="column">
+      <box flexDirection="column" width="100%" minWidth={0}>
         <box
           flexDirection="row"
           width="100%"
@@ -140,7 +167,7 @@ export const ToolItemComponent = memo(
           ) : null}
         </box>
         {row.path ? (
-          <text wrapMode="none">
+          <text width="100%" wrapMode="char">
             <span fg={theme.accent}>│ ↳ </span>
             <span fg={theme.text.muted}>{row.path}</span>
           </text>
@@ -151,21 +178,44 @@ export const ToolItemComponent = memo(
           </text>
         ) : null}
         {item.toolCategory === "shell" && item.cmd ? (
-          <text wrapMode="none">
+          <text width="100%" wrapMode="char">
             <span fg={theme.accent}>│ $ </span>
             <span attributes={TextAttributes.ITALIC} fg={theme.text.muted}>
               {redactCommand(item.cmd)}
             </span>
           </text>
         ) : null}
-        {expanded && item.isError && item.display?.kind === "terminal" ? (
-          <box flexDirection="column" width="100%" minWidth={0}>
-            {visibleBody.map((line, index) => (
-              <text key={`tool-error-${index}`} wrapMode="word">
-                <span fg={theme.accent}>│ </span>
-                <span fg={theme.status.danger}>{line || " "}</span>
+        {visiblePreview.length ? (
+          <box
+            flexDirection="column"
+            width="100%"
+            minWidth={0}
+            border={["left"]}
+            borderColor={theme.border.focused}
+            paddingLeft={1}
+          >
+            <text wrapMode="char" fg={theme.text.secondary}>
+              {visiblePreview.join("\n")}
+            </text>
+            {remainingPreviewLines ? (
+              <text fg={theme.text.muted}>
+                … {remainingPreviewLines} more lines · click to expand
               </text>
-            ))}
+            ) : null}
+          </box>
+        ) : null}
+        {expanded && item.isError && item.display?.kind === "terminal" ? (
+          <box
+            flexDirection="column"
+            width="100%"
+            minWidth={0}
+            border={["left"]}
+            borderColor={theme.border.focused}
+            paddingLeft={1}
+          >
+            <text wrapMode="char" fg={theme.status.danger}>
+              {body}
+            </text>
           </box>
         ) : expanded && item.display ? (
           <box
@@ -177,11 +227,7 @@ export const ToolItemComponent = memo(
             borderColor={theme.border.focused}
             paddingLeft={1}
           >
-            <ToolDisplayComponent
-              display={item.display}
-              view="unified"
-              maxRows={item.expanded === true ? undefined : 12}
-            />
+            <ToolDisplayComponent display={item.display} view="unified" />
             {lspLines.length ? (
               <box
                 flexDirection="column"
@@ -204,25 +250,20 @@ export const ToolItemComponent = memo(
             ) : null}
           </box>
         ) : expanded ? (
-          <box flexDirection="column">
-            {visibleBody.map((line, index) => (
-              <text key={`tool-line-${index}`} wrapMode="word">
-                <span fg={theme.accent}>│ </span>
-                <span
-                  fg={item.isError ? theme.status.danger : theme.text.muted}
-                >
-                  {line || " "}
-                </span>
-              </text>
-            ))}
-            {truncatedPlain ? (
-              <text wrapMode="word">
-                <span fg={theme.accent}>│ </span>
-                <span fg={theme.text.muted}>
-                  … {body.length - MAX_PLAIN_BODY_LINES} more lines
-                </span>
-              </text>
-            ) : null}
+          <box
+            flexDirection="column"
+            width="100%"
+            minWidth={0}
+            border={["left"]}
+            borderColor={theme.border.focused}
+            paddingLeft={1}
+          >
+            <text
+              wrapMode="char"
+              fg={item.isError ? theme.status.danger : theme.text.muted}
+            >
+              {body}
+            </text>
           </box>
         ) : null}
       </box>

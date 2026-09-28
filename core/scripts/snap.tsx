@@ -239,6 +239,14 @@ if (process.argv.includes("--help") || process.argv.includes("-h")) {
 
 const tools = selectedTools();
 const scenarios = multilineToolScenarios();
+const shellScenario = scenarios.find(
+  (item) => item.kind === "tool" && item.toolName === "bash",
+);
+if (
+  shellScenario?.kind === "tool" &&
+  shellScenario.display?.kind === "terminal"
+)
+  shellScenario.content = shellScenario.display.stdout;
 if (tools) {
   controller.state.chat = scenarios.filter(
     (item) =>

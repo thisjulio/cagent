@@ -65,4 +65,27 @@ describe("tool preparation status", () => {
     expect(state.chat[0]).toMatchObject({ running: false, cmd: "one.ts" });
     expect(state.chat[1]).toMatchObject({ preparing: true, running: true });
   });
+
+  it("replaces capped live output with the complete final tool result", () => {
+    const streamed = {
+      kind: "tool" as const,
+      content: "partial live output … truncated",
+      toolName: "bash",
+      running: true,
+      startedAt: Date.now(),
+    };
+    const state = {
+      chat: [streamed],
+      chatVersion: 0,
+      toolLog: [],
+    } as unknown as UIState;
+
+    toolPost(state, {
+      tool: "bash",
+      result: { output: "complete final output\nlast line" },
+    });
+
+    expect(streamed.content).toBe("complete final output\nlast line");
+    expect(streamed.running).toBe(false);
+  });
 });

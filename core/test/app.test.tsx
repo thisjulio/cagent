@@ -429,12 +429,7 @@ describe("OpenTUI render", () => {
       width: 80,
       height: 24,
     });
-    await act(async () => {
-      await setup.flush();
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      await setup.flush();
-    });
-    const out = setup.captureCharFrame();
+    const out = await actUntilFrame(setup, () => {}, "reasoning · 1 line");
     expect(out).toContain("▸ reasoning · 1 line");
     expect(out).not.toContain("private reasoning");
     act(() => setup.renderer.destroy());
@@ -514,12 +509,7 @@ describe("OpenTUI render", () => {
       width: 80,
       height: 24,
     });
-    await act(async () => {
-      await setup.flush();
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      await setup.flush();
-    });
-    const out = setup.captureCharFrame();
+    const out = await actUntilFrame(setup, () => {}, "title");
     expect(out).toContain("title");
     expect(out).toContain("- item 1");
     act(() => setup.renderer.destroy());

@@ -119,7 +119,7 @@ export function toolPost(state: UIState, p: unknown): void {
     }
     e.display = result?.display;
     e.summary = result?.summary ?? deriveSummary(e);
-    if (!e.content) e.content = error ?? result?.output ?? "";
+    e.content = error ?? result?.output ?? e.content ?? "";
     state.chatVersion += 1;
   }
 }

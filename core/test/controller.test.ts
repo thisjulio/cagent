@@ -418,7 +418,7 @@ describe("controller", () => {
     c.onToolPost({ tool: "bash", result: { output: "a\nb" } });
     const done = c.state.chat[c.state.chat.length - 1];
     expect(done.running).toBe(false);
-    expect(done.content).toBe("a\n");
+    expect(done.content).toBe("a\nb");
   });
 
   it("activate starts the next pending task when none is active or blocked", () => {
