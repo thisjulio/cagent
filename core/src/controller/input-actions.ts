@@ -1,4 +1,5 @@
 import { inputSuggestions } from "../commands/suggest";
+import { hasProjectFiles, loadProjectFiles } from "../context/file-index";
 import { fuzzyProjectFiles } from "../context/file-mentions";
 import { loadHistory, searchHistory } from "../session/history";
 import type { Controller } from "./controller";
@@ -18,16 +19,28 @@ export function historyEntries(query = ""): string[] {
 
 export function setInput(controller: Controller, value: string): void {
   controller.state.input = value;
-  controller.state.suggest = suggestions(controller, value);
+  updateSuggestions(controller, value);
   controller.state.suggestIdx = -1;
   controller.bump();
 }
 
 export function reloadSkills(controller: Controller): boolean {
   if (!controller.reloadSkillsAction()) return false;
-  controller.state.suggest = suggestions(controller, controller.state.input);
+  updateSuggestions(controller, controller.state.input);
   controller.state.suggestIdx = -1;
   return true;
+}
+
+function updateSuggestions(controller: Controller, input: string): void {
+  controller.state.suggest = suggestions(controller, input);
+  const mention = input.match(/(?:^|\s)@([^\s]*)$/);
+  if (!mention || hasProjectFiles()) return;
+  void loadProjectFiles().then(() => {
+    if (controller.state.input !== input) return;
+    controller.state.suggest = suggestions(controller, input);
+    controller.state.suggestIdx = -1;
+    controller.bump();
+  });
 }
 
 function suggestions(controller: Controller, input: string) {

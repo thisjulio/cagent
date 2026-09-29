@@ -5,6 +5,7 @@ import { classifyTool } from "../tool-category";
 import { ensureToolTitle } from "../tool-title";
 import { toolCommandLabel } from "./tool-label";
 import { deriveSummary } from "./tool-summary";
+import { invalidateProjectFiles } from "../context/file-index";
 
 function lastRunningChat(chat: ChatItem[], tool: string): ChatItem | undefined {
   for (let i = chat.length - 1; i >= 0; i--) {
@@ -95,6 +96,7 @@ export function toolPost(state: UIState, p: unknown): void {
     error?: string;
   };
   const e = lastRunningChat(state.chat, tool);
+  if (result?.changesWorkspace) invalidateProjectFiles();
   if (e) {
     if (result?.title) e.title = result.title;
     if (result?.args && !e.cmd) {

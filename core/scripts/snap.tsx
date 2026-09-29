@@ -364,3 +364,16 @@ controller.state.taskPanelExpanded = false;
 controller.state.busy = true;
 controller.state.title = "preparing edit";
 for (const width of [60, 80, 120]) await frame(width);
+
+controller.state.chat = Array.from({ length: 46 }, (_, index) => [
+  withTurn(
+    { kind: "user", content: `Request ${index + 1}` },
+    `history-${index}`,
+  ),
+  withTurn(
+    { kind: "assistant", content: `Completed request ${index + 1}.` },
+    `history-${index}`,
+  ),
+]).flat();
+controller.state.title = "transcript paging";
+await frame(80, 100);

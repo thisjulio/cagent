@@ -40,7 +40,9 @@ export function App({
   useEffect(() => {
     c.bump = () => setV((v) => v + 1);
     c.setStreamBump(createStreamThrottle(() => c.bump()));
+    const stopGitStatus = c.gitStatus.start();
     return () => {
+      stopGitStatus();
       c.bump = () => {};
       c.setStreamBump(() => {});
     };
@@ -150,6 +152,7 @@ export function App({
           />
         ) : (
           <ChatViewport
+            key={s.sessionId}
             chat={s.chat}
             busy={s.busy}
             controller={c}
@@ -241,6 +244,7 @@ export function App({
         )}
         <StatusBar
           cwd={process.cwd()}
+          gitInfo={s.gitInfo}
           model={s.model}
           variant={s.variant}
           tokens={s.tokens}

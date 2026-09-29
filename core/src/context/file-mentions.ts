@@ -1,36 +1,40 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { ContentPart, Message } from "@cagent/sdk";
-import { fuzzy } from "../fuzzy";
-import { projectFiles } from "./file-index";
+import {
+  fuzzyProjectFiles as matchProjectFiles,
+  loadProjectFiles,
+} from "./file-index";
 
 const MENTION =
   /(^|\s)@((?:\.{0,2}\/)?[^\s:@]+(?:\/[^\s:@]+)*)(?::(\d+)(?:-(\d+))?)?/g;
 
-export function listProjectFiles(cwd = process.cwd()): string[] {
-  return projectFiles(cwd);
+export function listProjectFiles(cwd = process.cwd()): Promise<string[]> {
+  return loadProjectFiles(cwd);
 }
 
 export function fuzzyProjectFiles(
   query: string,
   cwd = process.cwd(),
 ): string[] {
-  const files = listProjectFiles(cwd).sort();
-  return (query ? fuzzy(files, query) : files).slice(0, 8);
+  return matchProjectFiles(query, cwd);
 }
 
 export type FileMention = { path: string; start?: number; end?: number };
 
-export function parseFileMentions(
+export async function parseFileMentions(
   text: string,
   cwd = process.cwd(),
-): FileMention[] {
-  const known = new Set(
-    listProjectFiles(cwd).map((file) => file.replaceAll("\\", "/")),
-  );
+): Promise<FileMention[]> {
+  if (!/(^|\s)@/.test(text)) return [];
+  const known = new Set((await listProjectFiles(cwd)).map(normalizeFilePath));
+  return findFileMentions(text, known);
+}
+
+function findFileMentions(text: string, known: Set<string>): FileMention[] {
   const mentions: FileMention[] = [];
   for (const match of text.matchAll(MENTION)) {
-    const file = match[2].replaceAll("\\", "/").replace(/^\.\//, "");
+    const file = normalizeFilePath(match[2]).replace(/^\.\//, "");
     if (!known.has(file)) continue;
     const start = match[3] ? Number(match[3]) : undefined;
     const end = match[4] ? Number(match[4]) : start;
@@ -45,65 +49,94 @@ export function fileContextCharLimit(contextWindow: number): number {
   return Math.max(1_000, Math.floor(contextWindow * 0.2 * 4));
 }
 
-export function buildFileContext(
+export async function buildFileContext(
   text: string,
   cwd = process.cwd(),
   maxChars = fileContextCharLimit(100_000),
-): {
+): Promise<{
   content: string;
   filePaths: string[];
   context: string;
-} {
-  const mentions = parseFileMentions(text, cwd);
+}> {
+  if (!/(^|\s)@/.test(text))
+    return { content: text.trim() || text, filePaths: [], context: "" };
+  const known = new Set((await listProjectFiles(cwd)).map(normalizeFilePath));
+  const mentions = findFileMentions(text, known);
   const filePaths = [...new Set(mentions.map((mention) => mention.path))];
   let remaining = maxChars;
-  const context = mentions
-    .map((mention) => {
-      const absolute = path.resolve(cwd, mention.path);
-      if (!absolute.startsWith(`${path.resolve(cwd)}${path.sep}`)) return "";
-      try {
-        const bytes = fs.readFileSync(absolute);
-        if (bytes.includes(0)) {
-          const omitted = `File: ${mention.path} omitted (binary file). Use read_file if needed.`;
-          if (omitted.length > remaining) return "";
-          remaining -= omitted.length + 2;
-          return omitted;
-        }
-        const lines = bytes.toString("utf8").split(/\r?\n/);
-        const start = Math.max(1, mention.start ?? 1);
-        const end = Math.min(lines.length, mention.end ?? lines.length);
-        const selectedLines = lines
-          .slice(start - 1, end)
-          .map((line, index) => `${start + index}: ${line}`);
-        const header = `File: ${mention.path}${mention.start ? ` (lines ${start}-${end})` : ""}`;
-        const room = Math.min(
-          Math.max(0, remaining - header.length - 96),
-          Math.max(0, MAX_FILE_MENTION_CHARS - header.length - 96),
-        );
-        let selected = "";
-        for (const line of selectedLines) {
-          if (selected.length + line.length + 1 > room) break;
-          selected += `${selected ? "\n" : ""}${line}`;
-        }
-        const truncated = selected.length < selectedLines.join("\n").length;
-        const suffix = truncated
-          ? "\n[File context truncated. Use read_file to inspect the remaining content.]"
-          : "";
-        const block = `${header}\n\`\`\`\n${selected}${suffix}\n\`\`\``;
-        remaining -= block.length + 2;
-        return block;
-      } catch {
-        return "";
-      }
-    })
-    .filter(Boolean)
-    .join("\n\n");
+  const blocks: string[] = [];
+  for (const mention of mentions) {
+    const result = referencedFileContext(mention, cwd, remaining);
+    remaining = result.remaining;
+    if (result.content) blocks.push(result.content);
+  }
+  const context = blocks.join("\n\n");
   const stripped = text
     .replace(MENTION, (whole, prefix: string, file: string) =>
-      parseFileMentions(`@${file}`, cwd).length ? prefix : whole,
+      known.has(normalizeFilePath(file).replace(/^\.\//, "")) ? prefix : whole,
     )
     .trim();
   return { content: stripped || text, filePaths, context };
+}
+
+function normalizeFilePath(file: string): string {
+  return file.replaceAll("\\", "/");
+}
+
+function referencedFileContext(
+  mention: FileMention,
+  cwd: string,
+  remaining: number,
+): { content: string; remaining: number } {
+  const absolute = path.resolve(cwd, mention.path);
+  if (!absolute.startsWith(`${path.resolve(cwd)}${path.sep}`))
+    return { content: "", remaining };
+  try {
+    const bytes = fs.readFileSync(absolute);
+    if (bytes.includes(0)) return binaryFileContext(mention.path, remaining);
+    return textFileContext(mention, bytes.toString("utf8"), remaining);
+  } catch {
+    return { content: "", remaining };
+  }
+}
+
+function binaryFileContext(
+  file: string,
+  remaining: number,
+): { content: string; remaining: number } {
+  const content = `File: ${file} omitted (binary file). Use read_file if needed.`;
+  return content.length > remaining
+    ? { content: "", remaining }
+    : { content, remaining: remaining - content.length - 2 };
+}
+
+function textFileContext(
+  mention: FileMention,
+  content: string,
+  remaining: number,
+): { content: string; remaining: number } {
+  const lines = content.split(/\r?\n/);
+  const start = Math.max(1, mention.start ?? 1);
+  const end = Math.min(lines.length, mention.end ?? lines.length);
+  const selectedLines = lines
+    .slice(start - 1, end)
+    .map((line, index) => `${start + index}: ${line}`);
+  const header = `File: ${mention.path}${mention.start ? ` (lines ${start}-${end})` : ""}`;
+  const room = Math.min(
+    Math.max(0, remaining - header.length - 96),
+    Math.max(0, MAX_FILE_MENTION_CHARS - header.length - 96),
+  );
+  let selected = "";
+  for (const line of selectedLines) {
+    if (selected.length + line.length + 1 > room) break;
+    selected += `${selected ? "\n" : ""}${line}`;
+  }
+  const truncated = selected.length < selectedLines.join("\n").length;
+  const suffix = truncated
+    ? "\n[File context truncated. Use read_file to inspect the remaining content.]"
+    : "";
+  const block = `${header}\n\`\`\`\n${selected}${suffix}\n\`\`\``;
+  return { content: block, remaining: remaining - block.length - 2 };
 }
 
 export function appendFileContext(

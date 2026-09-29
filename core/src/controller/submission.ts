@@ -33,11 +33,13 @@ export async function submitMessage(
   }
 
   const { content: imagePrompt, imagePaths } = imageContent;
-  const fileMention = buildFileContext(
-    text,
-    process.cwd(),
-    Math.max(1_000, Math.floor(controller.state.contextWindow * 0.2 * 4)),
-  );
+  const fileMention = /(^|\s)@/.test(text)
+    ? await buildFileContext(
+        text,
+        process.cwd(),
+        Math.max(1_000, Math.floor(controller.state.contextWindow * 0.2 * 4)),
+      )
+    : { content: text.trim() || text, filePaths: [], context: "" };
   const content = appendFileContext(imagePrompt, fileMention.context);
   appendPrompt(process.cwd(), text);
   resetCompletedTasks(controller);
@@ -221,6 +223,7 @@ export async function submitMessage(
     },
     bump: controller.bump,
     bumpStream: () => controller.bumpStreamNow(),
+    refreshGitInfo: () => controller.gitStatus.refresh(),
     observability: controller.observability,
     turnId,
     onContextLimit: () => {

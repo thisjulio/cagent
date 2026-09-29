@@ -1,18 +1,14 @@
 import { TextAttributes } from "@opentui/core";
+import { memo } from "react";
 import type { SystemBlock } from "../render/blocks";
+import { formatSystemTime } from "../render/time";
 import { useTheme } from "../primitives/theme-context";
 
-function time(ts?: number): string {
-  return ts
-    ? new Date(ts).toLocaleTimeString("en-US", {
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: true,
-      })
-    : "";
-}
-
-export function SystemBlockComponent({ block }: { block: SystemBlock }) {
+export const SystemBlockComponent = memo(function SystemBlockComponent({
+  block,
+}: {
+  block: SystemBlock;
+}) {
   const { color } = useTheme();
   const item = block.item;
   const compacted = item.content.match(/^compacted:\s*(.+)$/);
@@ -32,7 +28,9 @@ export function SystemBlockComponent({ block }: { block: SystemBlock }) {
           {compacted ? "context compacted" : "info"}
         </strong>
         {item.timestamp ? (
-          <span attributes={TextAttributes.DIM}> {time(item.timestamp)}</span>
+          <span attributes={TextAttributes.DIM}>
+            {` ${formatSystemTime(item.timestamp)}`}
+          </span>
         ) : null}
       </text>
       <box flexDirection="column">
@@ -47,4 +45,4 @@ export function SystemBlockComponent({ block }: { block: SystemBlock }) {
       </box>
     </box>
   );
-}
+});

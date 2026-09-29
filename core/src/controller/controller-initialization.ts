@@ -45,6 +45,7 @@ export function initializeControllerState(
   const contextWindow = deps.contextWindow ?? 100_000;
   const state: UIState = {
     tasks: restoreTasks(loaded.records),
+    gitInfo: { branch: null, ahead: 0, behind: 0, dirty: 0, isRepo: false },
     chat: toChatItems(loaded.records).slice(-MAX_CHAT_ITEMS),
     chatVersion: 0,
     toolLog: [],

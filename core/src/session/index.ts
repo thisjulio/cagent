@@ -63,26 +63,14 @@ export class Session {
     fs.appendFileSync(this.file, `${JSON.stringify(record)}\n`);
   }
 
-  replaceAssistantSnapshot(turnId: string | undefined, content: string): void {
-    const records = fs.existsSync(this.file)
-      ? readSessionRecords(this.file)
-      : [];
-    const snapshotIndex = records.findLastIndex(
-      (record) =>
-        String(record.type) === "snapshot" && record.turnId === turnId,
-    );
+  appendAssistantSnapshot(turnId: string | undefined, content: string): void {
     const record: SessionSnapshotRecord = {
       ts: Date.now(),
       turnId,
       type: "snapshot",
       payload: { content },
     };
-    if (snapshotIndex === -1) records.push(record as unknown as SessionRecord);
-    else records[snapshotIndex] = record as unknown as SessionRecord;
-    fs.writeFileSync(
-      this.file,
-      `${records.map((entry) => JSON.stringify(entry)).join("\n")}\n`,
-    );
+    fs.appendFileSync(this.file, `${JSON.stringify(record)}\n`);
   }
 
   load(): SessionLoad {

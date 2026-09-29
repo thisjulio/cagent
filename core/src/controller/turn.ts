@@ -13,6 +13,7 @@ import { appendChat, notify } from "./chat-buffer";
 import type { ChatItem, UIState } from "./state";
 import { appendCapped, MAX_VISIBLE_STREAM_CHARS } from "../stream-buffer";
 import type { VerificationRunner } from "../verification/runner";
+import { createAssistantSnapshotWriter } from "./assistant-snapshot";
 
 export type TurnHost = {
   state: UIState;
@@ -38,6 +39,7 @@ export type TurnHost = {
   signal?: AbortSignal;
   bump: () => void;
   bumpStream: () => void;
+  refreshGitInfo?: () => Promise<void>;
   maxTurns?: number;
   maxToolCalls?: number;
   maxInputTokensPerTurn?: number;
@@ -117,6 +119,7 @@ export async function executeTurn(host: TurnHost): Promise<void> {
     { session_id: host.session.id },
   );
   host.state.busy = false;
+  void host.refreshGitInfo?.();
   host.state.elapsedMs = host.state.turnStartedAt
     ? Date.now() - host.state.turnStartedAt
     : 0;
@@ -192,13 +195,16 @@ function isContextLimitError(error: unknown): boolean {
   );
 }
 
-async function runAgentTurn(
+function runAgentTurn(
   host: TurnHost,
   getThinking: () => string,
   setThinking: (value: string) => void,
   getTokens: () => number,
   setTokens: (value: number) => void,
 ) {
+  const snapshots = createAssistantSnapshotWriter((content) =>
+    host.session.appendAssistantSnapshot(host.turnId, content),
+  );
   return runTurn({
     adapter: host.adapter,
     model: host.model,
@@ -220,7 +226,7 @@ async function runAgentTurn(
       appendText(host, text);
       host.onText?.(text);
     },
-    onAssistantSnapshot: (content) => persistAssistantSnapshot(host, content),
+    onAssistantSnapshot: snapshots.update,
     onToolCallStart: host.onToolCallStart,
     onToolCallFinished: host.onToolCallFinished,
     onReasoning: (text) => {
@@ -298,11 +304,7 @@ async function runAgentTurn(
       }
       host.bumpStream();
     },
-  });
-}
-
-function persistAssistantSnapshot(host: TurnHost, content: string): void {
-  host.session.replaceAssistantSnapshot(host.turnId, content);
+  }).finally(snapshots.flush);
 }
 
 function appendText(host: TurnHost, text: string): void {

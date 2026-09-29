@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "bun:test";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { Session } from "../src/session/index";
@@ -146,7 +146,7 @@ describe("JSONL sessions", () => {
       type: "assistant",
       payload: { content: "Found the answer" },
     });
-    session.replaceAssistantSnapshot("turn-1", "partial later response");
+    session.appendAssistantSnapshot("turn-1", "partial later response");
 
     expect(new Session(session.id, dir).load().messages).toEqual([
       {
@@ -155,6 +155,19 @@ describe("JSONL sessions", () => {
         tool_calls: [{ id: "call-1", name: "search", arguments: "{}" }],
       },
       { role: "assistant", content: "Found the answer" },
+    ]);
+  });
+
+  it("appends snapshots and loads the latest snapshot for an unfinished turn", () => {
+    const session = new Session("latest-stream-snapshot", dir);
+    session.appendAssistantSnapshot("turn-1", "partial");
+    session.appendAssistantSnapshot("turn-1", "complete partial");
+
+    expect(readFileSync(session.file, "utf-8").trim().split("\n")).toHaveLength(
+      2,
+    );
+    expect(session.load().messages).toEqual([
+      { role: "assistant", content: "complete partial" },
     ]);
   });
 

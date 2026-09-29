@@ -16,6 +16,7 @@ import type { ProviderUsage } from "../usage";
 import type { CustomCommand } from "../commands/types";
 import type { SubagentRequest } from "../subagents/executor";
 import type { VerificationRunner } from "../verification/runner";
+import type { GitInfo } from "../gitinfo";
 
 export type ChatItem = {
   kind: "user" | "assistant" | "tool" | "meta" | "thinking" | "skill";
@@ -58,6 +59,7 @@ export type ToolLogEntry = {
 };
 
 export type UIState = {
+  gitInfo: GitInfo;
   tasks: Task[];
   taskPanelExpanded?: boolean;
   chat: ChatItem[];

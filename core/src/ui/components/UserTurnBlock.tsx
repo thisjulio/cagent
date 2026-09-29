@@ -1,10 +1,15 @@
 import { TextAttributes } from "@opentui/core";
+import { memo } from "react";
 import type { UserTurnBlock } from "../render/blocks";
 import { formatTime } from "../render/time";
 import { escapeRegExp } from "../render/text";
 import { useTheme } from "../primitives/theme-context";
 
-export function UserTurnBlockComponent({ block }: { block: UserTurnBlock }) {
+export const UserTurnBlockComponent = memo(function UserTurnBlockComponent({
+  block,
+}: {
+  block: UserTurnBlock;
+}) {
   const { color } = useTheme();
   const item = block.items[0];
   const imagePaths = item.imagePaths ?? [];
@@ -59,4 +64,4 @@ export function UserTurnBlockComponent({ block }: { block: UserTurnBlock }) {
       ))}
     </box>
   );
-}
+});

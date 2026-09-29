@@ -1,4 +1,4 @@
-import { formatCwd, formatGitBadge, getGitInfo } from "../../gitinfo";
+import { formatCwd, formatGitBadge, type GitInfo } from "../../gitinfo";
 import { useTerminalDimensions } from "@opentui/react";
 import { responsiveSize } from "../theme/breakpoints";
 import { useTheme } from "../primitives/theme-context";
@@ -7,6 +7,7 @@ import { symbols } from "../theme/symbols";
 
 export function StatusBar({
   cwd,
+  gitInfo,
   model,
   variant,
   tokens,
@@ -16,6 +17,7 @@ export function StatusBar({
   missingLspLanguages = [],
 }: {
   cwd: string;
+  gitInfo: GitInfo;
   model: string;
   variant?: string;
   tokens?: number;
@@ -42,7 +44,7 @@ export function StatusBar({
       ? `${formatTokens(tokens)}/${formatTokens(contextWindow)}`
       : undefined;
   const modeLabel = permissionMode;
-  const gitBadge = formatGitBadge(getGitInfo(cwd));
+  const gitBadge = formatGitBadge(gitInfo);
   const warning =
     missingLspLanguages.length > 0
       ? `${symbols.warning} LSP: ${missingLspLanguages[0]}`

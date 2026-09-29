@@ -55,8 +55,10 @@ import {
   initializeControllerState,
   type ControllerRuntime,
 } from "./controller-initialization";
+import { createGitStatusPoller } from "./git-status-poller";
 
 export class Controller implements ControllerRuntime {
+  gitStatus!: ReturnType<typeof createGitStatusPoller>;
   get state(): UIState {
     return this.runtime.state!;
   }
@@ -137,6 +139,10 @@ export class Controller implements ControllerRuntime {
       bumpCallback: this.bumpCallback,
       envStamp: Date.now(),
     };
+    this.gitStatus = createGitStatusPoller((gitInfo) => {
+      this.state.gitInfo = gitInfo;
+      this.bump();
+    });
   }
 
   get registry(): ControllerDeps["registry"] {
