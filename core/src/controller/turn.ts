@@ -59,6 +59,7 @@ export type TurnHost = {
 
 export async function executeTurn(host: TurnHost): Promise<void> {
   const turnStartedAt = host.state.turnStartedAt;
+  let turnSucceeded = false;
   let thinkingContent = "";
   let streamedTokens = 0;
   try {
@@ -91,6 +92,7 @@ export async function executeTurn(host: TurnHost): Promise<void> {
     } else {
       host.state.notice = "";
     }
+    turnSucceeded = true;
   } catch (error) {
     if (host.interrupted()) {
       notify(host.state, "[interrupted - type to steer]");
@@ -113,6 +115,7 @@ export async function executeTurn(host: TurnHost): Promise<void> {
     }
     removePreparingItems(host.state);
   }
+  host.session.clearAssistantSnapshot();
   host.observability?.recordMetric(
     "agent.turn.elapsed_ms",
     host.state.turnStartedAt ? Date.now() - host.state.turnStartedAt : 0,
@@ -125,6 +128,7 @@ export async function executeTurn(host: TurnHost): Promise<void> {
     : 0;
   host.state.turnStartedAt = null;
   if (
+    turnSucceeded &&
     !process.env.CAGENT_DISABLE_NOTIFICATIONS &&
     process.env.TERM &&
     process.stdout.isTTY &&

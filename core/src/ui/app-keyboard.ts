@@ -269,6 +269,11 @@ export function useAppKeyboard(c: Controller, renderer: CliRenderer): void {
       key.preventDefault();
       return;
     }
+    if (key.name === "end" && !overlay && !renderer.currentFocusedEditor) {
+      renderer.emit("cagent:follow-transcript");
+      key.preventDefault();
+      return;
+    }
     if (s.historySearch) {
       if (
         key.name === "return" ||

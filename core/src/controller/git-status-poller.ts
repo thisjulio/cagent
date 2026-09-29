@@ -6,10 +6,21 @@ export function createGitStatusPoller(onUpdate: (info: GitInfo) => void): {
   start: () => () => void;
   refresh: () => Promise<void>;
 } {
-  let interval: ReturnType<typeof setInterval> | undefined;
+  let timeout: ReturnType<typeof setTimeout> | undefined;
   let running = false;
   let polling = false;
   let refreshRequested = false;
+  let lastInfo: GitInfo | undefined;
+
+  const schedule = (durationMs: number): void => {
+    timeout = setTimeout(
+      () => {
+        timeout = undefined;
+        void refresh();
+      },
+      Math.max(POLL_INTERVAL_MS, durationMs),
+    );
+  };
 
   const refresh = async (): Promise<void> => {
     if (!running) return;
@@ -17,15 +28,23 @@ export function createGitStatusPoller(onUpdate: (info: GitInfo) => void): {
       refreshRequested = true;
       return;
     }
+    if (timeout) clearTimeout(timeout);
+    timeout = undefined;
     polling = true;
+    const startedAt = performance.now();
     try {
       const info = await getGitInfoAsync(process.cwd());
-      if (running) onUpdate(info);
+      if (running && !sameGitInfo(info, lastInfo)) {
+        lastInfo = info;
+        onUpdate(info);
+      }
     } finally {
       polling = false;
       if (running && refreshRequested) {
         refreshRequested = false;
         void refresh();
+      } else if (running) {
+        schedule(performance.now() - startedAt);
       }
     }
   };
@@ -34,14 +53,25 @@ export function createGitStatusPoller(onUpdate: (info: GitInfo) => void): {
     start: () => {
       running = true;
       void refresh();
-      interval ??= setInterval(() => void refresh(), POLL_INTERVAL_MS);
       return () => {
         running = false;
         refreshRequested = false;
-        if (interval) clearInterval(interval);
-        interval = undefined;
+        if (timeout) clearTimeout(timeout);
+        timeout = undefined;
       };
     },
     refresh,
   };
+}
+
+function sameGitInfo(a: GitInfo, b: GitInfo | undefined): boolean {
+  return (
+    a === b ||
+    (!!b &&
+      a.branch === b.branch &&
+      a.ahead === b.ahead &&
+      a.behind === b.behind &&
+      a.dirty === b.dirty &&
+      a.isRepo === b.isRepo)
+  );
 }

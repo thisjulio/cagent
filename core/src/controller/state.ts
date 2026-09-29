@@ -19,6 +19,7 @@ import type { VerificationRunner } from "../verification/runner";
 import type { GitInfo } from "../gitinfo";
 
 export type ChatItem = {
+  id?: string;
   kind: "user" | "assistant" | "tool" | "meta" | "thinking" | "skill";
   content: string;
   turnId?: string;

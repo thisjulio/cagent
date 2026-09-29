@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { formatGitBadge, parseGitInfo } from "../src/gitinfo";
+import { getGitBranch, formatGitBadge, parseGitInfo } from "../src/gitinfo";
 
 describe("parseGitInfo", () => {
   test("parses branch, upstream counts, and changed paths from porcelain v2", () => {
@@ -32,5 +32,11 @@ describe("parseGitInfo", () => {
       dirty: 0,
       isRepo: false,
     });
+  });
+});
+
+describe("getGitBranch", () => {
+  test("returns null outside a Git repository", () => {
+    expect(getGitBranch("/")).toBeNull();
   });
 });

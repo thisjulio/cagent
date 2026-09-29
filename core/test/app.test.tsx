@@ -74,6 +74,62 @@ describe("OpenTUI render", () => {
     act(() => setup.renderer.destroy());
   });
 
+  it("shows elapsed time, operation spinner, and interrupt hint while working", async () => {
+    const c = new Controller(deps());
+    c.state.busy = true;
+    c.state.turnStartedAt = Date.now() - 65_000;
+    c.state.chat.push(
+      { kind: "user", content: "update the helper", turnId: "turn-1" },
+      {
+        kind: "tool",
+        toolName: "edit_file",
+        toolCategory: "write",
+        title: "preparing edit",
+        running: true,
+        preparing: true,
+        turnId: "turn-1",
+      },
+    );
+    const setup = await testRender(React.createElement(App, { c }), {
+      width: 100,
+      height: 30,
+    });
+    await act(async () => {
+      await setup.flush();
+    });
+    const out = setup.captureCharFrame();
+    expect(out).toContain("working (01:05)");
+    expect(out).toContain("preparing edit");
+    expect(out).toContain("queued while agent is working · Esc interrupt");
+    act(() => setup.renderer.destroy());
+  });
+
+  it("shows the subagent name while a subagent tool is running", async () => {
+    const c = new Controller(deps());
+    c.state.chat.push({
+      kind: "tool",
+      toolName: "subagent",
+      toolCategory: "agent",
+      title: "Review interface changes",
+      cmd: "architecture-reviewer",
+      content: "",
+      running: true,
+      turnId: "turn-1",
+    });
+    const setup = await testRender(React.createElement(App, { c }), {
+      width: 100,
+      height: 30,
+    });
+    await act(async () => {
+      await setup.flush();
+    });
+
+    expect(setup.captureCharFrame()).toContain(
+      "Review interface changes @architecture-reviewer",
+    );
+    act(() => setup.renderer.destroy());
+  });
+
   it("renders panes and the status bar", async () => {
     const c = new Controller(deps());
     c.state.tokens = 100;
@@ -403,7 +459,7 @@ describe("OpenTUI render", () => {
     act(() => setup.renderer.destroy());
   });
 
-  it("does not write terminal clear sequences when chat history is capped", () => {
+  it("does not write terminal clear sequences when chat history grows", () => {
     const c = new Controller(deps());
     const state = c.state;
     const originalWrite = process.stdout.write;

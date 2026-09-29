@@ -281,6 +281,52 @@ describe("focused UI keyboard behavior", () => {
     process.stdout.rows = previousRows;
   });
 
+  it("loads earlier turns at the transcript top and resets at the bottom", async () => {
+    const controller = createController();
+    controller.state.chat.push(
+      ...Array.from({ length: 24 }, (_, index) => [
+        {
+          kind: "user" as const,
+          turnId: `turn-${index}`,
+          content: `prompt ${index}`,
+        },
+        {
+          kind: "assistant" as const,
+          turnId: `turn-${index}`,
+          content: `paragraph ${index}`,
+        },
+      ]).flat(),
+    );
+    const setup = await testRender(
+      React.createElement(App, { c: controller }),
+      {
+        width: 60,
+        height: 24,
+      },
+    );
+    await act(async () => setup.flush());
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    await act(async () => setup.flush());
+
+    for (let index = 0; index < 8; index++) {
+      await act(async () => {
+        setup.mockInput.pressKey("\u001b[5~");
+        await setup.flush();
+      });
+    }
+    expect(setup.captureCharFrame()).toContain("Load 12 earlier turns");
+
+    await act(async () => {
+      setup.mockInput.pressKey("\u001b[6~");
+      setup.mockInput.pressKey("\u001b[6~");
+      setup.mockInput.pressKey("\u001b[6~");
+      setup.mockInput.pressKey("\u001b[6~");
+      await setup.flush();
+    });
+    expect(setup.captureCharFrame()).not.toContain("Load 12 earlier turns");
+    act(() => setup.renderer.destroy());
+  });
+
   it("preserves transcript position and reports new lines while scrolled up", async () => {
     const controller = createController();
     const message = {
@@ -294,7 +340,7 @@ describe("focused UI keyboard behavior", () => {
     controller.state.chat.push(message);
     const setup = await testRender(
       React.createElement(App, { c: controller }),
-      { width: 60, height: 12 },
+      { width: 60, height: 24 },
     );
     await act(async () => setup.flush());
     await new Promise((resolve) => setTimeout(resolve, 100));

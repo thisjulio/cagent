@@ -4,7 +4,7 @@ import { captureProjectMeta, projectMetaRecord } from "../session/project";
 import { mergeSystemMessages } from "../message-context";
 import { restoreTasks } from "../tasks";
 import { QuestionService } from "./question-service";
-import { appendChat, MAX_CHAT_ITEMS } from "./chat-buffer";
+import { appendChat } from "./chat-buffer";
 import { toChatItems, toTitle } from "./sessions";
 import { compactionThreshold } from "./compaction-threshold";
 import type { Controller } from "./controller";
@@ -46,7 +46,7 @@ export function initializeControllerState(
   const state: UIState = {
     tasks: restoreTasks(loaded.records),
     gitInfo: { branch: null, ahead: 0, behind: 0, dirty: 0, isRepo: false },
-    chat: toChatItems(loaded.records).slice(-MAX_CHAT_ITEMS),
+    chat: toChatItems(loaded.records),
     chatVersion: 0,
     toolLog: [],
     sessionId: controller.session.id,

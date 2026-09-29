@@ -216,7 +216,7 @@ export const AgentTurnBlockComponent = memo(function AgentTurnBlockComponent({
         if (item.type === "THINKING") {
           return (
             <ThinkingItemComponent
-              key={`thinking-${item.chatIndex}`}
+              key={`thinking-${item.chatId}`}
               item={item}
               streaming={
                 streaming && latestTurn && index === block.items.length - 1
@@ -227,7 +227,7 @@ export const AgentTurnBlockComponent = memo(function AgentTurnBlockComponent({
         if (item.type === "SKILL") {
           return (
             <SkillItemComponent
-              key={`skill-${item.chatIndex}`}
+              key={`skill-${item.chatId}`}
               item={item}
               onClick={() => controller.toggleToolExpand(item.chatIndex)}
             />
@@ -236,7 +236,7 @@ export const AgentTurnBlockComponent = memo(function AgentTurnBlockComponent({
         if (item.type === "TOOL") {
           return (
             <ToolItemComponent
-              key={`tool-${item.chatIndex}`}
+              key={`tool-${item.chatId}`}
               item={item}
               onClick={() => controller.toggleToolExpand(item.chatIndex)}
               terminalWidth={terminalWidth}
@@ -245,7 +245,7 @@ export const AgentTurnBlockComponent = memo(function AgentTurnBlockComponent({
         }
         return (
           <ResponseItemComponent
-            key={`response-${item.chatIndex}`}
+            key={`response-${item.chatId}`}
             item={item}
             streaming={
               streaming && latestTurn && index === block.items.length - 1

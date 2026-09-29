@@ -56,7 +56,7 @@ export async function submitText(
   }
   controller.state.input = "";
   controller.state.inputKey += 1;
-  if (text.startsWith("$") && text.slice(1).trim()) {
+  if ((text.startsWith("$") || text.startsWith("!")) && text.slice(1).trim()) {
     await actions.submitShell(controller, text.slice(1).trim());
     return;
   }

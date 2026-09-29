@@ -10,11 +10,11 @@
     "plugins/*"
   ],
   "scripts": {
-    "start": "bun core/src/main.ts",
-    "test": "bun test",
+    "start": "NODE_ENV=production bun core/src/main.ts",
+    "test": "NODE_ENV=test bun test",
     "typecheck": "tsc --noEmit",
     "lint": "biome check --linter-enabled=true --formatter-enabled=false .",
-    "build": "bun run build:release",
+    "build": "NODE_ENV=production bun run build:release",
     "verify": "bun run build && bun run typecheck && bun run lint && bun test",
     "knip": "knip --exclude files,exports,types",
     "format": "biome format .",

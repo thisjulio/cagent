@@ -7,7 +7,7 @@ import type { Message } from "@cagent/sdk";
 import type { SessionModelSelection } from "../session/index";
 import type { ChatItem } from "./state";
 import type { Controller } from "./controller";
-import { MAX_CHAT_ITEMS, notify } from "./chat-buffer";
+import { notify } from "./chat-buffer";
 import { mergeSystemMessages } from "../message-context";
 import { classifyTool } from "../tool-category";
 import { toolCommandLabel } from "./tool-label";
@@ -16,6 +16,7 @@ import { restoreTasks } from "../tasks";
 import { filterExistingImagePaths } from "./image-processor";
 import { restoreModelSelection } from "./models";
 import { loadPreferences } from "../preferences";
+import crypto from "node:crypto";
 export { compact } from "./compaction";
 
 export function findLatestModelSelection(
@@ -140,7 +141,7 @@ export function toChatItems(records: LoadedRecord[]): ChatItem[] {
       result.push({ kind: "meta", content: "conversation compacted" });
     }
   }
-  return result;
+  return result.map((item) => ({ ...item, id: crypto.randomUUID() }));
 }
 
 export function sanitizeTitle(value: string): string {
@@ -225,7 +226,7 @@ export async function restoreSession(c: Controller, id: string): Promise<void> {
   if (loaded.modelSelection)
     await restoreModelSelection(c, loaded.modelSelection);
   c.messages = mergeSystemMessages(c.systemPrompt ?? "", loaded.messages);
-  c.state.chat = toChatItems(loaded.records).slice(-MAX_CHAT_ITEMS);
+  c.state.chat = toChatItems(loaded.records);
   c.state.tasks = restoreTasks(loaded.records);
   c.state.chatVersion += 1;
   c.state.title = toTitle(loaded.records);

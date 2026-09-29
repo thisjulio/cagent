@@ -229,6 +229,34 @@ describe("openai adapter", () => {
     }
   });
 
+  test("incomplete Codex stream does not emit a successful finish", async () => {
+    const orig = globalThis.fetch;
+    try {
+      globalThis.fetch = (async () =>
+        new Response(
+          'event: response.reasoning_summary_text.delta\ndata: {"delta":"thinking"}\n\n',
+          { status: 200 },
+        )) as unknown as typeof fetch;
+      const adapter = createAdapter({
+        config: {},
+        auth: { kind: "oauth", access: "tok", account_id: "acct" },
+      });
+      await expect(
+        (async () => {
+          for await (const _chunk of adapter.stream({
+            model: "gpt-5.6-terra",
+            messages: [{ role: "user", content: "hi" }],
+            tools: [],
+          })) {
+            // Consume the stream to observe its premature EOF error.
+          }
+        })(),
+      ).rejects.toThrow("response.completed");
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+
   test("prepare_call throws without a selected model", async () => {
     const adapter = createAdapter({ config: {}, client: fakeClient() });
     await expect(

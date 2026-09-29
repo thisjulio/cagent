@@ -1,6 +1,5 @@
-import { execFile, execSync } from "node:child_process";
+import { execFile, execFileSync } from "node:child_process";
 import { promisify } from "node:util";
-import path from "path";
 import os from "os";
 
 export interface GitInfo {
@@ -12,13 +11,20 @@ export interface GitInfo {
 }
 
 const execFileAsync = promisify(execFile);
+const gitReadEnv = { ...process.env, GIT_OPTIONAL_LOCKS: "0" };
 
 export async function getGitInfoAsync(cwd: string): Promise<GitInfo> {
   try {
     const { stdout } = await execFileAsync(
       "git",
       ["status", "--porcelain=v2", "--branch"],
-      { cwd, encoding: "utf-8", timeout: 3000, maxBuffer: 10 * 1024 * 1024 },
+      {
+        cwd,
+        encoding: "utf-8",
+        env: gitReadEnv,
+        timeout: 3000,
+        maxBuffer: 10 * 1024 * 1024,
+      },
     );
     return parseGitInfo(stdout);
   } catch {
@@ -49,55 +55,19 @@ function emptyGitInfo(): GitInfo {
   return { branch: null, ahead: 0, behind: 0, dirty: 0, isRepo: false };
 }
 
-export function getGitInfo(cwd: string): GitInfo {
-  const info = emptyGitInfo();
-
+export function getGitBranch(cwd: string): string | null {
   try {
-    const root = execSync("git rev-parse --show-toplevel 2>/dev/null", {
-      cwd,
-      encoding: "utf-8",
-      timeout: 3000,
-    }).trim();
-    if (!root) return info;
-
-    info.isRepo = true;
-
-    info.branch =
-      execSync("git branch --show-current 2>/dev/null", {
+    return (
+      execFileSync("git", ["branch", "--show-current"], {
         cwd,
         encoding: "utf-8",
+        stdio: ["ignore", "pipe", "ignore"],
         timeout: 3000,
-      }).trim() || null;
-
-    const status = execSync("git status --porcelain 2>/dev/null", {
-      cwd,
-      encoding: "utf-8",
-      timeout: 3000,
-    }).trim();
-    info.dirty = status ? status.split("\n").length : 0;
-
-    const upstream = execSync(
-      "git rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null || true",
-      { cwd, encoding: "utf-8", timeout: 3000 },
-    ).trim();
-    if (upstream) {
-      const counts = execSync(
-        "git rev-list --left-right --count HEAD...@{u} 2>/dev/null",
-        {
-          cwd,
-          encoding: "utf-8",
-          timeout: 3000,
-        },
-      ).trim();
-      const [ahead, behind] = counts.split("\t").map(Number);
-      info.ahead = ahead || 0;
-      info.behind = behind || 0;
-    }
+      }).trim() || null
+    );
   } catch {
-    // Not a git repo or git failed — return defaults
+    return null;
   }
-
-  return info;
 }
 
 export function formatCwd(cwd: string): string {

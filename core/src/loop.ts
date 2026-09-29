@@ -57,6 +57,7 @@ export async function streamOnce(opts: StreamOpts): Promise<{
   const attempts = opts.attempts ?? 3;
   let lastErr: unknown;
   for (let i = 0; i < attempts; i++) {
+    let chunks = 0;
     try {
       const observability = opts.observability ?? noopObservability;
       const requestMessages = opts.messagesForRequest
@@ -91,7 +92,6 @@ export async function streamOnce(opts: StreamOpts): Promise<{
       );
       let text = "";
       let inputTokens: number | undefined;
-      let chunks = 0;
       let outputChars = 0;
       let firstTokenAt: number | undefined;
       const streamStartedAt = performance.now();
@@ -158,7 +158,7 @@ export async function streamOnce(opts: StreamOpts): Promise<{
         "provider.model": opts.model,
       });
       lastErr = e;
-      if (opts.signal?.aborted || i === attempts - 1) break;
+      if (opts.signal?.aborted || chunks > 0 || i === attempts - 1) break;
       await new Promise((r) => setTimeout(r, 1000 * 2 ** i));
     }
   }

@@ -158,17 +158,19 @@ describe("JSONL sessions", () => {
     ]);
   });
 
-  it("appends snapshots and loads the latest snapshot for an unfinished turn", () => {
+  it("overwrites snapshots and loads the latest one for an unfinished turn", () => {
     const session = new Session("latest-stream-snapshot", dir);
     session.appendAssistantSnapshot("turn-1", "partial");
     session.appendAssistantSnapshot("turn-1", "complete partial");
 
-    expect(readFileSync(session.file, "utf-8").trim().split("\n")).toHaveLength(
-      2,
+    expect(readFileSync(session.snapshotFile, "utf-8")).toContain(
+      "complete partial",
     );
     expect(session.load().messages).toEqual([
       { role: "assistant", content: "complete partial" },
     ]);
+    session.clearAssistantSnapshot();
+    expect(() => readFileSync(session.snapshotFile, "utf-8")).toThrow();
   });
 
   it("restores explicit tool expansion and derives legacy summaries", () => {

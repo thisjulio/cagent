@@ -24,6 +24,27 @@ import type { ThemeMode } from "../theme/types";
 import { subscribeThemeMode } from "../theme/terminal";
 import { useAppKeyboard } from "../app-keyboard";
 import { createStreamThrottle } from "../../controller/stream-throttle";
+function useElapsedLabel(
+  busy: boolean,
+  startedAt: number | null,
+): string | undefined {
+  const [, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    if (!busy) return;
+    setNow(Date.now());
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [busy]);
+
+  if (!busy) return undefined;
+  const elapsed = Math.max(
+    0,
+    Math.floor((Date.now() - (startedAt ?? Date.now())) / 1000),
+  );
+  return `${String(Math.floor(elapsed / 60)).padStart(2, "0")}:${String(elapsed % 60).padStart(2, "0")}`;
+}
+
 export function App({
   c,
   mcpServerCount = 0,
@@ -61,6 +82,7 @@ export function App({
   );
   useAppKeyboard(c, renderer);
   const s = c.state;
+  const elapsedLabel = useElapsedLabel(s.busy, s.turnStartedAt);
   // ponytail: the catalog is rebuilt from scratch on every bump (each
   // keystroke); only build it when an overlay actually needs it.
   const helpOverlay = s.helpOpen || s.commandPaletteOpen;
@@ -101,8 +123,6 @@ export function App({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [toolViewerIndex, toolViewerTurnId, s.chatVersion],
   );
-  const lastLog = s.toolLog[s.toolLog.length - 1];
-  const running = lastLog?.running ? lastLog.tool : undefined;
   const overlay =
     s.helpOpen ||
     s.infoPanel ||
@@ -138,7 +158,11 @@ export function App({
             )}
           </text>
           <text fg={themes[themeMode].color.text.muted}>
-            {status === "permission" ? "waiting for approval" : status}
+            {status === "permission"
+              ? "waiting for approval"
+              : status === "working"
+                ? `working (${elapsedLabel})`
+                : status}
           </text>
         </box>
         {s.chat.length === 0 ? (
@@ -225,7 +249,6 @@ export function App({
             input={s.input}
             inputKey={s.inputKey}
             busy={s.busy}
-            running={running}
             suggest={s.suggest}
             active={!overlay}
             onChange={(v) => c.setInput(v)}

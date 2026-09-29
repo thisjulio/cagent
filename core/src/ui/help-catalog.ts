@@ -82,7 +82,11 @@ export function getHelpCatalog(
       group: "Subagents",
     });
   items.push(
-    { name: "$<command>", description: "run a shell command", group: "Input" },
+    {
+      name: "$<command> or !<command>",
+      description: "run a shell command",
+      group: "Input",
+    },
     { name: "@<agent>", description: "mention a subagent", group: "Input" },
   );
   return items;

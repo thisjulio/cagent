@@ -40,6 +40,7 @@ export const ChatViewport = memo(function ChatViewport({
     scrollTop: number;
     scrollHeight: number;
   } | null>(null);
+  const followRequested = useRef(false);
   const previousBlocks = useRef<Block[]>([]);
   // ponytail: safety net for direct chat mutations that bypass the version
   // bump (tests do this); production writes always bump chatVersion.
@@ -97,11 +98,37 @@ export const ChatViewport = memo(function ChatViewport({
     }
   }
   useEffect(() => {
+    const loadEarlierTurns = () => {
+      const scrollbox = viewport.current;
+      if (!scrollbox || hiddenTurns === 0) return;
+      pendingScrollRestore.current = {
+        scrollTop: scrollbox.scrollTop,
+        scrollHeight: scrollbox.scrollHeight,
+      };
+      following.current = false;
+      scrollbox.stickyScroll = false;
+      setVisibleTurnCount((count) => count + 12);
+    };
+    const followTranscript = () => {
+      followRequested.current = true;
+      following.current = true;
+      setNewLines(0);
+      setVisibleTurnCount(12);
+      const scrollbox = viewport.current;
+      if (scrollbox) {
+        scrollbox.scrollTo(scrollbox.scrollHeight);
+        scrollbox.stickyScroll = true;
+      }
+    };
     const onPageScroll = (direction: -1 | 1) => {
       const scrollbox = viewport.current;
       if (!scrollbox) return;
       const pageHeight = Math.ceil(scrollbox.viewport.height * 0.8);
       if (direction < 0) {
+        if (scrollbox.scrollTop <= 0) {
+          loadEarlierTurns();
+          return;
+        }
         following.current = false;
         scrollbox.stickyScroll = false;
         scrollbox.scrollTo(scrollbox.scrollTop - pageHeight);
@@ -109,26 +136,36 @@ export const ChatViewport = memo(function ChatViewport({
         const atBottom =
           scrollbox.scrollTop + scrollbox.viewport.height >=
           scrollbox.scrollHeight;
-        if (atBottom) return;
+        if (atBottom) {
+          followTranscript();
+          return;
+        }
         scrollbox.scrollTo(scrollbox.scrollTop + pageHeight);
         if (
           scrollbox.scrollTop + scrollbox.viewport.height >=
           scrollbox.scrollHeight
         ) {
-          setNewLines(0);
-          following.current = true;
-          scrollbox.stickyScroll = true;
+          followTranscript();
         }
       }
     };
     renderer.on("cagent:page-scroll", onPageScroll);
+    renderer.on("cagent:follow-transcript", followTranscript);
     return () => {
       renderer.off("cagent:page-scroll", onPageScroll);
+      renderer.off("cagent:follow-transcript", followTranscript);
     };
-  }, [renderer]);
+  }, [renderer, hiddenTurns]);
   useEffect(() => {
     const scrollbox = viewport.current;
     if (!scrollbox) return;
+    if (followRequested.current) {
+      followRequested.current = false;
+      scrollbox.scrollTo(scrollbox.scrollHeight);
+      scrollbox.stickyScroll = true;
+      previousScrollHeight.current = scrollbox.scrollHeight;
+      return;
+    }
     const pending = pendingScrollRestore.current;
     if (pending) {
       pendingScrollRestore.current = null;
@@ -160,6 +197,7 @@ export const ChatViewport = memo(function ChatViewport({
               }
               following.current = true;
               setNewLines(0);
+              setVisibleTurnCount(12);
             }
           }}
         >
@@ -193,6 +231,7 @@ export const ChatViewport = memo(function ChatViewport({
             following.current = true;
             scrollbox.stickyScroll = true;
             setNewLines(0);
+            setVisibleTurnCount(12);
           }
         }}
       >

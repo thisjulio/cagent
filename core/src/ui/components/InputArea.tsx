@@ -1,7 +1,8 @@
 import { useEffect, useRef } from "react";
-import type { KeyEvent, TextareaRenderable } from "@opentui/core";
+import type { KeyEvent, PasteEvent, TextareaRenderable } from "@opentui/core";
 import { useRenderer } from "@opentui/react";
 import { readClipboard } from "../../clipboard/clipboard";
+import { expandChips, pasteAsChips, toggleChip } from "../input-chips";
 import { ActivitySpinner } from "./ActivitySpinner";
 import { useTheme } from "../primitives/theme-context";
 
@@ -9,8 +10,6 @@ export function InputArea({
   input,
   inputKey,
   busy,
-  running,
-  activityLabel,
   suggest,
   active,
   onChange,
@@ -21,8 +20,6 @@ export function InputArea({
   input: string;
   inputKey: number;
   busy: boolean;
-  running?: string;
-  activityLabel?: string;
   suggest?: string[];
   active: boolean;
   onChange: (v: string) => void;
@@ -31,8 +28,12 @@ export function InputArea({
   onClipboard?: (direction: "paste", length: number, success: boolean) => void;
 }) {
   const textarea = useRef<TextareaRenderable>(null);
+  const chips = useRef(new Map<string, string>());
+  const chipIndex = useRef(0);
+  const onClipboardRef = useRef(onClipboard);
   const renderer = useRenderer();
   const { color } = useTheme();
+  onClipboardRef.current = onClipboard;
   // ponytail: track last-applied inputKey so setText only runs on external
   // updates (autocomplete, up-arrow, session restore), not on user typing.
   // User typing updates the prop via onChange but doesn't bump inputKey,
@@ -42,11 +43,27 @@ export function InputArea({
   useEffect(() => {
     if (inputKey === lastKey.current) return;
     lastKey.current = inputKey;
+    chips.current.clear();
+    chipIndex.current = 0;
     const current = textarea.current;
     if (!current) return;
     current.setText(input);
     current.cursorOffset = input.length;
   }, [input, inputKey]);
+
+  useEffect(() => {
+    const handlePaste = (event: PasteEvent) => {
+      if (!active || !textarea.current) return;
+      const value = new TextDecoder().decode(event.bytes);
+      event.preventDefault();
+      insertPaste(textarea.current, value, chips.current, chipIndex);
+      onClipboardRef.current?.("paste", value.length, true);
+    };
+    renderer.keyInput.on("paste", handlePaste);
+    return () => {
+      renderer.keyInput.off("paste", handlePaste);
+    };
+  }, [active, renderer]);
 
   return (
     <box
@@ -62,14 +79,7 @@ export function InputArea({
         {suggest && suggest.length > 0 ? (
           <text fg={color.text.muted}>{"  Tab: " + suggest.join("  ")}</text>
         ) : busy ? (
-          <ActivitySpinner
-            label={
-              activityLabel ??
-              (running
-                ? `prompt · running ${running}`
-                : "prompt · queued while agent is working")
-            }
-          />
+          <ActivitySpinner label="prompt · queued while agent is working · Esc interrupt" />
         ) : null}
       </box>
       <box
@@ -93,21 +103,51 @@ export function InputArea({
           wrapMode="word"
           keyBindings={[
             { name: "return", action: "submit" },
-            { name: "linefeed", action: "submit" },
+            { name: "linefeed", action: "newline" },
             { name: "kpenter", action: "submit" },
             { name: "return", shift: true, action: "newline" },
+            { name: "j", ctrl: true, action: "newline" },
           ]}
           onKeyDown={(key: KeyEvent) => {
+            const editor = textarea.current;
+            if (editor && key.name === "return" && !key.ctrl && !key.shift) {
+              const cursor = editor.cursorOffset;
+              if (editor.plainText[cursor - 1] === "\\") {
+                key.preventDefault();
+                editor.setText(
+                  `${editor.plainText.slice(0, cursor - 1)}\n${editor.plainText.slice(cursor)}`,
+                );
+                editor.cursorOffset = cursor;
+                return;
+              }
+            }
+            if (editor && key.ctrl && key.name === "e") {
+              const changed = toggleChip(
+                editor.plainText,
+                editor.cursorOffset,
+                chips.current,
+              );
+              if (changed) {
+                key.preventDefault();
+                editor.setText(changed.text);
+                editor.cursorOffset = changed.cursor;
+              }
+              return;
+            }
             if (key.ctrl && key.name === "c" && key.shift) {
               const selected = textarea.current?.getSelectedText() ?? "";
               if (selected) renderer.copyToClipboardOSC52(selected);
               return;
             }
             if (key.ctrl && key.name === "v") {
-              void paste(textarea.current, key.shift, onClipboard);
+              void paste(
+                textarea.current,
+                chips.current,
+                chipIndex,
+                onClipboard,
+              );
               return;
             }
-            const editor = textarea.current;
             if (editor && key.ctrl && key.name === "u") {
               key.preventDefault();
               editor.deleteToLineStart();
@@ -149,13 +189,19 @@ export function InputArea({
               }
             }
           }}
-          placeholder="type your next instruction"
+          placeholder="type a message · Ctrl+J new line · Ctrl+E expand"
           placeholderColor={color.text.muted}
           onContentChange={() => {
             const value = textarea.current?.plainText ?? "";
             if (value !== input) onChange(value);
           }}
-          onSubmit={() => onSubmit(textarea.current?.plainText ?? input)}
+          onSubmit={() => {
+            onSubmit(
+              expandChips(textarea.current?.plainText ?? input, chips.current),
+            );
+            chips.current.clear();
+            chipIndex.current = 0;
+          }}
         />
       </box>
     </box>
@@ -164,14 +210,24 @@ export function InputArea({
 
 async function paste(
   textarea: TextareaRenderable | null,
-  plain: boolean,
+  chips: Map<string, string>,
+  chipIndex: { current: number },
   onClipboard?: (direction: "paste", length: number, success: boolean) => void,
 ): Promise<void> {
   if (!textarea) return;
   const value = await readClipboard();
   onClipboard?.("paste", value?.length ?? 0, value !== undefined);
-  if (value !== undefined) {
-    textarea.insertText(value.replace(/\r\n?/g, "\n"));
-    textarea.cursorOffset = textarea.plainText.length;
-  }
+  if (value !== undefined) insertPaste(textarea, value, chips, chipIndex);
+}
+
+function insertPaste(
+  textarea: TextareaRenderable,
+  value: string,
+  chips: Map<string, string>,
+  chipIndex: { current: number },
+): void {
+  const result = pasteAsChips(value, chips, chipIndex.current);
+  chipIndex.current = result.nextImageIndex;
+  textarea.insertText(result.text);
+  textarea.cursorOffset = textarea.plainText.length;
 }

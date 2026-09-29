@@ -5,6 +5,10 @@ import { spawnSync } from "node:child_process";
 import { readSessionRecords } from "./records";
 import type { SessionRecord, SessionSummary } from "./types";
 
+function indexFile(file: string): string {
+  return file.replace(/\.jsonl$/, ".index.json");
+}
+
 export function sessionDirectory(dir?: string): string {
   return dir ?? path.join(os.homedir(), ".cagent", "sessions");
 }
@@ -36,9 +40,58 @@ export function listSessions(dir?: string): SessionSummary[] {
   return fs
     .readdirSync(base)
     .filter((file) => file.endsWith(".jsonl"))
-    .map((file) => summarizeSession(path.join(base, file), file))
+    .map((name) => readSessionIndex(path.join(base, name), name))
     .filter((summary): summary is SessionSummary => summary !== null)
     .sort((a, b) => b.updated.localeCompare(a.updated));
+}
+
+export function updateSessionIndex(file: string, record: SessionRecord): void {
+  const name = path.basename(file);
+  let summary = readIndex(file);
+  if (!summary) {
+    summary = summarizeSession(file, name);
+    if (summary) fs.writeFileSync(indexFile(file), JSON.stringify(summary));
+    return;
+  }
+  if (record.type === "user") {
+    const content = String(record.payload.content ?? "");
+    if (!summary.title) summary.title = content;
+    summary.messageCount += 1;
+  }
+  if (record.type === "meta" && record.payload.kind === "title")
+    summary.title = String(record.payload.title ?? "") || summary.title;
+  if (record.type === "meta" && record.payload.kind === "project") {
+    if (typeof record.payload.cwd === "string")
+      summary.cwd = record.payload.cwd;
+    if (typeof record.payload.branch === "string")
+      summary.branch = record.payload.branch;
+  }
+  summary.updated = new Date(record.ts).toISOString();
+  fs.writeFileSync(indexFile(file), JSON.stringify(summary));
+}
+
+function readSessionIndex(file: string, name: string): SessionSummary | null {
+  const index = readIndex(file);
+  if (index) return index;
+  const summary = summarizeSession(file, name);
+  if (summary) fs.writeFileSync(indexFile(file), JSON.stringify(summary));
+  return summary;
+}
+
+function readIndex(file: string): SessionSummary | null {
+  try {
+    const value = JSON.parse(
+      fs.readFileSync(indexFile(file), "utf8"),
+    ) as SessionSummary;
+    return typeof value.id === "string" &&
+      typeof value.updated === "string" &&
+      typeof value.title === "string" &&
+      typeof value.messageCount === "number"
+      ? value
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 export function projectRoot(cwd = process.cwd()): string {

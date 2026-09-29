@@ -1,6 +1,7 @@
 import type { ToolArgs, ToolDefinition } from "@cagent/sdk";
 import { hasShellControlSyntax } from "../tools";
 import type { Controller } from "./controller";
+import { appendChat } from "./chat-buffer";
 
 export function askTool(
   controller: Controller,
@@ -18,7 +19,7 @@ export function askTool(
     controller.state.permissionMode === "read-only" &&
     !isToolReadOnly(tool, args)
   ) {
-    controller.state.chat.push({
+    appendChat(controller.state, {
       kind: "meta",
       content: "permission denied: read-only mode (Ctrl+M to switch)",
     });

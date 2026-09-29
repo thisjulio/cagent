@@ -1,4 +1,4 @@
-export function createStreamThrottle(bump: () => void, intervalMs = 100) {
+export function createStreamThrottle(bump: () => void, intervalMs = 50) {
   let lastBump = 0;
   let pending = false;
   return () => {

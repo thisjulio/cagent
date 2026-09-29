@@ -66,6 +66,7 @@ export async function* streamCodex(
   const decoder = new TextDecoder();
   let buf = "";
   let finish = "stop";
+  let completed = false;
   let usage:
     | {
         input_tokens: number;
@@ -134,6 +135,7 @@ export async function* streamCodex(
             };
           }
         } else if (event === "response.completed") {
+          completed = true;
           const r = data.response as Record<string, unknown> | undefined;
           const u = r?.usage as
             | {
@@ -154,5 +156,7 @@ export async function* streamCodex(
       idx = buf.indexOf("\n\n");
     }
   }
+  if (!completed)
+    throw new Error("Codex stream ended before response.completed");
   yield { type: "finish", finish_reason: finish, usage };
 }

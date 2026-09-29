@@ -9,6 +9,7 @@ import { redactCommand } from "../../tool-preview";
 import { useTheme } from "../primitives/theme-context";
 import { symbols } from "../theme/symbols";
 import { DisclosureIndicator } from "../primitives/DisclosureIndicator";
+import { ActivitySpinner } from "./ActivitySpinner";
 
 const TURN_INSET = 5;
 const COLLAPSED_OUTPUT_LINES = 3;
@@ -50,8 +51,12 @@ function lspOutput(content: string | undefined): string[] {
 }
 
 function rowTitle(item: ToolItemData): string {
-  if (item.toolName === "subagent" && item.title === "subagent")
-    return `Subagent @${item.cmd ?? "agent"}`;
+  if (item.toolName === "subagent") {
+    const name = item.cmd ?? "agent";
+    return item.title?.includes(`@${name}`)
+      ? item.title
+      : `${item.title ?? "Subagent"} @${name}`;
+  }
   const title = item.title ?? item.toolName ?? "tool";
   return item.running && !item.title && item.cmd
     ? `${title} ${item.cmd}`
@@ -156,7 +161,9 @@ export const ToolItemComponent = memo(
           <text fg={theme.accent}>├─ </text>
           <text fg={statusColor}>{status}</text>
           <DisclosureIndicator expanded={expanded} />
+          {item.running ? <ActivitySpinner /> : null}
           <text fg={theme.text.primary} wrapMode="none">
+            {item.running ? " " : ""}
             {row.left.slice("├─ ".length + status.length)}
           </text>
           {row.right ? (

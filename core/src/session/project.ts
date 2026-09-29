@@ -1,5 +1,5 @@
 import path from "node:path";
-import { getGitInfo } from "../gitinfo";
+import { getGitBranch } from "../gitinfo";
 import type { SessionRecord } from "./types";
 
 export type ProjectMeta = {
@@ -8,10 +8,9 @@ export type ProjectMeta = {
 };
 
 export function captureProjectMeta(cwd: string = process.cwd()): ProjectMeta {
-  const info = getGitInfo(cwd);
   return {
     cwd: path.resolve(cwd),
-    branch: info.branch ?? undefined,
+    branch: getGitBranch(cwd) ?? undefined,
   };
 }
 

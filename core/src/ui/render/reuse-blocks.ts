@@ -1,7 +1,7 @@
 import type { AgentItem, Block } from "./blocks";
 
 function sameItem(a: AgentItem, b: AgentItem): boolean {
-  if (a.type !== b.type) return false;
+  if (a.type !== b.type || a.chatId !== b.chatId) return false;
   switch (a.type) {
     case "RESPONSE":
       return a.content === (b as typeof a).content;
@@ -17,8 +17,7 @@ function sameItem(a: AgentItem, b: AgentItem): boolean {
         a.expanded === (b as typeof a).expanded &&
         a.isError === (b as typeof a).isError &&
         a.denied === (b as typeof a).denied &&
-        a.running === (b as typeof a).running &&
-        a.chatIndex === (b as typeof a).chatIndex
+        a.running === (b as typeof a).running
       );
     case "TOOL":
       return (
@@ -37,8 +36,7 @@ function sameItem(a: AgentItem, b: AgentItem): boolean {
         a.durationMs === (b as typeof a).durationMs &&
         a.display === (b as typeof a).display &&
         a.changesWorkspace === (b as typeof a).changesWorkspace &&
-        a.changedPaths === (b as typeof a).changedPaths &&
-        a.chatIndex === (b as typeof a).chatIndex
+        a.changedPaths === (b as typeof a).changedPaths
       );
   }
 }
@@ -55,7 +53,7 @@ function sameBlock(a: Block, b: Block): boolean {
       previous.imagePaths === next.imagePaths &&
       previous.filePaths === next.filePaths &&
       previous.timestamp === next.timestamp &&
-      previous.chatIndex === next.chatIndex
+      previous.chatId === next.chatId
     );
   }
   if (a.type === "system" || b.type === "system") {
@@ -64,7 +62,7 @@ function sameBlock(a: Block, b: Block): boolean {
       a.item.content === b.item.content &&
       a.item.kind === b.item.kind &&
       a.item.timestamp === b.item.timestamp &&
-      a.item.chatIndex === b.item.chatIndex
+      a.item.chatId === b.item.chatId
     );
   }
   if (
@@ -78,12 +76,19 @@ function sameBlock(a: Block, b: Block): boolean {
   );
 }
 
+function blockKey(block: Block): string {
+  return block.type === "system"
+    ? `${block.type}-${block.item.chatId}`
+    : `${block.type}-${block.turnId}`;
+}
+
 // ponytail: reuse previous block/item refs for unchanged history so memo'd
 // leaves skip them; only new/changed tails get fresh objects.
 export function reuseBlocks(previous: Block[], next: Block[]): Block[] {
-  if (previous.length !== next.length) return next;
-  return next.map((block, index) => {
-    const old = previous[index];
+  const oldByKey = new Map(previous.map((block) => [blockKey(block), block]));
+  return next.map((block) => {
+    const old = oldByKey.get(blockKey(block));
+    if (!old || old.type !== block.type) return block;
     if (sameBlock(old, block)) return old;
     if (
       old.type === "agent-turn" &&

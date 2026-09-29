@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import type { Controller } from "./controller";
 import type { SkillActivation } from "../skills/types";
 import { formatSkillToolOutput } from "../skills/tool-result";
+import { appendChat } from "./chat-buffer";
 
 export async function invokeSkill(
   controller: Controller,
@@ -41,7 +42,7 @@ function appendSkillActivation(
     tool_calls: [toolCall],
   });
   controller.messages.push({ role: "tool", tool_call_id: id, content: output });
-  controller.state.chat.push({
+  appendChat(controller.state, {
     kind: "skill",
     content: output,
     skillName: name,

@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import { Text } from "../primitives/Text";
 import { useTheme } from "../primitives/theme-context";
 
-const FRAMES = ["◌", "◦", "○", "◦"];
+const FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
-export function ActivitySpinner({ label }: { label: string }) {
+export function ActivitySpinner({ label }: { label?: string }) {
   const [frame, setFrame] = useState(0);
   const { motion } = useTheme();
 
@@ -19,7 +19,8 @@ export function ActivitySpinner({ label }: { label: string }) {
 
   return (
     <Text tone="accent">
-      {motion === "reduced" ? "⋯" : FRAMES[frame]} {label}
+      {motion === "reduced" ? "⋯" : FRAMES[frame]}
+      {label ? ` ${label}` : ""}
     </Text>
   );
 }

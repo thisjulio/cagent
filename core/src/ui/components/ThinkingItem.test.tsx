@@ -4,7 +4,12 @@ import { testRender } from "../../../test/ui-test-harness";
 import { act } from "react";
 import { ThinkingItemComponent } from "./ThinkingItem";
 
-const item = { type: "THINKING" as const, content: "one\ntwo", chatIndex: 0 };
+const item = {
+  type: "THINKING" as const,
+  content: "one\ntwo",
+  chatId: "thinking-1",
+  chatIndex: 0,
+};
 
 describe("ThinkingItemComponent", () => {
   test("renders reasoning collapsed with its line count", async () => {

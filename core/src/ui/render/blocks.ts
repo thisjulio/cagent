@@ -9,6 +9,7 @@ export type PromptItem = {
   imagePaths?: string[];
   filePaths?: string[];
   timestamp?: number;
+  chatId: string;
   chatIndex: number;
 };
 
@@ -21,6 +22,7 @@ export type SkillItem = {
   denied?: boolean;
   running?: boolean;
   timestamp?: number;
+  chatId: string;
   chatIndex: number;
 };
 
@@ -28,6 +30,7 @@ export type ResponseItem = {
   type: "RESPONSE";
   content: string;
   timestamp?: number;
+  chatId: string;
   chatIndex: number;
 };
 
@@ -36,6 +39,7 @@ export type ThinkingItem = {
   content: string;
   timestamp?: number;
   expanded?: boolean;
+  chatId: string;
   chatIndex: number;
 };
 
@@ -58,6 +62,7 @@ export type ToolItem = {
   changesWorkspace?: boolean;
   changedPaths?: string[];
   timestamp?: number;
+  chatId: string;
   chatIndex: number;
 };
 
@@ -67,6 +72,7 @@ export type MetaItem = {
   kind?: string;
   timestamp?: number;
   chatIndex: number;
+  chatId: string;
 };
 
 export type AgentItem = ThinkingItem | ToolItem | SkillItem | ResponseItem;
@@ -118,7 +124,7 @@ export function chatToBlocks(chat: ChatItem[]): Block[] {
       currentAgentBlock = null;
       blocks.push({
         type: "user-turn",
-        turnId: item.turnId ?? `turn-${i}`,
+        turnId: item.turnId ?? item.id ?? `turn-${i}`,
         author: "user",
         timestamp: item.timestamp ?? Date.now(),
         items: [
@@ -129,6 +135,7 @@ export function chatToBlocks(chat: ChatItem[]): Block[] {
             imagePaths: item.imagePaths,
             filePaths: item.filePaths,
             timestamp: item.timestamp,
+            chatId: item.id ?? String(i),
             chatIndex: i,
           },
         ],
@@ -138,12 +145,13 @@ export function chatToBlocks(chat: ChatItem[]): Block[] {
       currentAgentBlock = null;
       blocks.push({
         type: "system",
-        turnId: item.turnId ?? `turn-${i}`,
+        turnId: item.turnId ?? item.id ?? `turn-${i}`,
         item: {
           type: "META",
           content: item.content,
           kind: item.command,
           timestamp: item.timestamp,
+          chatId: item.id ?? String(i),
           chatIndex: i,
         },
       });
@@ -155,7 +163,7 @@ export function chatToBlocks(chat: ChatItem[]): Block[] {
       ) {
         currentAgentBlock = {
           type: "agent-turn",
-          turnId: item.turnId ?? `turn-${i}`,
+          turnId: item.turnId ?? item.id ?? `turn-${i}`,
           author: "cagent",
           subagent: item.subagent,
           timestamp: item.timestamp ?? Date.now(),
@@ -171,6 +179,7 @@ export function chatToBlocks(chat: ChatItem[]): Block[] {
           content: item.content,
           timestamp: item.timestamp,
           expanded: item.expanded,
+          chatId: item.id ?? String(i),
           chatIndex: i,
         });
       } else if (item.kind === "skill") {
@@ -180,6 +189,7 @@ export function chatToBlocks(chat: ChatItem[]): Block[] {
           content: item.content,
           expanded: item.expanded,
           timestamp: item.timestamp,
+          chatId: item.id ?? String(i),
           chatIndex: i,
         });
       } else if (item.kind === "tool") {
@@ -197,6 +207,7 @@ export function chatToBlocks(chat: ChatItem[]): Block[] {
               isError: item.isError,
               denied: item.denied,
               running: item.running,
+              chatId: item.id ?? String(i),
               chatIndex: i,
             });
           }
@@ -220,6 +231,7 @@ export function chatToBlocks(chat: ChatItem[]): Block[] {
             changesWorkspace: item.changesWorkspace,
             changedPaths: item.changedPaths,
             timestamp: item.timestamp,
+            chatId: item.id ?? String(i),
             chatIndex: i,
           });
         }
@@ -240,6 +252,7 @@ export function chatToBlocks(chat: ChatItem[]): Block[] {
             type: "RESPONSE",
             content: item.content,
             timestamp: item.timestamp,
+            chatId: item.id ?? String(i),
             chatIndex: i,
           });
         }
