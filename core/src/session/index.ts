@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import {
   effectiveSessionRecords,
+  projectSessionRecords,
   normalizeSessionRecords,
   readSessionRecords,
 } from "./records";
@@ -49,6 +50,12 @@ export class Session {
     this.snapshotFile = path.join(base, `${this.id}.snapshot`);
   }
 
+  history(): SessionRecord[] {
+    return projectSessionRecords(
+      normalizeSessionRecords(readSessionRecords(this.file)),
+    );
+  }
+
   appendModelSelection(selection: SessionModelSelection): void {
     this.append({
       ts: Date.now(),
@@ -66,8 +73,84 @@ export class Session {
   }
 
   append(record: SessionRecord): void {
-    fs.appendFileSync(this.file, `${JSON.stringify(record)}\n`);
+    const serialized = `${JSON.stringify(record)}\n`;
+    const fd = fs.openSync(this.file, "a+");
+    try {
+      const text = fs.readFileSync(fd, "utf8");
+      if (text && !text.endsWith("\n")) {
+        const tail = text.slice(text.lastIndexOf("\n") + 1);
+        try {
+          JSON.parse(tail);
+          fs.writeFileSync(fd, "\n");
+        } catch {
+          fs.ftruncateSync(
+            fd,
+            Buffer.byteLength(text.slice(0, text.lastIndexOf("\n") + 1)),
+          );
+        }
+      }
+      fs.writeFileSync(fd, serialized);
+      fs.fsyncSync(fd);
+    } finally {
+      fs.closeSync(fd);
+    }
     updateSessionIndex(this.file, record);
+  }
+
+  fork(): Session {
+    const records = this.history();
+    const snapshot = readSnapshot(this.snapshotFile);
+    if (
+      snapshot &&
+      records.some(
+        (record) => record.type === "user" && record.turnId === snapshot.turnId,
+      ) &&
+      !records.some(
+        (record) =>
+          record.type === "assistant" && record.turnId === snapshot.turnId,
+      )
+    )
+      records.push(snapshot as unknown as SessionRecord);
+    const fork = new Session(undefined, path.dirname(this.file));
+    const temporary = `${fork.file}.tmp`;
+    const fd = fs.openSync(temporary, "wx");
+    try {
+      fs.writeFileSync(
+        fd,
+        records.map((record) => `${JSON.stringify(record)}\n`).join(""),
+      );
+      fs.fsyncSync(fd);
+    } finally {
+      fs.closeSync(fd);
+    }
+    fs.renameSync(temporary, fork.file);
+    return fork;
+  }
+
+  restoreBefore(turnId: string, metadata: Record<string, unknown>): void {
+    projectSessionRecords([
+      ...this.history(),
+      {
+        ts: Date.now(),
+        type: "meta",
+        payload: { kind: "session-restored", beforeTurnId: turnId },
+      },
+    ]);
+    const size = fs.existsSync(this.file) ? fs.statSync(this.file).size : 0;
+    const fd = fs.openSync(this.file, "a");
+    try {
+      fs.writeSync(
+        fd,
+        `${JSON.stringify({ ts: Date.now(), type: "meta", payload: { ...metadata, kind: "session-restored", beforeTurnId: turnId } })}\n`,
+      );
+      fs.fsyncSync(fd);
+    } catch (error) {
+      fs.ftruncateSync(fd, size);
+      fs.fsyncSync(fd);
+      throw error;
+    } finally {
+      fs.closeSync(fd);
+    }
   }
 
   appendAssistantSnapshot(turnId: string | undefined, content: string): void {
@@ -96,9 +179,8 @@ export class Session {
         queuedMessages: [],
       };
     }
-    const records = effectiveSessionRecords(
-      normalizeSessionRecords(readSessionRecords(this.file)),
-    );
+    const history = this.history();
+    const records = effectiveSessionRecords(history);
     const rawRecords = records as unknown as (SessionRecord & {
       type: string;
     })[];
@@ -131,6 +213,9 @@ export class Session {
     const snapshot = readSnapshot(this.snapshotFile);
     if (
       snapshot &&
+      rawRecords.some(
+        (record) => record.type === "user" && record.turnId === snapshot.turnId,
+      ) &&
       !rawRecords.some(
         (record) =>
           record.type === "assistant" && record.turnId === snapshot.turnId,
@@ -140,8 +225,8 @@ export class Session {
     return {
       records: visibleRecords,
       messages: recordsToMessages(visibleRecords),
-      queuedMessages: restoreQueue(visibleRecords),
-      modelSelection: restoreModelSelection(visibleRecords),
+      queuedMessages: restoreQueue(history),
+      modelSelection: restoreModelSelection(history),
     };
   }
 

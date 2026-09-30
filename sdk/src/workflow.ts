@@ -22,6 +22,15 @@ export type WorkflowEventHandler = (
   payload: WorkflowEventPayload,
 ) => unknown | Promise<unknown>;
 
+/** Synchronous ordered waterfall. Handlers may append serializable session metadata. */
+export type TurnStatePayload = WorkflowEventPayload & {
+  data: {
+    phase: "before" | "after";
+    turnId: string;
+    sessionMetadata?: ReadonlyArray<Readonly<Record<string, unknown>>>;
+  };
+};
+
 export function workflowEvent(
   data: Record<string, unknown>,
   identifiers: Pick<WorkflowEventPayload, "sessionId" | "projectId"> = {},

@@ -217,6 +217,8 @@ function runAgentTurn(
     messagesForRequest: host.messagesForRequest,
     stablePrefixMessages: host.stablePrefixMessages,
     cacheKey: host.cacheKey,
+    contextWindow: host.state.contextWindow,
+    toolOutputDirectory: `${host.session.file}.outputs`,
     tools: host.tools,
     allowlist: host.allowlist,
     ask: host.ask,

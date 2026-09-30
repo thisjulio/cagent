@@ -6,7 +6,17 @@ import type {
 
 export function restoreQueue(records: SessionRecord[]): QueueMessage[] {
   const queued: QueueMessage[] = [];
+  const consumed = new Map<string, QueueMessage>();
   for (const record of records) {
+    if (
+      record.type === "user" &&
+      typeof record.payload.queuedMessageId === "string"
+    ) {
+      const index = queued.findIndex(
+        (message) => message.id === record.payload.queuedMessageId,
+      );
+      if (index !== -1) queued.splice(index, 1);
+    }
     if (record.type !== "meta") continue;
     const payload = record.payload;
     const id = String(payload.id ?? "");
@@ -18,12 +28,20 @@ export function restoreQueue(records: SessionRecord[]): QueueMessage[] {
         status: payload.status === "processing" ? "processing" : "queued",
       });
     } else if (payload.kind === "queued-message-failed") {
+      const message = consumed.get(id);
+      if (message) {
+        queued.push(message);
+        consumed.delete(id);
+      }
       updateQueueStatus(queued, id, "queued");
     } else if (payload.kind === "queued-message-processing") {
       updateQueueStatus(queued, id, "processing");
     } else if (payload.kind === "queued-message-completed") {
       const index = queued.findIndex((message) => message.id === id);
-      if (index !== -1) queued.splice(index, 1);
+      if (index !== -1) {
+        consumed.set(id, queued[index]!);
+        queued.splice(index, 1);
+      }
     }
   }
   for (const message of queued) message.status = "queued";

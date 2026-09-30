@@ -59,6 +59,8 @@ export interface TurnRecord {
 }
 
 export interface TurnOpts extends StreamOpts {
+  contextWindow?: number;
+  toolOutputDirectory?: string;
   allowlist: string[];
   ask: ToolAsk;
   bus: EventBus;

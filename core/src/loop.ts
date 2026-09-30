@@ -6,7 +6,7 @@ import {
   wrapToolParameters,
 } from "@cagent/sdk";
 import { lastUserMessage, workflowPayload } from "./loop-utils";
-import { runToolCall } from "./tool-loop";
+import { runToolCall, type ToolLoopCtx } from "./tool-loop";
 import {
   DEFAULT_MAX_INPUT_TOKENS_PER_TURN,
   budgetError,
@@ -218,7 +218,7 @@ export async function runTurn(opts: TurnOpts): Promise<TurnResult> {
   const records: TurnRecord[] = [];
   let inputTokens: number | undefined;
   let outputTokens: number | undefined;
-  const ctx = {
+  const ctx: ToolLoopCtx = {
     opts,
     nameToCanonical,
     records,
@@ -315,7 +315,8 @@ export async function runTurn(opts: TurnOpts): Promise<TurnResult> {
           if (opts.interrupted?.() || !(await opts.continueTurn?.())) break;
           continue;
         }
-        for (const tc of streamedToolCalls) {
+        for (let index = 0; index < streamedToolCalls.length; index++) {
+          const tc = streamedToolCalls[index];
           toolCalls++;
           if (
             opts.maxToolCalls !== undefined &&
@@ -345,8 +346,47 @@ export async function runTurn(opts: TurnOpts): Promise<TurnResult> {
             budgetExhausted = true;
             break turnLoop;
           }
-          await runToolCall(ctx, tc);
-          opts.onToolCallFinished?.(tc.id);
+          const isReadOnly = (call: typeof tc) =>
+            opts.tools.find(
+              (tool) => tool.name === (nameToCanonical[call.name] ?? call.name),
+            )?.readOnly === true;
+          const batch = [tc];
+          while (
+            isReadOnly(tc) &&
+            batch.length < 4 &&
+            index + 1 < streamedToolCalls.length &&
+            isReadOnly(streamedToolCalls[index + 1]) &&
+            (opts.maxToolCalls === undefined || toolCalls < opts.maxToolCalls)
+          ) {
+            batch.push(streamedToolCalls[++index]);
+            toolCalls++;
+          }
+          if (batch.length === 1) {
+            await runToolCall(ctx, tc);
+            opts.onToolCallFinished?.(tc.id);
+          } else {
+            const messageCount = opts.messages.length;
+            const results = await Promise.all(
+              batch.map(async (call) => {
+                const local: ToolLoopCtx = {
+                  ...ctx,
+                  opts: { ...opts, messages: [...opts.messages] },
+                  records: [],
+                  evidence: [],
+                  changesWorkspace: false,
+                };
+                await runToolCall(local, call);
+                opts.onToolCallFinished?.(call.id);
+                return local;
+              }),
+            );
+            for (const local of results) {
+              opts.messages.push(...local.opts.messages.slice(messageCount));
+              ctx.records.push(...local.records);
+              ctx.evidence.push(...local.evidence);
+              ctx.changesWorkspace ||= local.changesWorkspace;
+            }
+          }
           if (ctx.records.at(-1)?.changesWorkspace) {
             verifiedChanges = false;
             verificationFailures = 0;

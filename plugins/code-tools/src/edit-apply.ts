@@ -7,7 +7,6 @@ import { unifiedDiff } from "./diff";
 import { runFormat, tscErrors } from "./diagnostics";
 import { errorText } from "./errors";
 import { guardPath } from "./guards";
-import { ensureShadow, shadowCommit } from "./git-shadow";
 import { applyRanges, type LineRange } from "./apply-lines";
 import { diffDisplay, unifiedPatch } from "./display";
 import {
@@ -206,7 +205,7 @@ export async function applyTargets(
   targets: Target[],
   o: { seed: string; blocks: number; patch: number },
   ctx: PluginContext,
-  label: string,
+  _label: string,
 ): Promise<{
   output: string;
   isError: boolean;
@@ -238,10 +237,6 @@ export async function applyTargets(
   if (fmt) out.push(`format:\n${fmt.slice(0, 500)}`);
   if (newErrors.length)
     out.push(`new tsc errors:\n${newErrors.slice(0, 20).join("\n")}`);
-  if (ok) {
-    await ensureShadow();
-    await shadowCommit(`${label} ${ok} file(s)`);
-  }
   ctx.emit("code-tools/edit", {
     ok,
     failed: targets.length - ok,

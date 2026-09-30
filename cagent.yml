@@ -21,6 +21,10 @@ plugins:
     path: ./plugins/anthropic
   - name: code-tools
     path: ./plugins/code-tools
+  - name: repo-map
+    path: ./plugins/repo-map
+    config:
+      tokens: 5000
   - name: claude-agents
     path: ./plugins/claude-agents
   - name: codex-agents

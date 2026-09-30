@@ -1,0 +1,11 @@
+{
+  "name": "@cagent/plugin-repo-map",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "dependencies": {
+    "@ast-grep/napi": "0.45.3",
+    "@cagent/sdk": "workspace:*",
+    "ignore": "^7.0.11"
+  }
+}

@@ -19,9 +19,11 @@ import {
 } from "../context/file-mentions";
 import { selectRequestWindow } from "../context/request-window";
 import { finishPreparingTool, startPreparingTool } from "./tool-preparation";
+import { persistWorkflowState } from "./workflow-state";
 export async function submitMessage(
   controller: Controller,
   text: string,
+  queuedMessageId?: string,
 ): Promise<void> {
   const state = controller.state;
   const turnId = crypto.randomUUID();
@@ -41,6 +43,8 @@ export async function submitMessage(
       )
     : { content: text.trim() || text, filePaths: [], context: "" };
   const content = appendFileContext(imagePrompt, fileMention.context);
+  // The durable user record consumes the queue only after the checkpoint barrier.
+  persistWorkflowState(controller, "before", turnId);
   appendPrompt(process.cwd(), text);
   resetCompletedTasks(controller);
   appendChat(state, {
@@ -63,12 +67,16 @@ export async function submitMessage(
       content: text,
       imagePaths,
       filePaths: fileMention.filePaths,
+      ...(queuedMessageId ? { queuedMessageId } : {}),
     },
   });
   controller.messages.push({ role: "user", content });
   controller.bus.emit(
     "message.submitted",
-    workflowEvent({ content: text }, { sessionId: controller.session.id }),
+    workflowEvent(
+      { content: text, turnId },
+      { sessionId: controller.session.id },
+    ),
   );
   controller.envStamp = addEnvironmentContext(
     controller.messages,
@@ -255,34 +263,22 @@ export async function submitMessage(
       session_id: controller.session.id,
     },
     verification: controller.verification,
-    continueTurn: async () => {
-      const queued = controller.takeQueuedMessages();
-      const message = queued[0];
-      if (!message) return false;
-      controller.restoreQueuedMessages(queued.slice(1));
-      controller.removeQueuedChatMessage(message.id);
-      controller.session.append({
-        ts: Date.now(),
-        turnId,
-        type: "meta",
-        payload: { kind: "queued-message-processing", id: message.id },
-      });
-      controller.messages.push({ role: "user", content: message.content });
-      controller.session.append({
-        ts: Date.now(),
-        turnId,
-        type: "user",
-        payload: { content: message.content },
-      });
-      appendChat(state, {
-        kind: "user",
-        content: message.content,
-        turnId,
-      });
-      return true;
-    },
+    continueTurn: async () => false,
     shouldYield: () => controller.queuedMessages().length > 0,
   });
+  persistWorkflowState(controller, "after", turnId);
+  const queued = controller.takeQueuedMessages();
+  const next = queued[0];
+  controller.restoreQueuedMessages(queued.slice(1));
+  if (next) {
+    controller.removeQueuedChatMessage(next.id);
+    controller.session.append({
+      ts: Date.now(),
+      type: "meta",
+      payload: { kind: "queued-message-processing", id: next.id },
+    });
+    await submitMessage(controller, next.content, next.id);
+  }
 }
 
 async function compactBeforeSubmission(controller: Controller): Promise<void> {

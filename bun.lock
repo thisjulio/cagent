@@ -144,6 +144,15 @@
         "@cagent/sdk": "workspace:*",
       },
     },
+    "plugins/repo-map": {
+      "name": "@cagent/plugin-repo-map",
+      "version": "0.1.0",
+      "dependencies": {
+        "@ast-grep/napi": "0.45.3",
+        "@cagent/sdk": "workspace:*",
+        "ignore": "^7.0.11",
+      },
+    },
     "plugins/stub": {
       "name": "@cagent/plugin-stub",
       "version": "0.1.0",
@@ -232,6 +241,8 @@
     "@cagent/plugin-mcp": ["@cagent/plugin-mcp@workspace:plugins/mcp"],
 
     "@cagent/plugin-openai": ["@cagent/plugin-openai@workspace:plugins/openai"],
+
+    "@cagent/plugin-repo-map": ["@cagent/plugin-repo-map@workspace:plugins/repo-map"],
 
     "@cagent/plugin-stub": ["@cagent/plugin-stub@workspace:plugins/stub"],
 
@@ -492,6 +503,8 @@
     "husky": ["husky@9.1.7", "", { "bin": { "husky": "bin.js" } }, "sha512-5gs5ytaNjBrh5Ow3zrvdUUY+0VxIuWVL4i9irt6friV+BqdCfmV11CQTWMiBYWHbXhco+J1kHfTOUkePhCDvMA=="],
 
     "iconv-lite": ["iconv-lite@0.7.3", "", { "dependencies": { "safer-buffer": ">= 2.1.2 < 3.0.0" } }, "sha512-IKXpvIzjnC9XTAUbVBcMfGS0EPaIXtW6v+zr+RRp+hqULEpo0owZax6wyRwPOJbWbzjYspQwusTsfVr0ifh4uQ=="],
+
+    "ignore": ["ignore@7.0.11", "", {}, "sha512-YChdK5txDjwGUvgR7oCJcLGkwi3LDh8Zx8tS7ndYciLEg/oOCL26VUBSUEtgS7EjiybcBqFxh5j0rAdDX7/bbg=="],
 
     "inherits": ["inherits@2.0.4", "", {}, "sha512-k/vGaX4/Yla3WzyMCvTQOXYeIHvqOKtnqBduzTHpzpQZzAskKMhZ2K+EnBiSM9zGSoIFeMpXKxa4dYeZIQqewQ=="],
 

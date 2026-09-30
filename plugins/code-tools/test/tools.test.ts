@@ -4,7 +4,6 @@ import os from "node:os";
 import path from "node:path";
 import type { PluginContext, ToolDefinition } from "@cagent/sdk";
 import register from "../src/index";
-import { runCmd } from "../src/exec";
 
 const prevCwd = process.cwd();
 let ws: string;
@@ -29,6 +28,8 @@ function freshTools(): {
     registerTool: (tool: ToolDefinition) => tools.set(tool.name, tool),
     emit: (event: string) => events.push(event),
     promptSection: () => {},
+    on: () => {},
+    registerCommand: () => {},
   } as unknown as PluginContext;
   register(context);
   return { tools, events };
@@ -317,19 +318,13 @@ a7.ts
     expect(r.summary).toBe("1 files");
   });
 
-  it("shadow Git is created in a non-Git workspace", async () => {
+  it("edits do not create per-edit shadow checkpoints", () => {
     expect(fs.existsSync(path.join(ws, ".cagent", ".shadow", ".git"))).toBe(
-      true,
+      false,
     );
-    const log = await runCmd("git", [
-      "--git-dir",
-      path.join(ws, ".cagent", ".shadow", ".git"),
-      "--work-tree",
-      ws,
-      "log",
-      "--oneline",
-    ]);
-    expect(log.stdout.trim().split("\n").length).toBeGreaterThanOrEqual(1);
+    expect(fs.existsSync(path.join(ws, ".cagent", ".shadow", "git"))).toBe(
+      false,
+    );
   });
 
   it("edit_file: second edit after a whole-project format does not go stale", async () => {

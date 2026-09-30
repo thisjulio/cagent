@@ -1,13 +1,12 @@
 import type { ToolArgs, ToolEvidence } from "@cagent/sdk";
-import type { EventBus } from "./events";
-import { runToolPipeline, type ToolAsk } from "./tools";
+import { runToolPipeline } from "./tools";
 import { workflowPayload } from "./loop-utils";
 import type { TurnOpts, TurnRecord } from "./loop";
 import { parseToolCall, type IncomingToolCall } from "./tool-call";
 import { ensureToolTitle } from "./tool-title";
 import { classifyTool } from "./tool-category";
 
-export const TOOL_OUTPUT_LLM_LIMIT = 4000;
+import { prepareToolOutput, toolOutputLimit } from "./tool-output";
 
 export interface ToolLoopCtx {
   opts: TurnOpts;
@@ -70,15 +69,18 @@ export async function runToolCall(
       ? tc.arguments
       : JSON.stringify({ _cagent: { title }, args }),
   };
-  const assistant = opts.messages.at(-1);
+  const assistant = opts.messages.findLast(
+    (message) => message.role === "assistant",
+  );
   if (assistant?.tool_calls) {
     const current = assistant.tool_calls.find((call) => call.id === tc.id);
     if (current) Object.assign(current, normalizedCall);
   }
-  const llmOutput =
-    result.output.length > TOOL_OUTPUT_LLM_LIMIT
-      ? `${result.output.slice(0, TOOL_OUTPUT_LLM_LIMIT)}\n[tool output truncated for the model; full output retained in the transcript]`
-      : result.output;
+  const llmOutput = await prepareToolOutput(
+    result.output,
+    toolOutputLimit(opts.contextWindow),
+    opts.toolOutputDirectory,
+  );
   opts.messages.push({
     role: "tool",
     tool_call_id: tc.id,

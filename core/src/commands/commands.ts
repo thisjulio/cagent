@@ -3,6 +3,7 @@ import { expandCommand } from "./discovery";
 import { appendChat, notify } from "../controller/chat-buffer";
 import type { Task } from "../tasks";
 import { MAX_PREFERENCE_LENGTH, type UserPreference } from "../preferences";
+import { restoreConversation } from "../controller/restoration";
 import { runInit } from "./init";
 
 type SlashHandler = (c: Controller, arg: string) => void | Promise<void>;
@@ -258,6 +259,17 @@ export function runSlash(c: Controller, text: string): void | Promise<void> {
         name: pluginCommand.name,
         arguments: arg,
         values: parseValues(arg),
+        sessionId: c.session.id,
+        activeTurn: c.state.busy,
+        records: c.session.history(),
+        restoreConversation: (turnId, metadata) =>
+          restoreConversation(c, turnId, metadata),
+        appendMetadata: (payload) =>
+          c.session.append({
+            ts: Date.now(),
+            type: "meta",
+            payload,
+          }),
       }),
     )
       .then((output: string) => {
