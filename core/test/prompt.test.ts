@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "bun:test";
@@ -38,6 +39,16 @@ describe("buildSystemPrompt", () => {
       "Do not call `list` solely to prepare the final answer",
     );
     expect(p).not.toContain("call `list` and inspect its returned state");
+  });
+});
+
+describe("envFacts in a Git subdirectory", () => {
+  it("detects the repository from a subdirectory", () => {
+    const root = fs.mkdtempSync("/tmp/cagent-git-");
+    execFileSync("git", ["init", "-q"], { cwd: root });
+    const sub = path.join(root, "src");
+    fs.mkdirSync(sub);
+    expect(envFacts(sub)).toContain("Git repo: yes (branch ");
   });
 });
 
