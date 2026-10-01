@@ -161,12 +161,24 @@ describe("prompt.assembled workflow event", () => {
 
     expect(stableCalls).toBe(1);
     expect(turnCalls).toBe(2);
-    expect(requests.map((message) => message.content)).toContain("STABLE");
-    expect(requests.map((message) => message.content)).toContain("TURN:second");
-    expect(requests.map((message) => message.content)).not.toContain("OMITTED");
-    expect(controller.messages.map((message) => message.content)).not.toContain(
-      "STABLE",
+    const stableMessage = requests.find((message) =>
+      message.content.includes("STABLE"),
     );
+    expect(stableMessage?.role).toBe("system");
+    expect(stableMessage?.content).toBe("[context from test]\nSTABLE");
+    const turnMessage = requests.find((message) =>
+      message.content.includes("TURN:second"),
+    );
+    expect(turnMessage?.role).toBe("user");
+    expect(turnMessage?.content.startsWith("[context from test]")).toBe(true);
+    expect(
+      requests.some((message) => message.content.includes("OMITTED")),
+    ).toBe(false);
+    expect(
+      controller.messages.some((message) =>
+        String(message.content).includes("STABLE"),
+      ),
+    ).toBe(false);
   });
 
   it("ignores extension failures and timeouts", async () => {

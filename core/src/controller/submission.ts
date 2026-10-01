@@ -19,6 +19,10 @@ import {
   withFileContext,
 } from "../context/file-mentions";
 import { selectRequestWindow } from "../context/request-window";
+import {
+  stableContributionMessage,
+  turnContributionMessage,
+} from "../context/contribution-message";
 import { finishPreparingTool, startPreparingTool } from "./tool-preparation";
 import { persistWorkflowState } from "./workflow-state";
 export async function submitMessage(
@@ -170,10 +174,7 @@ export async function submitMessage(
           content: prefsText,
         });
       for (const contribution of stableParts)
-        requestMessages.push({
-          role: "system" as const,
-          content: contribution.content,
-        });
+        requestMessages.push(stableContributionMessage(contribution));
       if (turnParts.length) {
         const lastUserIndex = budgeted.findLastIndex(
           (message) => message.role === "user",
@@ -182,10 +183,7 @@ export async function submitMessage(
           lastUserIndex < 0 ? budgeted.length : lastUserIndex;
         requestMessages.push(...budgeted.slice(0, insertionIndex));
         for (const contribution of turnParts)
-          requestMessages.push({
-            role: "system" as const,
-            content: contribution.content,
-          });
+          requestMessages.push(turnContributionMessage(contribution));
         requestMessages.push(...budgeted.slice(insertionIndex));
       } else {
         requestMessages.push(...budgeted);
