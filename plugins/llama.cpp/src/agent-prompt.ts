@@ -1,6 +1,6 @@
 import type { Message } from "@cagent/sdk";
 
-const TURN_REMINDER = [
+export const TURN_REMINDER = [
   "[reminder]",
   "Call one tool in this message, or give the final answer. Never both.",
 ].join("\n");
@@ -42,12 +42,10 @@ export function addAgentPrompt(
             .join("\n"),
     )
     .filter(Boolean)
-    .concat(`${prompt}\n\n${TURN_REMINDER}`)
+    .concat(prompt)
     .join("\n\n");
   const result = messages.filter((message) => message.role !== "system");
-  result.unshift({
-    role: "system",
-    content,
-  });
+  result.unshift({ role: "system", content });
+  result.push({ role: "user", content: TURN_REMINDER });
   return result;
 }

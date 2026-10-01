@@ -1,5 +1,9 @@
 import { describe, expect, it, test } from "bun:test";
-import { addAgentPrompt, LLAMA_AGENT_PROMPT } from "../src/agent-prompt";
+import {
+  addAgentPrompt,
+  LLAMA_AGENT_PROMPT,
+  TURN_REMINDER,
+} from "../src/agent-prompt";
 import { createAdapter } from "../src/index";
 
 function fakeModels(ids: string[]): typeof fetch {
@@ -132,10 +136,11 @@ describe("llama.cpp adapter", () => {
       { role: "system", content: "Project rules" },
       { role: "user", content: "Inspect this" },
     ]);
-    expect(messages).toHaveLength(2);
+    expect(messages).toHaveLength(3);
     expect(messages[0].content).toContain("Persistent preference");
     expect(messages[0].content).toContain("Project rules");
     expect(messages[1]).toEqual({ role: "user", content: "Inspect this" });
+    expect(messages[2]).toEqual({ role: "user", content: TURN_REMINDER });
   });
 
   test("accepts nested context settings from older llama-server responses", async () => {
@@ -202,7 +207,11 @@ describe("llama.cpp adapter", () => {
       });
       expect(prepared.messages[0]).toEqual({
         role: "system",
-        content: `${LLAMA_AGENT_PROMPT}\n\n[reminder]\nCall one tool in this message, or give the final answer. Never both.`,
+        content: LLAMA_AGENT_PROMPT,
+      });
+      expect(prepared.messages.at(-1)).toEqual({
+        role: "user",
+        content: TURN_REMINDER,
       });
 
       const disabled = createAdapter({ inject_agent_prompt: false });
