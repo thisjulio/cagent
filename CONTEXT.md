@@ -37,7 +37,7 @@ _Avoid_: code generation (LLM capability), running tests (user workflow), IDE
 ## Editing
 
 **Editing surface**:
-Editing tool in the provider's native format: apply_patch (openai), SEARCH/REPLACE (llama.cpp). One surface per provider, through the provider plugin overriding the generic tool. The exact-match old_string/new_string format is an extension point, not an active surface.
+Editing tool in the provider's native format: apply_patch (openai and llama.cpp); the generic tool also accepts SEARCH/REPLACE blocks. One surface per provider, through the provider plugin overriding the generic tool. The exact-match old_string/new_string format is an extension point, not an active surface.
 _Avoid_: profile, editing format
 
 **Tool override**:
