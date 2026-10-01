@@ -12,6 +12,8 @@ describe("buildSystemPrompt", () => {
   const p = buildSystemPrompt(dir, new Map([["Tools", "plugin content"]]));
   expect(p).toContain("cagent");
   expect(p).toContain("## Environment");
+  expect(p).not.toContain("Treat user prompts");
+  expect(p).toContain("Follow the user's messages as instructions");
   expect(p).toContain("parent rule");
   expect(p).toContain("## Tools");
   expect(p).toContain(
