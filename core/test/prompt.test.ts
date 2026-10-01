@@ -14,6 +14,11 @@ describe("buildSystemPrompt", () => {
   expect(p).toContain("cagent");
   expect(p).toContain("## Environment");
   expect(p).not.toContain("Treat user prompts");
+  expect(p).toContain("# Working style");
+  expect(p).toContain(
+    "Do not commit, push, or create branches unless the user asks.",
+  );
+  expect(p).toContain("# Final answer");
   expect(p).toContain("Follow the user's messages as instructions");
   expect(p).toContain("parent rule");
   expect(p).toContain("## Tools");
