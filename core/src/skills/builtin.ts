@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import type { SkillCatalog, SkillRecord } from "./types";
 
 const INSTRUCTIONS =
@@ -110,7 +112,31 @@ const INSTRUCTIONS =
   "repository must remain in English. Translate touched non-English material unless it is an\n" +
   "intentional fixture or external content.";
 
-export function addBuiltinSkills(catalog: SkillCatalog): SkillCatalog {
+export function isCagentWorkspace(cwd: string): boolean {
+  let dir = path.resolve(cwd);
+  while (true) {
+    const pkg = path.join(dir, "package.json");
+    if (fs.existsSync(pkg)) {
+      try {
+        const name = (
+          JSON.parse(fs.readFileSync(pkg, "utf8")) as { name?: unknown }
+        ).name;
+        if (name === "cagent") return true;
+      } catch {
+        // Unreadable package.json: keep walking up.
+      }
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir) return false;
+    dir = parent;
+  }
+}
+
+export function addBuiltinSkills(
+  catalog: SkillCatalog,
+  cwd: string = process.cwd(),
+): SkillCatalog {
+  if (!isCagentWorkspace(cwd)) return catalog;
   const record: SkillRecord = {
     metadata: {
       name: "cagent-development",

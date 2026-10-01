@@ -110,6 +110,7 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
       ? undefined
       : addBuiltinSkills(
           discoverSkills(process.cwd(), config.skills?.roots, pluginSkillRoots),
+          process.cwd(),
         );
   const skillTool = skills ? createReadSkillTool(skills) : undefined;
   const commands = discoverCommands(process.cwd(), [
@@ -120,6 +121,7 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
     ? () => {
         const refreshed = addBuiltinSkills(
           discoverSkills(process.cwd(), config.skills?.roots, pluginSkillRoots),
+          process.cwd(),
         );
         skills.skills = refreshed.skills;
         skills.byName = refreshed.byName;
