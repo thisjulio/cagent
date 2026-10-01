@@ -22,10 +22,6 @@ export async function submitText(
   actions: SubmissionActions,
 ): Promise<void> {
   if (!text || !controller.state.model) return;
-  if (controller.state.busy && /^\/(undo|rewind)(?:\s|$)/.test(text)) {
-    notify(controller.state, "Cannot restore during an active turn");
-    return;
-  }
   if (controller.state.busy) {
     const message = {
       id: crypto.randomUUID(),

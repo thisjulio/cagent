@@ -24,7 +24,6 @@ import {
   turnContributionMessage,
 } from "../context/contribution-message";
 import { finishPreparingTool, startPreparingTool } from "./tool-preparation";
-import { persistWorkflowState } from "./workflow-state";
 export async function submitMessage(
   controller: Controller,
   text: string,
@@ -48,8 +47,7 @@ export async function submitMessage(
       )
     : { content: text.trim() || text, filePaths: [], context: "" };
   const content = appendFileContext(imagePrompt, fileMention.context);
-  // The durable user record consumes the queue only after the checkpoint barrier.
-  persistWorkflowState(controller, "before", turnId);
+  // Persist the prompt before starting model work.
   appendPrompt(process.cwd(), text);
   resetCompletedTasks(controller);
   appendChat(state, {
@@ -275,7 +273,6 @@ export async function submitMessage(
     continueTurn: async () => false,
     shouldYield: () => controller.queuedMessages().length > 0,
   });
-  persistWorkflowState(controller, "after", turnId);
   const queued = controller.takeQueuedMessages();
   const next = queued[0];
   controller.restoreQueuedMessages(queued.slice(1));

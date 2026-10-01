@@ -38,7 +38,7 @@ export function normalizeSessionRecords(
   return records;
 }
 
-// Restoration changes the active branch without rewriting the audit log.
+// Conversation restoration changes the active branch without rewriting the audit log.
 export function projectSessionRecords(
   records: SessionRecord[],
 ): SessionRecord[] {
@@ -47,9 +47,7 @@ export function projectSessionRecords(
     if (record.type === "meta" && record.payload.kind === "session-restored") {
       const boundary = active.findIndex(
         (entry) =>
-          entry.turnId === record.payload.beforeTurnId &&
-          (entry.payload.kind === "workspace-checkpoint" ||
-            entry.type === "user"),
+          entry.turnId === record.payload.beforeTurnId && entry.type === "user",
       );
       if (boundary < 0)
         throw new Error("Invalid persisted restoration boundary");

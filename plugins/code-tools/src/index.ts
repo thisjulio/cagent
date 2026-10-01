@@ -6,10 +6,8 @@ import { readTool } from "./read";
 import { searchAstTool } from "./search-ast";
 import { searchTool } from "./search";
 import { writeFileTool } from "./write-file";
-import { registerCheckpoints } from "./checkpoints";
 
 const register: Plugin = (ctx) => {
-  registerCheckpoints(ctx);
   ctx.registerTool(readTool(ctx));
   ctx.registerTool(searchTool(ctx));
   ctx.registerTool(globTool(ctx));

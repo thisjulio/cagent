@@ -1,4 +1,3 @@
-import { persistWorkflowState } from "./workflow-state";
 import crypto from "node:crypto";
 import type { Controller } from "./controller";
 import { appendChat, notify } from "./chat-buffer";
@@ -25,7 +24,6 @@ export async function submitShell(
   s.busy = true;
   s.turnStartedAt = Date.now();
   controller.resetTurn();
-  persistWorkflowState(controller, "before", turnId);
   controller.session.append({
     ts: Date.now(),
     turnId,
@@ -88,7 +86,6 @@ export async function submitShell(
       },
     });
   } finally {
-    persistWorkflowState(controller, "after", turnId);
     if (controller.isInterrupted())
       controller.observability?.recordEvent("shell.cancelled");
     s.busy = false;

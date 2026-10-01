@@ -7,7 +7,6 @@ import type { ControllerDeps } from "../src/controller/state";
 import { restoreConversation } from "../src/controller/restoration";
 import { EventBus } from "../src/events";
 import { Registry } from "../src/registry";
-import { submitMessage } from "../src/controller/submission";
 
 const directories: string[] = [];
 afterEach(() => {
@@ -41,28 +40,6 @@ function controller(): Controller {
   });
 }
 
-test("failed queued checkpoint leaves the message retryable on resume", async () => {
-  const c = controller();
-  c.session.append({
-    ts: 1,
-    type: "meta",
-    payload: {
-      kind: "queued-message",
-      id: "pending",
-      content: "follow up",
-      submittedAt: 1,
-    },
-  });
-  c.bus.on("turn.state", () => {
-    throw new Error("checkpoint failed");
-  });
-  await expect(submitMessage(c, "follow up", "pending")).rejects.toThrow(
-    "checkpoint failed",
-  );
-  expect(c.session.load().queuedMessages.map((message) => message.id)).toEqual([
-    "pending",
-  ]);
-});
 function seed(c: Controller): void {
   for (const turnId of ["first", "second"])
     c.session.append({
@@ -133,75 +110,4 @@ test("durable write failure rolls back history without publishing prepared state
   expect(c.messages).toBe(messages);
   expect(JSON.stringify(c.state)).toBe(state);
   expect(c.queuedMessages()).toHaveLength(1);
-});
-
-test("queued submissions persist ordered before and after checkpoints for each turn", async () => {
-  const c = controller();
-  let queued = false;
-  c.bus.on("turn.state", (raw) => {
-    const payload = raw as {
-      data: { phase: string; turnId: string; sessionMetadata?: object[] };
-    };
-    return {
-      ...payload,
-      data: {
-        ...payload.data,
-        sessionMetadata: [
-          { kind: "workspace-checkpoint", phase: payload.data.phase },
-        ],
-      },
-    };
-  });
-  c.adapter.stream = async function* () {
-    if (!queued) {
-      queued = true;
-      await c.submit("follow up");
-    }
-    yield { type: "text", text: "answer" };
-  };
-  await c.submit("initial");
-  const records = c.session.history();
-  const users = records.filter((record) => record.type === "user");
-  expect(users.map((record) => record.payload.content)).toEqual([
-    "initial",
-    "follow up",
-  ]);
-  for (const user of users) {
-    const turn = records.filter((record) => record.turnId === user.turnId);
-    const checkpoints = turn.filter(
-      (record) => record.payload.kind === "workspace-checkpoint",
-    );
-    expect(checkpoints.map((record) => record.payload.phase)).toEqual([
-      "before",
-      "after",
-    ]);
-    expect(turn.indexOf(checkpoints[0]!)).toBeLessThan(turn.indexOf(user));
-    expect(turn.indexOf(checkpoints[1]!)).toBeGreaterThan(
-      turn.findIndex((record) => record.type === "assistant"),
-    );
-  }
-  expect(
-    records.some(
-      (record) => record.payload.kind === "queued-message-processing",
-    ),
-  ).toBe(true);
-  expect(c.queuedMessages()).toEqual([]);
-  expect(c.session.load().queuedMessages).toEqual([]);
-  const queuedTurn = users[1]!;
-  const completion = records.findIndex(
-    (record) => record.type === "user" && record.payload.queuedMessageId,
-  );
-  const boundary = records.findIndex(
-    (record) =>
-      record.turnId === queuedTurn.turnId &&
-      record.payload.kind === "workspace-checkpoint",
-  );
-  expect(completion).toBeGreaterThan(boundary);
-  restoreConversation(c, queuedTurn.turnId!, {});
-  expect(c.queuedMessages().map((message) => message.content)).toEqual([
-    "follow up",
-  ]);
-  expect(
-    c.session.load().queuedMessages.map((message) => message.content),
-  ).toEqual(["follow up"]);
 });

@@ -40,7 +40,7 @@ test("queue survives interruption before checkpoint and before the user commit",
     ts: 3,
     turnId: "turn",
     type: "meta",
-    payload: { kind: "workspace-checkpoint", hash: "opaque" },
+    payload: { kind: "legacy-checkpoint-marker", hash: "opaque" },
   });
   expect(session.load().queuedMessages).toHaveLength(1);
   fs.appendFileSync(session.file, '{"type":"user","payload":');
@@ -79,7 +79,7 @@ test("fork copies active canonical metadata and partial response independently",
     turnId: "one",
     type: "meta",
     payload: {
-      kind: "workspace-checkpoint",
+      kind: "legacy-checkpoint-marker",
       hash: "opaque",
       nested: { value: 1 },
     },

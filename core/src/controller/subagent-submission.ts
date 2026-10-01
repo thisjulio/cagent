@@ -1,4 +1,3 @@
-import { persistWorkflowState } from "./workflow-state";
 import crypto from "node:crypto";
 import type { Controller } from "./controller";
 import type { ChatItem } from "./state";
@@ -19,7 +18,6 @@ export async function submitSubagent(
   s.currentTurnId = turnId;
   s.input = "";
   appendChat(s, { kind: "user", content: original, turnId });
-  persistWorkflowState(controller, "before", turnId);
   controller.session.append({
     ts: Date.now(),
     turnId,
@@ -86,7 +84,6 @@ export async function submitSubagent(
     });
     s.notice = `error: ${error instanceof Error ? error.message : String(error)}`;
   } finally {
-    persistWorkflowState(controller, "after", turnId);
     header.running = false;
     header.durationMs = Date.now() - startedAt;
     s.busy = false;

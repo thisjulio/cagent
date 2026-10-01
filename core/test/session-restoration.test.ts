@@ -21,7 +21,7 @@ function turn(s: Session, id: string): void {
     ts: 1,
     turnId: id,
     type: "meta",
-    payload: { kind: "workspace-checkpoint" },
+    payload: { kind: "legacy-checkpoint-marker" },
   });
   s.append({ ts: 2, turnId: id, type: "user", payload: { content: id } });
   s.append({

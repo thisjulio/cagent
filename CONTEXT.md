@@ -56,10 +56,6 @@ _Avoid_: fallback, fuzzy match
 Counter of identical failures inside the tool that escalates the message and stops on the third repetition; it exists because the core loop is unlimited and the error returns to the model in the same turn.
 _Avoid_: retry, tool timeout
 
-**Shadow Git**:
-Parallel Git repository that checkpoints written files before each write batch, for undo.
-_Avoid_: backup, snapshot
-
 **Error convention**:
 Stable text prefix (`ERROR <CODE> — <path>`) that renders failures for the model and metrics instead of a structured schema, because tool results only carry strings.
 _Avoid_: JSON catalog, typed error

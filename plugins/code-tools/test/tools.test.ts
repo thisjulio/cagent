@@ -318,15 +318,6 @@ a7.ts
     expect(r.summary).toBe("1 files");
   });
 
-  it("edits do not create per-edit shadow checkpoints", () => {
-    expect(fs.existsSync(path.join(ws, ".cagent", ".shadow", ".git"))).toBe(
-      false,
-    );
-    expect(fs.existsSync(path.join(ws, ".cagent", ".shadow", "git"))).toBe(
-      false,
-    );
-  });
-
   it("edit_file: second edit after a whole-project format does not go stale", async () => {
     // A minimal "whole-project" formatter: rewrites a file on disk after the edit.
     fs.writeFileSync(
