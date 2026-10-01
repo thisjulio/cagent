@@ -30,15 +30,13 @@ const PERSONA = [
   "Start with the outcome. List the files you changed. Say which checks you ran and their results, and what you did not verify. Reference code as path:line. Do not repeat file contents or narrate every step.",
 ].join("\n");
 
-export const MANDATORY_VERIFICATION = "";
-
 const TASK_PROTOCOL = [
   "# Task protocol",
   "Use `tasks` when it materially helps coordinate multi-step work; do not create a task list for a trivial change.",
   "Follow active persistent user preferences when writing task titles, including language and style preferences; do not treat the current request's language as overriding them. Do not assume a product-wide default language.",
   "",
   "1. One operation per call: `create`, `add`, `list`, `next`, `skip`, `block`, `resume`, `activate`, or `clear`. See the tool schema for arguments.",
-  "2. If the list state is not visible in recent task-tool results, call `list` once before acting. Do not call `list` just to check first. Do not call `list` solely to prepare the final answer.",
+  "2. Call `list` only when the current list state is not visible in recent task-tool results, and then only once before acting. Do not call `list` just to check first. Do not call `list` solely to prepare the final answer.",
   "3. Do the current task with other tools, verify with command/output/test when applicable, then `next` with evidence. Tool execution alone never means a task is complete.",
   "4. `block` pauses for user input, then `resume`. `skip` needs a reason. `activate` only when no `in_progress` or `blocked` task exists. `clear` only when done.",
   "5. Never use `batch`, task IDs, or `cancel`. Do not repeat a failed operation without changing its preconditions.",
@@ -75,6 +73,6 @@ export function buildSystemPrompt(
   const skillText = skills && renderSkillCatalog(skills);
   if (skillText) parts.push(`## Available skills\n${skillText}`);
   for (const [name, content] of sections) parts.push(`## ${name}\n${content}`);
-  parts.push(TASK_PROTOCOL, MANDATORY_VERIFICATION);
+  parts.push(TASK_PROTOCOL);
   return parts.join("\n\n");
 }

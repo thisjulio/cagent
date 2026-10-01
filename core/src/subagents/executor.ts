@@ -6,8 +6,6 @@ import { splitRoute } from "../route";
 import type { Registry } from "../registry";
 import type { VerificationRunner } from "../verification/runner";
 
-const VERIFICATION_RULE = "";
-
 export type SubagentRequest = {
   name: string;
   task: string;
@@ -55,7 +53,7 @@ export function createSubagentExecutor(
     const messages: Message[] = [
       {
         role: "system",
-        content: `${agent.instructions}\n\n${VERIFICATION_RULE}`,
+        content: agent.instructions,
       },
       ...context,
       { role: "user", content: task },
