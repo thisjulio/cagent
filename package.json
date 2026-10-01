@@ -15,7 +15,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "biome check --linter-enabled=true --formatter-enabled=false .",
     "build": "NODE_ENV=production bun run build:release",
-    "verify": "bun run build && bun run typecheck && bun run lint && bun test",
+    "verify": "bun run build && bun run typecheck && bun run lint && bun run test",
     "knip": "knip --exclude files,exports,types",
     "format": "biome format .",
     "format:write": "biome format --write .",
