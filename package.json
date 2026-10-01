@@ -11,7 +11,7 @@
   ],
   "scripts": {
     "start": "NODE_ENV=production bun core/src/main.ts",
-    "test": "NODE_ENV=test bun test",
+    "test": "NODE_ENV=development bun test",
     "typecheck": "tsc --noEmit",
     "lint": "biome check --linter-enabled=true --formatter-enabled=false .",
     "build": "NODE_ENV=production bun run build:release",
