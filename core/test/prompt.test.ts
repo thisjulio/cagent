@@ -20,8 +20,9 @@ describe("buildSystemPrompt", () => {
     "Follow active persistent user preferences when writing task titles",
   );
   expect(p).toContain("Do not assume a product-wide default language.");
+  expect(p).not.toContain("The runtime executes tool calls sequentially");
   expect(p).toContain(
-    "The runtime executes tool calls sequentially, including independent calls returned together.",
+    "consecutive read-only calls (reads, searches, diagnostics) run in parallel, up to four at a time",
   );
   expect(p).not.toContain("Stop after three searches");
   expect(p).not.toContain("Keep final answers to five lines");
