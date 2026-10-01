@@ -35,6 +35,7 @@ export {
   type HookPhase,
   type HookResponse,
   type SubagentDefinition,
+  type TurnStatePayload,
   type WorkflowEventHandler,
   type WorkflowEventName,
   type WorkflowEventPayload,

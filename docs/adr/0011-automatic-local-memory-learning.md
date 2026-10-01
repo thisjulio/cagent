@@ -3,6 +3,7 @@
 ## Status
 
 Accepted
+
 ## Decision
 
 Local memory learning is fully automatic. Candidate memories extracted from completed turns and selected tool results are persisted as approved entries when they pass deterministic capture and sensitive-data masking rules.

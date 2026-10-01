@@ -11,6 +11,9 @@ Current decision chain:
 - ADR-0011 refines the automatic-learning behavior described by ADR-0009; where they conflict, ADR-0011 is authoritative.
 - ADR-0013 defines bounded assembly for generic context extensions.
 - ADR-0016 refines ADR-0013: contributions are labeled by source, and turn-phase context is sent as user messages immediately before the latest user message to keep the cached prefix stable.
+- ADR-0014 defines the synchronous `turn.state` waterfall barrier that lets plugins persist ordered session metadata around a turn.
+- ADR-0015 defines session fork inheritance and recoverable queue consumption.
+- ADR-0017 removes Shadow Git workspace checkpoints and the `/undo` and `/rewind` file restoration workflow.
 - The remaining ADRs are **Accepted** unless a later ADR explicitly supersedes them.
 
 When changing an active decision, add a new ADR instead of silently editing the old rationale.

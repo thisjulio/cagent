@@ -5,6 +5,7 @@ export const WORKFLOW_EVENTS = [
   "message.submitted",
   "prompt.assembling",
   "prompt.assembled",
+  "turn.state",
   "tool.completed",
   "turn.completed",
   "session.compacted",

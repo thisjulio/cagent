@@ -55,8 +55,8 @@ docs/adr/             # accepted and proposed architecture decisions
 ```
 
 The workspace also includes `plugins/mcp`, `plugins/lsp`, `plugins/claude-*`,
-`plugins/codex-*`, `plugins/agent-skills`, `plugins/opencode-skills`, `openai`,
-`anthropic`, `llama.cpp`, `bash`, and `code-tools`.
+`plugins/codex-*`, `plugins/opencode-skills`, `openai`, `anthropic`,
+`llama.cpp`, `bash`, `code-tools`, and `repo-map`.
 
 ## Project References
 

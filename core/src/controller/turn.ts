@@ -14,6 +14,7 @@ import type { ChatItem, UIState } from "./state";
 import { appendCapped, MAX_VISIBLE_STREAM_CHARS } from "../stream-buffer";
 import type { VerificationRunner } from "../verification/runner";
 import { createAssistantSnapshotWriter } from "./assistant-snapshot";
+import { runTurnState } from "./turn-state";
 
 export type TurnHost = {
   state: UIState;
@@ -63,6 +64,7 @@ export async function executeTurn(host: TurnHost): Promise<void> {
   let thinkingContent = "";
   let streamedTokens = 0;
   try {
+    runTurnState(host, "before");
     let turn = await runAgentTurnWithRecovery(
       host,
       () => thinkingContent,
@@ -76,6 +78,7 @@ export async function executeTurn(host: TurnHost): Promise<void> {
     );
     const records = [...turn.records];
     persistTurn(host, records, thinkingContent);
+    runTurnState(host, "after");
     for (const item of host.state.chat)
       if (item.kind === "tool" && item.running) item.running = false;
     removePreparingItems(host.state);

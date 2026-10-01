@@ -156,7 +156,7 @@ model: openai/gpt-4o-mini
 
 Keep configuration files free of credentials whenever possible. Use environment variables for secrets and add local configuration files to your global Git exclude file if they must remain untracked.
 
-cagent also loads the Codex-compatible `AGENTS.md` hierarchy and Markdown rules below `.cagent/rules/` or `.claude/rules/`. Claude rule files may use YAML frontmatter to scope them to paths:
+cagent also loads the Codex-compatible `AGENTS.md` hierarchy and Markdown rules below `.cagent/rules/`. Rule files may use YAML frontmatter to scope them to paths:
 
 ```markdown
 ---
@@ -165,8 +165,6 @@ paths: ["src/**/*.ts"]
 Keep TypeScript changes covered by tests.
 ```
 
-`AGENTS.md` wins over `CLAUDE.md` in the same directory.
-
 ## Choosing a model
 
 A model route identifies both the provider and model: `$provider/$model`. Select a model exposed by an enabled provider, then put that route in `~/.cagent/config.yml` or the project `cagent.yml`.
@@ -174,6 +172,7 @@ A model route identifies both the provider and model: `$provider/$model`. Select
 The included providers are:
 
 - `openai` — OpenAI and Codex-compatible access.
+- `anthropic` — Anthropic API access with OAuth login.
 - `llama.cpp` — provider compatible with `llama-server`.
 
 Provider availability, model names, context limits, and authentication requirements depend on the provider and your account.
@@ -215,6 +214,7 @@ The repository includes the plugins below. If no plugins are listed in the activ
 | Plugin | Purpose |
 | --- | --- |
 | `openai` | OpenAI/Codex-compatible model provider and authentication. |
+| `anthropic` | Anthropic API provider with OAuth login. |
 | `llama.cpp` | Provider compatible with a local `llama-server`. |
 | `bash` | Shell command execution. |
 | `code-tools` | File reading, search, editing, and AST structural search. |
@@ -229,6 +229,7 @@ The repository includes the plugins below. If no plugins are listed in the activ
 | `opencode-skills` | Discover OpenCode-compatible skills. |
 | `claude-hooks` | Import supported Claude hooks. |
 | `claude-plugins` | Import supported Claude plugin components. |
+| `repo-map` | Repository map context contribution. |
 | `stub` | Minimal provider for development and tests. |
 
 `search_ast` uses `@ast-grep/napi` in-process, without running `bun x` or an external CLI. Supported languages are JavaScript, TypeScript, TSX, HTML, and CSS.
@@ -298,7 +299,7 @@ Contributions are welcome. Please read [`CONTRIBUTING.md`](CONTRIBUTING.md) befo
 
 ## Release
 
-A `v*` tag triggers the release workflow. CI builds executables for Linux and macOS on `x64` and `arm64`, then publishes the four binaries and `SHA256SUMS`.
+A `v*` tag triggers the release workflow. CI builds executables for Linux and macOS on `x64` and `arm64`, including Linux `musl` builds, then publishes the six binaries and `SHA256SUMS`.
 
 ```bash
 git tag v0.1.0
