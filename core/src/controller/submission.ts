@@ -11,6 +11,7 @@ import { buildImageContent } from "./submit-image";
 import { compactionEventFields } from "./compaction-events";
 import { loadPreferences } from "../preferences";
 import { taskCheckpointMessage } from "./task-continuation";
+import { runtimeStateMessage } from "./runtime-state";
 import { appendPrompt } from "../session/history";
 import {
   appendFileContext,
@@ -210,7 +211,9 @@ export async function submitMessage(
           role: "user" as const,
           content: checkpointEarly,
         });
-      return withFileContext(requestMessages, fileMention.context);
+      const withFiles = withFileContext(requestMessages, fileMention.context);
+      const runtime = runtimeStateMessage(controller.state.permissionMode);
+      return runtime ? [...withFiles, runtime] : withFiles;
     },
     stablePrefixMessages:
       Number(loadPreferences().some((item) => item.enabled)) +

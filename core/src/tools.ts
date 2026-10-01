@@ -79,7 +79,7 @@ export async function runToolPipeline(
   const toolTitle = ensureToolTitle(title, tool.name);
   const decision = permission(tool, args, allowlist, readOnly);
   if (decision === "deny") {
-    const reason = `${tool.name} is disabled in read-only mode`;
+    const reason = `${tool.name} is disabled in read-only mode. Do not retry it or other tools that edit files or run commands; continue with read-only tools and describe the changes you would make.`;
     bus.emit("tools/denied", {
       tool: tool.name,
       args,
