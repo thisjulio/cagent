@@ -3,7 +3,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { root } from "./state";
 
-function git(args: string[], shadow = true): string {
+function git(args: string[], shadow = true, input?: string): string {
   const cwd = root();
   const prefix = shadow
     ? [
@@ -23,6 +23,7 @@ function git(args: string[], shadow = true): string {
     env,
     encoding: "utf8",
     maxBuffer: 32 * 1024 * 1024,
+    input,
   });
   if (result.status !== 0)
     throw new Error(result.stderr || "Shadow Git failed");
@@ -30,6 +31,30 @@ function git(args: string[], shadow = true): string {
 }
 
 export function ensureShadow(): void {
+  let exclude: string | undefined;
+  let prefix = "";
+  try {
+    exclude = path.resolve(
+      root(),
+      git(["rev-parse", "--git-path", "info/exclude"], false),
+    );
+    prefix = git(["rev-parse", "--show-prefix"], false);
+  } catch {
+    // Non-Git workspaces have no parent repository to protect.
+  }
+  if (exclude) {
+    const rule = `/${prefix}.cagent/.shadow/`;
+    const existing = fs.existsSync(exclude)
+      ? fs.readFileSync(exclude, "utf8")
+      : "";
+    if (!existing.split(/\r?\n/).includes(rule)) {
+      fs.mkdirSync(path.dirname(exclude), { recursive: true });
+      fs.appendFileSync(
+        exclude,
+        `${existing && !existing.endsWith("\n") ? "\n" : ""}${rule}\n`,
+      );
+    }
+  }
   const dir = path.join(root(), ".cagent", ".shadow", "git");
   if (fs.existsSync(path.join(dir, "HEAD"))) return;
   fs.mkdirSync(dir, { recursive: true });
@@ -88,12 +113,21 @@ function eligibleFiles(): string[] {
 export function shadowCommit(label: string): string {
   ensureShadow();
   git(["read-tree", "--empty"]);
-  for (const file of eligibleFiles()) {
-    const blob = git(["hash-object", "-w", "--no-filters", "--", file]);
+  const files = eligibleFiles();
+  const blobs = files.length
+    ? git(
+        ["hash-object", "-w", "--no-filters", "--stdin-paths"],
+        true,
+        files.map(quoteGitPath).join("\n") + "\n",
+      ).split("\n")
+    : [];
+  const entries = files.map((file, index) => {
     const mode =
       fs.statSync(path.join(root(), file)).mode & 0o111 ? "100755" : "100644";
-    git(["update-index", "--add", "--cacheinfo", mode, blob, file]);
-  }
+    return `${mode} ${blobs[index]}\t${file}\0`;
+  });
+  if (entries.length)
+    git(["update-index", "-z", "--index-info"], true, entries.join(""));
   git([
     "-c",
     "user.name=cagent",
@@ -108,6 +142,14 @@ export function shadowCommit(label: string): string {
     label,
   ]);
   return git(["rev-parse", "HEAD"]);
+}
+
+function quoteGitPath(file: string): string {
+  const escaped = file.replace(/[\x00-\x1f"\\]/g, (character) => {
+    if (character === '"' || character === "\\") return `\\${character}`;
+    return `\\${character.charCodeAt(0).toString(8).padStart(3, "0")}`;
+  });
+  return `"${escaped}"`;
 }
 
 type Entry = { hash: string; mode: number; data: Buffer };

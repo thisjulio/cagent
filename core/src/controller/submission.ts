@@ -83,20 +83,28 @@ export async function submitMessage(
     controller.envStamp,
   );
   if (state.tokens !== undefined) await compactBeforeSubmission(controller);
-  const contextContributions = await controller.contextContributions(text);
   controller.bump();
-  const titlePromise = state.title
-    ? Promise.resolve()
-    : generateTitle(controller, text).then((title) => {
-        state.title = title;
-        controller.session.append({
+  if (!state.title) {
+    const session = controller.session;
+    void generateTitle(controller, text)
+      .then((title) => {
+        session.append({
           ts: Date.now(),
           type: "meta",
           payload: { kind: "title", title },
         });
-        controller.bump();
+        if (controller.session === session && !state.title) {
+          state.title = title;
+          controller.bump();
+        }
+      })
+      .catch((error) => {
+        controller.observability?.recordEvent("title_generation.failed", {
+          error: String(error),
+        });
       });
-  await titlePromise;
+  }
+  const contextContributions = await controller.contextContributions(text);
   await controller.registry.hooks.run({
     phase: "user_prompt_submit",
     prompt: text,

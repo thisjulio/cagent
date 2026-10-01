@@ -337,6 +337,80 @@ describe("controller model and commands", () => {
     expect(c.state.notice).toContain("interrupted");
   });
 
+  it("generates the title in the background without contaminating a new session", async () => {
+    const d = deps();
+    let releaseTitle!: () => void;
+    const titleGate = new Promise<void>((resolve) => {
+      releaseTitle = resolve;
+    });
+    let titleStarted = false;
+    d.adapter = {
+      list_models: async () => ["model-a"],
+      prepare_call: async (request) => request,
+      stream: async function* (request) {
+        const isTitle = request.messages.some((message) =>
+          String(message.content).includes("You are a title generator"),
+        );
+        if (isTitle) {
+          titleStarted = true;
+          await titleGate;
+          yield { type: "text", text: "Original session title" };
+        } else {
+          yield { type: "text", text: "Normal turn response" };
+        }
+        yield { type: "finish", finish_reason: "stop" };
+      },
+    } as ControllerDeps["adapter"];
+    d.registry.registerProvider("openai", d.adapter);
+
+    try {
+      const c = new Controller(d);
+      const originalSession = c.session;
+
+      await c.submit("Please help with the original session");
+      expect(titleStarted).toBe(true);
+      expect(
+        c.messages.some(
+          (message) =>
+            message.role === "assistant" &&
+            String(message.content).includes("Normal turn response"),
+        ),
+      ).toBe(true);
+      expect(c.state.title).toBeFalsy();
+
+      await c.submit("/new");
+      const newSession = c.session;
+      expect(newSession.id).not.toBe(originalSession.id);
+
+      releaseTitle();
+      // Let the deferred stream and its background persistence callback finish.
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      expect(
+        originalSession
+          .history()
+          .some(
+            (record) =>
+              record.type === "meta" &&
+              record.payload.kind === "title" &&
+              record.payload.title === "Original session title",
+          ),
+      ).toBe(true);
+      expect(c.session).toBe(newSession);
+      expect(c.state.title).toBeFalsy();
+      expect(
+        newSession
+          .history()
+          .some(
+            (record) =>
+              record.type === "meta" && record.payload.kind === "title",
+          ),
+      ).toBe(false);
+    } finally {
+      releaseTitle();
+      fs.rmSync(d.sessionDir, { recursive: true, force: true });
+    }
+  });
+
   it("includes user preferences in the title generation prompt", async () => {
     const prefFile = path.join(os.homedir(), ".cagent", "config.yml");
     const original = fs.existsSync(prefFile)

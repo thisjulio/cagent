@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { repairSessionTail } from "./repair-tail";
 import {
   effectiveSessionRecords,
   projectSessionRecords,
@@ -76,19 +77,7 @@ export class Session {
     const serialized = `${JSON.stringify(record)}\n`;
     const fd = fs.openSync(this.file, "a+");
     try {
-      const text = fs.readFileSync(fd, "utf8");
-      if (text && !text.endsWith("\n")) {
-        const tail = text.slice(text.lastIndexOf("\n") + 1);
-        try {
-          JSON.parse(tail);
-          fs.writeFileSync(fd, "\n");
-        } catch {
-          fs.ftruncateSync(
-            fd,
-            Buffer.byteLength(text.slice(0, text.lastIndexOf("\n") + 1)),
-          );
-        }
-      }
+      repairSessionTail(fd);
       fs.writeFileSync(fd, serialized);
       fs.fsyncSync(fd);
     } finally {

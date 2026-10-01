@@ -25,6 +25,32 @@ function git(...args: string[]) {
 }
 
 describe("workspace checkpoints", () => {
+  test("batches paths without changing raw bytes or special filenames", () => {
+    const names = [
+      "space name",
+      'quote"name',
+      "line\nname",
+      "tab\tname",
+      "café",
+      "-option",
+      "control\u0001name",
+      "back\bname",
+      "form\fname",
+      "literal\\u0001name",
+    ];
+    const bytes = Buffer.from([0, 255, 13, 10]);
+    for (const name of names) fs.writeFileSync(name, bytes);
+    const hash = shadowCommit("special paths");
+    for (const name of names) {
+      const result = spawnSync(
+        "git",
+        ["--git-dir", ".cagent/.shadow/git", "show", `${hash}:${name}`],
+        { cwd: dir },
+      );
+      expect(result.status).toBe(0);
+      expect(result.stdout).toEqual(bytes);
+    }
+  });
   test("works in Git workspaces without modifying the user's index", () => {
     git("init");
     fs.writeFileSync("file.txt", "staged");
