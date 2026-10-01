@@ -69,3 +69,13 @@ describe("envFacts", () => {
   expect(s).toContain("Local timezone:");
   expect(s).toContain("Git repo: no");
 });
+
+describe("AGENTS.md size", () => {
+  it("keeps a 9k-character AGENTS.md whole", () => {
+    const dir = fs.mkdtempSync("/tmp/cagent-md-size-");
+    fs.writeFileSync(path.join(dir, "AGENTS.md"), "z".repeat(9000));
+    const p = buildSystemPrompt(dir, new Map());
+    expect(p).toContain("z".repeat(9000));
+    expect(p).not.toContain("[omitted");
+  });
+});

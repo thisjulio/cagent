@@ -38,7 +38,7 @@ const TASK_PROTOCOL = [
   "Evidence is tool output from this session: command exit/output, changed lines read after editing, or test results. Descriptions are not evidence. Do not claim completion when verification is skipped or fails.",
 ].join("\n");
 
-export const AGENTS_MD_LIMIT = 4000;
+export const AGENTS_MD_LIMIT = 24_000;
 
 export function truncateAgentsMd(agents: string): string {
   if (agents.length <= AGENTS_MD_LIMIT) return agents;

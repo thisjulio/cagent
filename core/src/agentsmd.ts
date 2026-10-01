@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-const PER_FILE_LIMIT = 2000;
+const PER_FILE_LIMIT = 12_000;
 
 function truncatePart(content: string, source: string): string {
   if (content.length <= PER_FILE_LIMIT) return content;

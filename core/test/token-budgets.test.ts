@@ -165,10 +165,10 @@ describe("request window", () => {
 });
 
 describe("system prompt budget", () => {
-  it("truncates project conventions to 4k chars with an omitted marker", () => {
-    const out = truncateAgentsMd("y".repeat(6000));
-    expect(out.length).toBeLessThan(6000);
-    expect(out).toContain("[omitted 2000 chars");
+  it("truncates project conventions to 24k chars with an omitted marker", () => {
+    const out = truncateAgentsMd("y".repeat(30_000));
+    expect(out.length).toBeLessThan(30_000);
+    expect(out).toContain("[omitted 6000 chars");
   });
 
   it("keeps the stable prefix free of task protocol", () => {
